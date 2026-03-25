@@ -9,7 +9,7 @@ class MushroomQuotaDistrictSeeder extends Seeder
 {
     public function run(): void
     {
-        $year = 2567; // ปี พ.ศ. ปัจจุบัน
+        $year = (int) date('Y') + 543; // ปี พ.ศ. ปัจจุบัน
 
         $quotas = [
             ['district' => 'เมืองนครราชสีมา', 'round' => 1, 'quota_bags' => 500],
