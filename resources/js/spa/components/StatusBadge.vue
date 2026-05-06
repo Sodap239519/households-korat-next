@@ -35,6 +35,12 @@ const STATUS_STYLES = {
   // role
   superadmin: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-300',
   staff:      'bg-blue-50 text-blue-700 border-blue-300',
+
+  // priority levels (Households Korat)
+  A: 'bg-slate-800 text-white border-slate-800',
+  B: 'bg-sky-400 text-white border-sky-400',
+  C: 'bg-amber-200 text-amber-900 border-amber-300',
+  D: 'bg-pink-300 text-pink-900 border-pink-400',
 }
 
 const STATUS_ICONS = {

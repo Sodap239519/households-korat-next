@@ -3,8 +3,8 @@ import { useAuth } from '../composables/useAuth.js'
 
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
+import HouseholdList from '../views/households/HouseholdList.vue'
 import QuotaList from '../views/quotas/QuotaList.vue'
-import QuotaForm from '../views/quotas/QuotaForm.vue'
 import AllocationList from '../views/allocations/AllocationList.vue'
 import AllocationForm from '../views/allocations/AllocationForm.vue'
 import FollowupList from '../views/followups/FollowupList.vue'
@@ -20,18 +20,17 @@ const routes = [
         meta: { requiresAuth: true },
         children: [
             { path: '', redirect: '/app/dashboard' },
-            { path: 'dashboard', component: DashboardView },
-            { path: 'quotas', component: QuotaList },
-            { path: 'quotas/create', component: QuotaForm },
-            { path: 'quotas/:id/edit', component: QuotaForm },
+            { path: 'dashboard',   component: DashboardView },
+            { path: 'households',  component: HouseholdList },
+            { path: 'quotas',      component: QuotaList },
             { path: 'allocations', component: AllocationList },
             { path: 'allocations/create', component: AllocationForm },
             { path: 'allocations/:id/edit', component: AllocationForm },
-            { path: 'followups', component: FollowupList },
+            { path: 'followups',   component: FollowupList },
             { path: 'followups/create', component: FollowupForm },
             { path: 'followups/:id/edit', component: FollowupForm },
-            { path: 'marketing', component: MarketingHome },
-            { path: 'reports', component: ReportView },
+            { path: 'marketing',   component: MarketingHome },
+            { path: 'reports',     component: ReportView },
         ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/app' },

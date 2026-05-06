@@ -114,16 +114,18 @@ const { user, logout } = useAuth()
 const collapsed = ref(false)
 
 const navItems = [
-  { to: '/app/dashboard',   icon: 'fi fi-rr-dashboard',     label: 'แดชบอร์ด' },
+  { to: '/app/dashboard',   icon: 'fi fi-rr-dashboard',      label: 'แดชบอร์ด' },
+  { to: '/app/households',  icon: 'fi fi-rr-house-blank',    label: 'รายการครัวเรือน' },
   { to: '/app/quotas',      icon: 'fi fi-rr-clipboard-list', label: 'โควต้าอำเภอ' },
-  { to: '/app/allocations', icon: 'fi fi-rr-seedling',      label: 'การจัดสรร' },
-  { to: '/app/followups',   icon: 'fi fi-rr-list-check',    label: 'ติดตามผล' },
-  { to: '/app/marketing',   icon: 'fi fi-rr-shop',          label: 'การตลาด' },
-  { to: '/app/reports',     icon: 'fi fi-rr-chart-pie',     label: 'รายงาน' },
+  { to: '/app/allocations', icon: 'fi fi-rr-seedling',       label: 'การจัดสรร' },
+  { to: '/app/followups',   icon: 'fi fi-rr-list-check',     label: 'ติดตามผล' },
+  { to: '/app/marketing',   icon: 'fi fi-rr-shop',           label: 'การตลาด' },
+  { to: '/app/reports',     icon: 'fi fi-rr-chart-pie',      label: 'รายงาน' },
 ]
 
 const pageTitleMap = {
   dashboard: 'แดชบอร์ด',
+  households: 'รายการครัวเรือน',
   quotas: 'โควต้าอำเภอ',
   allocations: 'การจัดสรรเห็ด',
   followups: 'การติดตามผล',
