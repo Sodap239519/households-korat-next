@@ -1,87 +1,179 @@
 <template>
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-gray-800">การติดตามผล</h2>
-      <router-link to="/app/followups/create" class="btn-primary">+ เพิ่มการติดตาม</router-link>
+  <div class="p-6 space-y-5">
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <i class="fi fi-rr-list-check text-violet-600"></i>
+          ติดตามผลผลิต
+        </h2>
+        <p class="text-sm text-slate-500 mt-0.5">บันทึกผลผลิตและรายได้จากการเพาะเห็ดของแต่ละครัวเรือน</p>
+      </div>
+      <Button label="เพิ่มการติดตาม" icon="fi fi-rr-plus" @click="$router.push('/app/mushroom/followups/create')" />
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b">
-          <tr>
-            <th class="px-4 py-3 text-left text-gray-600">ครัวเรือน</th>
-            <th class="px-4 py-3 text-center text-gray-600">รอบ</th>
-            <th class="px-4 py-3 text-left text-gray-600">วันที่ติดตาม</th>
-            <th class="px-4 py-3 text-right text-gray-600">ผลผลิต (กก.)</th>
-            <th class="px-4 py-3 text-right text-gray-600">ขาย (กก.)</th>
-            <th class="px-4 py-3 text-right text-gray-600">รายได้ (บาท)</th>
-            <th class="px-4 py-3 text-left text-gray-600">ช่องทาง</th>
-            <th class="px-4 py-3 text-center text-gray-600">จัดการ</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading"><td colspan="8" class="py-8 text-center text-gray-400">กำลังโหลด...</td></tr>
-          <tr v-else-if="!items.length"><td colspan="8" class="py-8 text-center text-gray-400">ไม่มีข้อมูล</td></tr>
-          <tr v-for="item in items" :key="item.id" class="border-b hover:bg-gray-50">
-            <td class="px-4 py-3">
-              <div class="font-medium">{{ item.allocation?.household?.first_name }} {{ item.allocation?.household?.last_name }}</div>
-              <div class="text-xs text-gray-400">{{ item.allocation?.household?.household_code }}</div>
-            </td>
-            <td class="px-4 py-3 text-center">{{ item.followup_round }}</td>
-            <td class="px-4 py-3">{{ item.followup_date ?? '-' }}</td>
-            <td class="px-4 py-3 text-right">{{ item.harvest_kg }}</td>
-            <td class="px-4 py-3 text-right">{{ item.sold_kg }}</td>
-            <td class="px-4 py-3 text-right font-medium text-green-700">{{ item.revenue ? Number(item.revenue).toLocaleString() : '-' }}</td>
-            <td class="px-4 py-3">{{ channelLabel(item.sale_channel) }}</td>
-            <td class="px-4 py-3 text-center space-x-2">
-              <router-link :to="`/app/followups/${item.id}/edit`" class="text-blue-600 hover:underline">แก้ไข</router-link>
-              <button @click="deleteItem(item)" class="text-red-500 hover:underline">ลบ</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="box-card p-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Select v-model="filters.sale_channel" :options="channelOptions" optionLabel="label" optionValue="value"
+                placeholder="ทุกช่องทาง" showClear class="w-full" @change="onFilterChange" />
+      </div>
     </div>
-    <Pagination :meta="meta" @change="onPage" class="mt-4" />
+
+    <div class="box-card p-0 overflow-hidden">
+      <DataTable :value="items" :loading="loading" stripedRows scrollable scrollHeight="62vh">
+        <template #empty>
+          <div class="text-center py-12 text-slate-400">
+            <i class="fi fi-rr-info text-3xl"></i>
+            <p class="mt-2">ยังไม่มีการติดตามผล</p>
+          </div>
+        </template>
+        <template #footer>
+          <div class="flex items-center justify-between text-sm px-2 flex-wrap gap-2">
+            <span class="text-slate-600">รวม <span class="font-semibold text-violet-700">{{ Number(meta.total || 0).toLocaleString() }}</span> รายการ</span>
+            <div class="flex gap-4 text-xs">
+              <span>ผลผลิตในหน้านี้: <span class="font-semibold text-emerald-700">{{ totalHarvestPage.toFixed(2) }}</span> กก.</span>
+              <span>ขาย: <span class="font-semibold text-orange-700">{{ totalSoldPage.toFixed(2) }}</span> กก.</span>
+              <span>รายได้: <span class="font-semibold text-amber-700">{{ totalRevenuePage.toLocaleString() }}</span> บาท</span>
+            </div>
+          </div>
+        </template>
+
+        <Column header="#" :style="{ width: '60px' }">
+          <template #body="{ index }">
+            <span class="text-xs text-slate-400 font-medium">{{ ((meta.current_page || 1) - 1) * 20 + index + 1 }}</span>
+          </template>
+        </Column>
+        <Column header="ครัวเรือน" :style="{ minWidth: '200px' }">
+          <template #body="{ data }">
+            <div class="font-medium text-slate-700">
+              {{ data.allocation?.household?.first_name }} {{ data.allocation?.household?.last_name }}
+            </div>
+            <div class="font-mono text-xs text-violet-600">{{ data.allocation?.household?.household_code }}</div>
+          </template>
+        </Column>
+        <Column field="followup_round" header="รอบ" :style="{ width: '70px' }">
+          <template #body="{ data }">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold">
+              {{ data.followup_round }}
+            </span>
+          </template>
+        </Column>
+        <Column field="followup_date" header="วันที่ติดตาม" sortable :style="{ width: '130px' }">
+          <template #body="{ data }">{{ data.followup_date ?? '-' }}</template>
+        </Column>
+        <Column field="harvest_kg" header="ผลผลิต (กก.)" sortable :style="{ width: '120px' }">
+          <template #body="{ data }">{{ Number(data.harvest_kg || 0).toFixed(2) }}</template>
+        </Column>
+        <Column field="sold_kg" header="ขาย (กก.)" sortable :style="{ width: '110px' }">
+          <template #body="{ data }">{{ Number(data.sold_kg || 0).toFixed(2) }}</template>
+        </Column>
+        <Column field="revenue" header="รายได้ (บาท)" sortable :style="{ width: '130px' }">
+          <template #body="{ data }">
+            <span class="font-semibold text-emerald-700">{{ Number(data.revenue || 0).toLocaleString() }}</span>
+          </template>
+        </Column>
+        <Column header="ช่องทาง" :style="{ width: '120px' }">
+          <template #body="{ data }">
+            <StatusBadge v-if="data.sale_channel" :status="data.sale_channel" :label="channelLabels[data.sale_channel] || data.sale_channel" />
+            <span v-else class="text-slate-300 text-xs">-</span>
+          </template>
+        </Column>
+        <Column header="จัดการ" :style="{ width: '120px' }">
+          <template #body="{ data }">
+            <div class="flex gap-1">
+              <Button icon="fi fi-rr-edit" severity="info" text rounded @click="$router.push(`/app/mushroom/followups/${data.id}/edit`)" v-tooltip.top="'แก้ไข'" />
+              <Button icon="fi fi-rr-trash" severity="danger" text rounded @click="confirmDelete(data)" v-tooltip.top="'ลบ'" />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+      <Pagination :meta="meta" @change="onPage" class="p-4" />
+    </div>
+
+    <ConfirmDialog />
+    <Toast position="top-right" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import api from '../../api/index.js'
+
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import Select from 'primevue/select'
+import ConfirmDialog from 'primevue/confirmdialog'
+import Toast from 'primevue/toast'
+import Tooltip from 'primevue/tooltip'
+
 import Pagination from '../components/Pagination.vue'
+import StatusBadge from '../../components/StatusBadge.vue'
+
+const vTooltip = Tooltip
+const confirm = useConfirm()
+const toast = useToast()
 
 const items = ref([])
 const meta = ref({})
 const loading = ref(false)
-let currentPage = 1
+const filters = ref({ sale_channel: null })
+let currentPage = 1, filterTimer = null
 
+const channelOptions = [
+  { label: 'ขายตรง',   value: 'direct' },
+  { label: 'ออนไลน์', value: 'online' },
+  { label: 'วิสาหกิจ', value: 'enterprise' },
+  { label: 'ตลาด',     value: 'market' },
+]
 const channelLabels = {
-  direct: 'ขายตรง', online: 'ออนไลน์',
-  enterprise: 'วิสาหกิจ', market: 'ตลาด',
+  direct: 'ขายตรง', online: 'ออนไลน์', enterprise: 'วิสาหกิจ', market: 'ตลาด',
 }
-function channelLabel(c) { return channelLabels[c] ?? c ?? '-' }
+
+const totalHarvestPage = computed(() => items.value.reduce((a, x) => a + Number(x.harvest_kg || 0), 0))
+const totalSoldPage    = computed(() => items.value.reduce((a, x) => a + Number(x.sold_kg    || 0), 0))
+const totalRevenuePage = computed(() => items.value.reduce((a, x) => a + Number(x.revenue    || 0), 0))
 
 async function fetchData() {
   loading.value = true
   try {
-    const { data } = await api.get('/mushroom-followups', { params: { page: currentPage, per_page: 20 } })
+    const params = { page: currentPage, per_page: 20 }
+    if (filters.value.sale_channel) params.sale_channel = filters.value.sale_channel
+    const { data } = await api.get('/mushroom-followups', { params })
     items.value = data.data
-    meta.value = data.meta
+    meta.value = { current_page: data.current_page, last_page: data.last_page, total: data.total }
+  } catch {
+    toast.add({ severity: 'error', summary: 'ผิดพลาด', detail: 'โหลดข้อมูลไม่สำเร็จ', life: 3000 })
   } finally {
     loading.value = false
   }
 }
 
-function onPage(page) { currentPage = page; fetchData() }
+function onFilterChange() {
+  clearTimeout(filterTimer)
+  filterTimer = setTimeout(() => { currentPage = 1; fetchData() }, 300)
+}
+function onPage(p) { currentPage = p; fetchData() }
 
-async function deleteItem(item) {
-  if (!confirm('ลบข้อมูลการติดตามนี้?')) return
-  try {
-    await api.delete(`/mushroom-followups/${item.id}`)
-    fetchData()
-  } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด')
-  }
+function confirmDelete(item) {
+  confirm.require({
+    message: `ลบการติดตามรอบ ${item.followup_round} ใช่หรือไม่?`,
+    header: 'ยืนยันการลบ',
+    icon: 'fi fi-rr-triangle-warning',
+    rejectLabel: 'ยกเลิก', acceptLabel: 'ลบ',
+    rejectClass: 'p-button-secondary p-button-outlined',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await api.delete(`/mushroom-followups/${item.id}`)
+        toast.add({ severity: 'success', summary: 'ลบสำเร็จ', life: 2000 })
+        fetchData()
+      } catch (e) {
+        toast.add({ severity: 'error', summary: 'ผิดพลาด', detail: e.response?.data?.message || '', life: 3000 })
+      }
+    },
+  })
 }
 
 onMounted(fetchData)

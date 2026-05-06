@@ -10,8 +10,8 @@
         <p class="text-sm text-slate-500 mt-0.5">จัดการข้อมูลครัวเรือนเปราะบางในจังหวัดนครราชสีมา</p>
       </div>
       <div class="flex gap-2">
-        <Button label="ส่งออก CSV" icon="fi fi-rr-download" severity="secondary" outlined @click="exportCsv" />
-        <Button label="เพิ่มรายการ" icon="fi fi-rr-plus" @click="openCreate" />
+        <Button label="ส่งออก CSV" icon="fi fi-rr-download" severity="secondary" outlined :loading="exporting" @click="exportCsv" />
+        <Button label="เพิ่มรายการ" icon="fi fi-rr-plus" @click="$router.push('/app/households/create')" />
       </div>
     </div>
 
@@ -77,7 +77,18 @@
             <i class="fi fi-rr-loading text-3xl animate-spin"></i>
           </div>
         </template>
+        <template #footer>
+          <div class="flex items-center justify-between text-sm text-slate-600 px-2">
+            <span>รวมทั้งหมด: <span class="font-semibold text-violet-700">{{ Number(meta.total || 0).toLocaleString() }}</span> รายการ</span>
+            <span class="text-xs text-slate-400">หน้า {{ meta.current_page }} / {{ meta.last_page || 1 }}</span>
+          </div>
+        </template>
 
+        <Column header="#" :style="{ width: '60px' }">
+          <template #body="{ index }">
+            <span class="text-xs text-slate-400 font-medium">{{ ((meta.current_page || 1) - 1) * 20 + index + 1 }}</span>
+          </template>
+        </Column>
         <Column field="household_code" header="รหัสบ้าน" sortable :style="{ minWidth: '130px' }">
           <template #body="{ data }">
             <span class="font-mono text-violet-700 font-medium">{{ data.household_code }}</span>
@@ -329,8 +340,30 @@ function onSaved() {
   fetchData()
 }
 
-function exportCsv() {
-  toast.add({ severity: 'info', summary: 'กำลังพัฒนา', detail: 'ฟีเจอร์ Export CSV จะมาในรอบถัดไป', life: 2500 })
+const exporting = ref(false)
+async function exportCsv() {
+  exporting.value = true
+  try {
+    const params = new URLSearchParams()
+    if (filters.value.search)   params.append('search',   filters.value.search)
+    if (filters.value.district) params.append('district', filters.value.district)
+    if (filters.value.priority) params.append('priority', filters.value.priority)
+    if (filters.value.passed !== null && filters.value.passed !== undefined) {
+      params.append('passed', filters.value.passed)
+    }
+    const res = await api.get('/households/export?' + params.toString(), { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `households_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.add({ severity: 'success', summary: 'ส่งออกสำเร็จ', life: 2000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'ผิดพลาด', detail: 'ส่งออกไม่สำเร็จ', life: 3000 })
+  } finally {
+    exporting.value = false
+  }
 }
 
 function confirmDelete(item) {

@@ -23,12 +23,15 @@
         <i class="fi fi-rr-filter"></i> ตัวกรอง
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <span class="p-input-icon-left">
-          <IconField>
-            <InputIcon class="fi fi-rr-search text-slate-400" />
-            <InputText v-model="filters.district" @input="onFilterChange" placeholder="ค้นหาอำเภอ..." class="w-full" />
-          </IconField>
-        </span>
+        <Select
+          v-model="filters.district"
+          :options="districtOptions"
+          placeholder="ทุกอำเภอ"
+          showClear
+          filter
+          @change="onFilterChange"
+          class="w-full"
+        />
         <Select
           v-model="filters.year"
           :options="yearOptions"
@@ -74,7 +77,22 @@
             <i class="fi fi-rr-loading text-3xl animate-spin"></i>
           </div>
         </template>
+        <template #footer>
+          <div class="flex items-center justify-between text-sm px-2 flex-wrap gap-2">
+            <span class="text-slate-600">รวม <span class="font-semibold text-violet-700">{{ items.length }}</span> รายการในหน้านี้</span>
+            <div class="flex items-center gap-4 text-xs">
+              <span>โควต้ารวม: <span class="font-semibold text-violet-700">{{ Number(totalQuotaBags).toLocaleString() }}</span> ถุง</span>
+              <span>จัดสรรแล้ว: <span class="font-semibold text-fuchsia-700">{{ Number(totalAllocated).toLocaleString() }}</span> ถุง</span>
+              <span>คงเหลือ: <span :class="['font-semibold', totalRemaining < 0 ? 'text-rose-700' : 'text-emerald-700']">{{ Number(totalRemaining).toLocaleString() }}</span> ถุง</span>
+            </div>
+          </div>
+        </template>
 
+        <Column header="#" :style="{ width: '60px' }">
+          <template #body="{ index }">
+            <span class="text-xs text-slate-400 font-medium">{{ ((meta.current_page || 1) - 1) * 20 + index + 1 }}</span>
+          </template>
+        </Column>
         <Column field="district" header="อำเภอ" sortable>
           <template #body="{ data }">
             <span class="font-medium text-slate-700">{{ data.district }}</span>
@@ -163,7 +181,8 @@ const items = ref([])
 const meta = ref({})
 const loading = ref(false)
 const years = ref([])
-const filters = ref({ district: '', year: null, is_active: null })
+const districtOptions = ref([])
+const filters = ref({ district: null, year: null, is_active: null })
 
 const dialogOpen = ref(false)
 const editId = ref(null)
@@ -204,6 +223,17 @@ async function fetchYears() {
     years.value = data
   } catch {}
 }
+
+async function fetchDistricts() {
+  try {
+    const { data } = await api.get('/locations/districts')
+    districtOptions.value = data
+  } catch {}
+}
+
+const totalQuotaBags = computed(() => items.value.reduce((acc, x) => acc + Number(x.quota_bags || 0), 0))
+const totalAllocated = computed(() => items.value.reduce((acc, x) => acc + Number(x.allocations_sum_bags || 0), 0))
+const totalRemaining = computed(() => totalQuotaBags.value - totalAllocated.value)
 
 function onFilterChange() {
   clearTimeout(filterTimer)
@@ -257,5 +287,6 @@ function confirmDelete(item) {
 onMounted(() => {
   fetchData()
   fetchYears()
+  fetchDistricts()
 })
 </script>

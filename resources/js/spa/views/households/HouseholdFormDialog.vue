@@ -32,11 +32,19 @@
           <Field label="รหัสบ้าน" required>
             <InputText v-model="form.household_code" required placeholder="11 หลัก" class="w-full" />
           </Field>
-          <Field label="จังหวัด"><InputText v-model="form.province" class="w-full" /></Field>
-          <Field label="อำเภอ"><InputText v-model="form.district" class="w-full" /></Field>
-          <Field label="ตำบล"><InputText v-model="form.sub_district" class="w-full" /></Field>
+          <Field label="จังหวัด">
+            <Select v-model="form.province" :options="locations.provinces" placeholder="-- เลือก --" showClear editable filter class="w-full" />
+          </Field>
+          <Field label="อำเภอ">
+            <Select v-model="form.district" :options="locations.districts" placeholder="-- เลือก --" showClear editable filter class="w-full" @change="onDistrictChange" />
+          </Field>
+          <Field label="ตำบล">
+            <Select v-model="form.sub_district" :options="locations.subDistricts" placeholder="-- เลือก --" showClear editable filter class="w-full" @change="onSubDistrictChange" />
+          </Field>
           <Field label="หมู่ที่"><InputText v-model="form.moo_number" class="w-full" /></Field>
-          <Field label="หมู่บ้าน"><InputText v-model="form.village" class="w-full" /></Field>
+          <Field label="หมู่บ้าน">
+            <Select v-model="form.village" :options="locations.villages" placeholder="-- เลือก --" showClear editable filter class="w-full" />
+          </Field>
           <Field label="บ้านเลขที่"><InputText v-model="form.house_number" class="w-full" /></Field>
           <Field label="รหัสไปรษณีย์"><InputText v-model="form.postal_code" class="w-full" /></Field>
           <Field label="จำนวนสมาชิก">
@@ -158,7 +166,7 @@
       </FormSection>
 
       <!-- Section 5: คะแนนประเมิน -->
-      <FormSection title="ส่วนที่ 5: คะแนนประเมิน + Priority" icon="fi fi-rr-chart-pie-alt" tone="rose">
+      <FormSection title="ส่วนที่ 5: คะแนนประเมิน (ระบบคำนวณ Priority อัตโนมัติ)" icon="fi fi-rr-chart-pie-alt" tone="rose">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <ScoreField v-model="form.poverty_score"    label="ความยากจน" />
           <ScoreField v-model="form.motivation_score" label="แรงจูงใจ" />
@@ -167,19 +175,31 @@
           <ScoreField v-model="form.potential_score"  label="ศักยภาพ" />
           <ScoreField v-model="form.area_score"       label="พื้นที่" />
           <ScoreField v-model="form.market_score"     label="การตลาด" />
-          <Field label="คะแนนรวม">
-            <div class="flex items-center gap-2">
-              <InputNumber v-model="form.total_score" :min="0" :minFractionDigits="0" :maxFractionDigits="2" fluid />
-              <Button icon="fi fi-rr-calculator" v-tooltip.top="'คำนวณจาก 7 คะแนน'" severity="secondary" outlined @click="recalcTotal" />
-            </div>
+          <Field label="คะแนนรวม (ระบบคำนวณ)">
+            <InputNumber :modelValue="form.total_score" disabled fluid />
           </Field>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 p-3 rounded-lg bg-rose-50/50 border border-rose-200/50">
-          <Field label="Priority">
-            <Select v-model="form.priority" :options="OPT.priority" optionLabel="label" optionValue="value" placeholder="-- เลือก --" showClear class="w-full" />
-          </Field>
-          <ToggleField v-model="form.passed"    label="ผ่านเกณฑ์" />
-          <ToggleField v-model="form.completed" label="ดำเนินการเสร็จสิ้น" />
+        <div class="mt-4 p-4 rounded-lg bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 border-2 border-rose-200/70">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div>
+              <p class="text-xs text-slate-500 mb-1">Priority (คำนวณอัตโนมัติจากคะแนนเฉลี่ย)</p>
+              <div class="flex items-center gap-2">
+                <span v-if="form.priority" :class="['inline-flex items-center justify-center w-12 h-12 rounded-xl font-bold text-xl border-2', priorityClass]">
+                  {{ form.priority }}
+                </span>
+                <span v-else class="text-slate-400 text-sm">รอคะแนน</span>
+                <div class="text-xs text-slate-500">
+                  <p v-if="form.total_score">คะแนน: <span class="font-semibold text-slate-700">{{ form.total_score }} / 700</span></p>
+                  <p v-if="avgScore">เฉลี่ย: <span class="font-semibold text-slate-700">{{ avgScore }} / 100</span></p>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-2">
+                เกณฑ์: A ≥ 75 · B ≥ 60 · C ≥ 40 · D &lt; 40
+              </p>
+            </div>
+            <ToggleField v-model="form.passed"    label="ผ่านเกณฑ์" />
+            <ToggleField v-model="form.completed" label="ดำเนินการเสร็จสิ้น" />
+          </div>
         </div>
       </FormSection>
 
@@ -261,13 +281,10 @@ const OPT = {
   smartphone: ['ใช้ประจำ', 'ใช้บางครั้ง', 'ไม่ใช้'],
   interest:   ['สูงมาก', 'สูง', 'ปานกลาง', 'น้อย', 'ไม่มี'],
   groupReady: ['พร้อม', 'พร้อมบางส่วน', 'ไม่พร้อม'],
-  priority:   [
-    { label: 'A — สูงสุด', value: 'A' },
-    { label: 'B — สูง',    value: 'B' },
-    { label: 'C — ปานกลาง', value: 'C' },
-    { label: 'D — ต่ำ',     value: 'D' },
-  ],
 }
+
+// Location data loaded from API (cached on first dialog open)
+const locations = ref({ provinces: [], districts: [], subDistricts: [], villages: [] })
 
 function defaultForm() {
   return {
@@ -310,17 +327,36 @@ const netIncome = computed(() => {
   return (Number(i) || 0) - (Number(e) || 0)
 })
 
-function recalcTotal() {
-  const keys = ['poverty_score', 'motivation_score', 'experience_score', 'grouping_score', 'potential_score', 'area_score', 'market_score']
-  const sum = keys.reduce((acc, k) => acc + (Number(form.value[k]) || 0), 0)
+const SCORE_KEYS = ['poverty_score', 'motivation_score', 'experience_score', 'grouping_score', 'potential_score', 'area_score', 'market_score']
+
+const avgScore = computed(() => {
+  const valid = SCORE_KEYS.map(k => Number(form.value[k]) || 0)
+  if (valid.every(v => v === 0)) return null
+  return Math.round((valid.reduce((a, b) => a + b, 0) / SCORE_KEYS.length) * 100) / 100
+})
+
+const priorityClass = computed(() => {
+  const map = {
+    A: 'bg-slate-800 text-white border-slate-800',
+    B: 'bg-sky-400 text-white border-sky-400',
+    C: 'bg-amber-200 text-amber-900 border-amber-300',
+    D: 'bg-pink-300 text-pink-900 border-pink-400',
+  }
+  return map[form.value.priority] || ''
+})
+
+// Auto-calc total + priority whenever any score changes
+watch(SCORE_KEYS.map(k => () => form.value[k]), () => {
+  const sum = SCORE_KEYS.reduce((acc, k) => acc + (Number(form.value[k]) || 0), 0)
   form.value.total_score = Math.round(sum * 100) / 100
-  // Auto-set priority based on average
-  const avg = sum / keys.length
-  if (avg >= 75) form.value.priority = 'A'
-  else if (avg >= 60) form.value.priority = 'B'
-  else if (avg >= 40) form.value.priority = 'C'
-  else if (avg > 0)   form.value.priority = 'D'
-}
+  const avg = sum / SCORE_KEYS.length
+  if (sum === 0) {
+    form.value.priority = ''
+  } else if (avg >= 75) form.value.priority = 'A'
+  else if (avg >= 60)   form.value.priority = 'B'
+  else if (avg >= 40)   form.value.priority = 'C'
+  else                  form.value.priority = 'D'
+})
 
 // Auto-calc age from dob
 watch(() => form.value.dob, (val) => {
@@ -335,9 +371,40 @@ watch(() => form.value.dob, (val) => {
   } catch {}
 })
 
+async function loadLocations() {
+  try {
+    const [p, d, s, v] = await Promise.all([
+      api.get('/locations/provinces'),
+      api.get('/locations/districts'),
+      api.get('/locations/sub-districts'),
+      api.get('/locations/villages'),
+    ])
+    locations.value = { provinces: p.data, districts: d.data, subDistricts: s.data, villages: v.data }
+  } catch {}
+}
+
+async function onDistrictChange() {
+  // Reload sub-districts filtered by selected district
+  if (!form.value.district) return
+  try {
+    const { data } = await api.get('/locations/sub-districts', { params: { district: form.value.district } })
+    locations.value.subDistricts = data
+  } catch {}
+}
+async function onSubDistrictChange() {
+  if (!form.value.sub_district) return
+  try {
+    const { data } = await api.get('/locations/villages', {
+      params: { district: form.value.district, sub_district: form.value.sub_district },
+    })
+    locations.value.villages = data
+  } catch {}
+}
+
 watch(() => props.modelValue, async (open) => {
   if (!open) return
   error.value = ''
+  if (!locations.value.districts.length) loadLocations()
   if (isEdit.value) {
     try {
       const { data } = await api.get(`/households/${props.householdId}`)

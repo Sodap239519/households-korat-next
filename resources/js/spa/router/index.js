@@ -2,8 +2,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 
 import LoginView from '../views/LoginView.vue'
+import PublicDashboardView from '../views/PublicDashboardView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import HouseholdList from '../views/households/HouseholdList.vue'
+import HouseholdCreatePage from '../views/households/HouseholdCreatePage.vue'
 import TrackingView from '../views/TrackingView.vue'
 import QuotaList from '../views/quotas/QuotaList.vue'
 import AllocationList from '../views/allocations/AllocationList.vue'
@@ -17,18 +19,22 @@ import LoginHistoryView from '../views/LoginHistoryView.vue'
 import UserManagementView from '../views/admin/UserManagementView.vue'
 
 const routes = [
-    { path: '/app/login', component: LoginView, meta: { guest: true } },
+    // Public landing (no auth)
+    { path: '/app',          component: PublicDashboardView, meta: { public: true } },
+    { path: '/app/public',   component: PublicDashboardView, meta: { public: true } },
+    { path: '/app/login',    component: LoginView, meta: { guest: true } },
+
+    // Auth-required app shell
     {
         path: '/app',
         component: () => import('../views/MainLayout.vue'),
         meta: { requiresAuth: true },
         children: [
-            { path: '', redirect: '/app/dashboard' },
             { path: 'dashboard', component: DashboardView },
 
             // Households
             { path: 'households',         component: HouseholdList },
-            { path: 'households/create',  component: HouseholdList, props: { autoCreate: true } },
+            { path: 'households/create',  component: HouseholdCreatePage },
 
             // Tracking
             { path: 'tracking', component: TrackingView },
@@ -71,7 +77,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
     const { user, fetchUser } = useAuth()
 
-    if (user.value === null && to.meta.requiresAuth) {
+    if (user.value === null && (to.meta.requiresAuth || to.meta.guest)) {
         await fetchUser()
     }
     if (to.meta.requiresAuth && !user.value) return '/app/login'

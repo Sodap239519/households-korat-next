@@ -29,7 +29,16 @@
             <label class="text-sm font-medium text-slate-700 mb-1.5 block">
               อำเภอ <span class="text-rose-500">*</span>
             </label>
-            <InputText v-model="form.district" required class="w-full" placeholder="เช่น เมืองนครราชสีมา" />
+            <Select
+              v-model="form.district"
+              :options="districtOptions"
+              required
+              showClear
+              filter
+              editable
+              placeholder="-- เลือกอำเภอ --"
+              class="w-full"
+            />
           </div>
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1.5 block">จังหวัด</label>
@@ -119,6 +128,7 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 
@@ -148,10 +158,20 @@ const defaultForm = () => ({
 const form = ref(defaultForm())
 const saving = ref(false)
 const error = ref('')
+const districtOptions = ref([])
+
+async function loadDistricts() {
+  if (districtOptions.value.length) return
+  try {
+    const { data } = await api.get('/locations/districts')
+    districtOptions.value = data
+  } catch {}
+}
 
 watch(() => props.modelValue, async (open) => {
   if (!open) return
   error.value = ''
+  loadDistricts()
   if (isEdit.value) {
     try {
       const { data } = await api.get(`/mushroom-quotas/${props.quotaId}`)
