@@ -1,41 +1,45 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-100">
+  <div class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-violet-100 via-fuchsia-50 to-purple-100">
     <!-- Decorative blobs -->
-    <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-emerald-300/30 blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-32 -right-32 w-[28rem] h-[28rem] rounded-full bg-teal-300/30 blur-3xl pointer-events-none"></div>
+    <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-violet-300/40 blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-32 -right-32 w-[28rem] h-[28rem] rounded-full bg-fuchsia-300/40 blur-3xl pointer-events-none"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[20rem] h-[20rem] rounded-full bg-purple-200/30 blur-3xl pointer-events-none"></div>
 
     <div class="relative w-full max-w-md">
-      <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-8 sm:p-10">
+      <div class="glass rounded-3xl shadow-2xl shadow-violet-500/20 p-8 sm:p-10">
         <div class="text-center mb-8">
-          <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-3xl shadow-lg shadow-emerald-500/30 mb-4">
-            <i class="pi pi-leaf"></i>
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 text-white text-3xl shadow-lg shadow-violet-500/40 mb-4">
+            <i class="fi fi-rr-leaf"></i>
           </div>
-          <h1 class="text-2xl font-bold text-slate-800 tracking-tight">ระบบโควต้าเห็ด</h1>
+          <h1 class="text-2xl font-bold bg-gradient-to-r from-violet-700 via-purple-700 to-fuchsia-700 bg-clip-text text-transparent tracking-tight">
+            ระบบโควต้าเห็ด
+          </h1>
           <p class="text-slate-500 text-sm mt-1">จังหวัดนครราชสีมา</p>
         </div>
 
-        <Message v-if="error" severity="error" :closable="false" class="mb-4">
-          {{ error }}
-        </Message>
+        <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
 
         <form @submit.prevent="handleLogin" class="space-y-5">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">อีเมล</label>
-            <IconField>
-              <InputIcon class="pi pi-envelope" />
-              <InputText
-                v-model="form.email"
-                type="email"
-                required
-                placeholder="your@email.com"
-                class="w-full"
-                autocomplete="username"
-              />
-            </IconField>
+            <label class="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i class="fi fi-rr-envelope text-violet-600"></i>
+              อีเมล
+            </label>
+            <InputText
+              v-model="form.email"
+              type="email"
+              required
+              placeholder="your@email.com"
+              class="w-full"
+              autocomplete="username"
+            />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">รหัสผ่าน</label>
+            <label class="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i class="fi fi-rr-key text-violet-600"></i>
+              รหัสผ่าน
+            </label>
             <Password
               v-model="form.password"
               :feedback="false"
@@ -52,7 +56,7 @@
             type="submit"
             :loading="loading"
             label="เข้าสู่ระบบ"
-            icon="pi pi-sign-in"
+            icon="fi fi-rr-sign-in-alt"
             iconPos="right"
             class="w-full"
             size="large"
@@ -77,8 +81,6 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Message from 'primevue/message'
-import IconField from 'primevue/iconfield'
-import InputIcon from 'primevue/inputicon'
 
 const router = useRouter()
 const { login } = useAuth()

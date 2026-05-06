@@ -8,6 +8,8 @@ import router from './router/index.js'
 import { HouseholdPreset } from './theme.js'
 
 import 'primeicons/primeicons.css'
+import '@flaticon/flaticon-uicons/css/regular/rounded.css'
+import '@flaticon/flaticon-uicons/css/solid/rounded.css'
 
 window.axios = axios
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest'

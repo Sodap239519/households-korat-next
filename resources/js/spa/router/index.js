@@ -9,6 +9,7 @@ import AllocationList from '../views/allocations/AllocationList.vue'
 import AllocationForm from '../views/allocations/AllocationForm.vue'
 import FollowupList from '../views/followups/FollowupList.vue'
 import FollowupForm from '../views/followups/FollowupForm.vue'
+import MarketingHome from '../views/marketing/MarketingHome.vue'
 import ReportView from '../views/reports/ReportView.vue'
 
 const routes = [
@@ -29,6 +30,7 @@ const routes = [
             { path: 'followups', component: FollowupList },
             { path: 'followups/create', component: FollowupForm },
             { path: 'followups/:id/edit', component: FollowupForm },
+            { path: 'marketing', component: MarketingHome },
             { path: 'reports', component: ReportView },
         ],
     },
