@@ -216,17 +216,8 @@
       </template>
     </Dialog>
 
-    <!-- Edit/Create placeholder dialog (full form coming next) -->
-    <Dialog v-model:visible="editOpen" modal :draggable="false" :style="{ width: '500px' }" header="กำลังพัฒนา">
-      <div class="text-center py-6">
-        <i class="fi fi-rr-tools text-4xl text-violet-500"></i>
-        <p class="mt-3 text-slate-600">ฟอร์มเพิ่ม/แก้ไขครัวเรือน (50+ ช่อง) อยู่ระหว่างพัฒนา</p>
-        <p class="text-xs text-slate-400 mt-1">จะเปิดใช้ในรอบถัดไป</p>
-      </div>
-      <template #footer>
-        <Button label="เข้าใจแล้ว" @click="editOpen = false" />
-      </template>
-    </Dialog>
+    <!-- Full Edit/Create Dialog -->
+    <HouseholdFormDialog v-model="editOpen" :householdId="editId" @saved="onSaved" />
 
     <ConfirmDialog />
     <Toast position="top-right" />
@@ -254,6 +245,7 @@ import Tooltip from 'primevue/tooltip'
 import Pagination from '../components/Pagination.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import FormSection from '../../components/FormSection.vue'
+import HouseholdFormDialog from './HouseholdFormDialog.vue'
 
 const props = defineProps({
   autoCreate: { type: Boolean, default: false },
@@ -271,6 +263,7 @@ const filters = ref({ search: '', district: null, priority: null, passed: null }
 const viewOpen = ref(false)
 const viewItem = ref(null)
 const editOpen = ref(false)
+const editId = ref(null)
 
 let currentPage = 1
 let filterTimer = null
@@ -325,11 +318,15 @@ function onFilterChange() {
 }
 function onPage(p) { currentPage = p; fetchData() }
 
-function openCreate() { editOpen.value = true }
-function openEdit(item) { editOpen.value = true }
+function openCreate() { editId.value = null; editOpen.value = true }
+function openEdit(item) { editId.value = item.id; editOpen.value = true }
 function openView(item) {
   viewItem.value = item
   viewOpen.value = true
+}
+function onSaved() {
+  toast.add({ severity: 'success', summary: 'สำเร็จ', detail: editId.value ? 'แก้ไขข้อมูลแล้ว' : 'เพิ่มครัวเรือนแล้ว', life: 2500 })
+  fetchData()
 }
 
 function exportCsv() {
