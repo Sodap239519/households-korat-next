@@ -12,9 +12,9 @@
             <i class="fi fi-rr-leaf"></i>
           </div>
           <h1 class="text-2xl font-bold bg-gradient-to-r from-violet-700 via-purple-700 to-fuchsia-700 bg-clip-text text-transparent tracking-tight">
-            ระบบโควต้าเห็ด
+            Households Korat
           </h1>
-          <p class="text-slate-500 text-sm mt-1">จังหวัดนครราชสีมา</p>
+          <p class="text-slate-500 text-sm mt-1">ระบบจัดการครัวเรือนเปราะบาง · จังหวัดนครราชสีมา</p>
         </div>
 
         <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>

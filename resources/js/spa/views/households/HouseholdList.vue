@@ -255,6 +255,10 @@ import Pagination from '../components/Pagination.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import FormSection from '../../components/FormSection.vue'
 
+const props = defineProps({
+  autoCreate: { type: Boolean, default: false },
+})
+
 const vTooltip = Tooltip
 const confirm = useConfirm()
 const toast = useToast()
@@ -369,5 +373,6 @@ const Field = {
 onMounted(() => {
   fetchData()
   fetchDistricts()
+  if (props.autoCreate) editOpen.value = true
 })
 </script>

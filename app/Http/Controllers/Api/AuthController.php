@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\LoginHistory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,15 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
+        $history = LoginHistory::create([
+            'user_id'      => Auth::id(),
+            'ip_address'   => $request->ip(),
+            'user_agent'   => substr((string) $request->userAgent(), 0, 1000),
+            'logged_in_at' => now(),
+        ]);
+
+        $request->session()->put('login_history_id', $history->id);
+
         return response()->json([
             'user' => Auth::user(),
         ]);
@@ -32,6 +42,12 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        if ($historyId = $request->session()->get('login_history_id')) {
+            LoginHistory::where('id', $historyId)
+                ->whereNull('logged_out_at')
+                ->update(['logged_out_at' => now()]);
+        }
+
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -9,7 +9,53 @@ use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    // ภาพรวม Dashboard
+    // ภาพรวมครัวเรือน (Tab 1)
+    public function householdsOverview(): JsonResponse
+    {
+        $base = DB::table('households')->whereNull('deleted_at');
+
+        $summary = [
+            'total_households' => (clone $base)->count(),
+            'passed'           => (clone $base)->where('passed', 1)->count(),
+            'failed'           => (clone $base)->where('passed', 0)->count(),
+            'avg_total_score'  => round((float) (clone $base)->avg('total_score'), 2),
+            'total_districts'  => (clone $base)->whereNotNull('district')->distinct()->count('district'),
+            'total_subdistricts' => (clone $base)->whereNotNull('sub_district')->distinct()->count('sub_district'),
+        ];
+
+        $priorityCounts = (clone $base)
+            ->select('priority', DB::raw('COUNT(*) as count'))
+            ->whereNotNull('priority')
+            ->groupBy('priority')
+            ->orderBy('priority')
+            ->get();
+
+        $byDistrict = (clone $base)
+            ->select(
+                'district',
+                DB::raw('COUNT(*) as households'),
+                DB::raw('COALESCE(SUM(income_month), 0)  as total_income'),
+                DB::raw('COALESCE(SUM(expense_month), 0) as total_expense'),
+                DB::raw('COALESCE(SUM(debt_amount), 0)   as total_debt')
+            )
+            ->whereNotNull('district')
+            ->groupBy('district')
+            ->orderByDesc('total_debt')
+            ->get();
+
+        $priorityByDistrict = (clone $base)
+            ->select('district', 'priority', DB::raw('COUNT(*) as count'))
+            ->whereNotNull('district')
+            ->whereNotNull('priority')
+            ->groupBy('district', 'priority')
+            ->orderBy('district')
+            ->orderBy('priority')
+            ->get();
+
+        return response()->json(compact('summary', 'priorityCounts', 'byDistrict', 'priorityByDistrict'));
+    }
+
+    // ภาพรวม Dashboard (เพาะเห็ด)
     public function dashboard(): JsonResponse
     {
         $summary = [
