@@ -23,11 +23,32 @@
     <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
 
     <form @submit.prevent="handleSubmit" class="space-y-5">
-      <FormSection title="เลือกครัวเรือน + โควต้า" icon="fi fi-rr-users-medical" tone="fuchsia">
+      <FormSection title="เลือกอำเภอ + ครัวเรือน + โควต้า" icon="fi fi-rr-users-medical" tone="fuchsia">
         <div class="space-y-3">
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1 block">
+              อำเภอ <span class="text-rose-500">*</span>
+            </label>
+            <Select
+              v-model="selectedDistrict"
+              :options="districtOptions"
+              filter
+              showClear
+              placeholder="-- เลือกอำเภอ --"
+              class="w-full"
+              :disabled="isEditMode"
+              @change="onDistrictChange"
+            />
+            <p v-if="!selectedDistrict" class="text-[11px] text-slate-400 mt-1">
+              <i class="fi fi-rr-info"></i> เลือกอำเภอก่อนเพื่อกรองครัวเรือนและโควต้า
+            </p>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-700 mb-1 block">
               ครัวเรือน <span class="text-rose-500">*</span>
+              <span v-if="selectedDistrict && households.length" class="text-[11px] text-slate-400 ml-2">
+                ({{ households.length }} รายการในอำเภอ {{ selectedDistrict }})
+              </span>
             </label>
             <Select
               v-model="form.household_id"
@@ -35,16 +56,19 @@
               optionLabel="label"
               optionValue="value"
               filter
-              placeholder="-- เลือกครัวเรือน --"
+              :placeholder="selectedDistrict ? '-- เลือกครัวเรือน --' : 'เลือกอำเภอก่อน'"
               required
               class="w-full"
-              :disabled="isEditMode"
+              :disabled="isEditMode || !selectedDistrict"
               @change="onHouseholdChange"
             />
           </div>
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1 block">
               โควต้าอำเภอ <span class="text-rose-500">*</span>
+              <span v-if="selectedDistrict && quotas.length" class="text-[11px] text-slate-400 ml-2">
+                ({{ quotas.length }} รอบ)
+              </span>
             </label>
             <Select
               v-model="form.quota_id"
@@ -52,10 +76,10 @@
               optionLabel="label"
               optionValue="value"
               filter
-              placeholder="-- เลือกโควต้า --"
+              :placeholder="selectedDistrict ? '-- เลือกโควต้า --' : 'เลือกอำเภอก่อน'"
               required
               class="w-full"
-              :disabled="isEditMode"
+              :disabled="isEditMode || !selectedDistrict"
             />
             <p v-if="selectedQuota" class="text-xs text-emerald-700 mt-1">
               <i class="fi fi-rr-info"></i>
@@ -234,6 +258,8 @@ const error = ref('')
 const quotas = ref([])
 const households = ref([])
 const history = ref([])
+const districtOptions = ref([])
+const selectedDistrict = ref(null)
 
 const quotaOptions = computed(() => quotas.value.map(q => ({
   label: `${q.district} ปี ${q.year} รอบ ${q.round} (คงเหลือ ${(q.quota_bags - (q.allocations_sum_bags || 0))} ถุง)`,
@@ -259,17 +285,47 @@ const remainingBags = computed(() => {
 
 const historyTotalBags = computed(() => history.value.reduce((acc, h) => acc + Number(h.bags || 0), 0))
 
-async function loadQuotas() {
+async function loadDistricts() {
   try {
-    const { data } = await api.get('/mushroom-quotas', { params: { per_page: 200, active: 1 } })
+    const { data } = await api.get('/locations/districts')
+    districtOptions.value = data
+  } catch {}
+}
+
+async function loadQuotas(district = null) {
+  if (!district) { quotas.value = []; return }
+  try {
+    const { data } = await api.get('/mushroom-quotas', {
+      params: { per_page: 200, active: 1, district },
+    })
     quotas.value = data.data
   } catch {}
 }
-async function loadHouseholds() {
+
+async function loadHouseholds(district = null) {
+  if (!district) { households.value = []; return }
   try {
-    const { data } = await api.get('/households', { params: { per_page: 500 } })
+    const { data } = await api.get('/households', {
+      params: { per_page: 500, district },
+    })
     households.value = data.data
   } catch {}
+}
+
+async function onDistrictChange() {
+  // Reset dependent selections
+  form.value.household_id = null
+  form.value.quota_id = null
+  history.value = []
+  if (selectedDistrict.value) {
+    await Promise.all([
+      loadHouseholds(selectedDistrict.value),
+      loadQuotas(selectedDistrict.value),
+    ])
+  } else {
+    households.value = []
+    quotas.value = []
+  }
 }
 
 async function loadHistory(householdId) {
@@ -332,20 +388,28 @@ function scrollDialogToBottom() {
 watch(() => props.modelValue, async (open) => {
   if (!open) {
     editingHistoryId.value = null
+    selectedDistrict.value = null
     return
   }
   error.value = ''
-  await Promise.all([loadQuotas(), loadHouseholds()])
+  await loadDistricts()
   if (props.allocationId) {
     try {
       const { data } = await api.get(`/mushroom-allocations/${props.allocationId}`)
+      // Pre-set district from the loaded allocation's quota
+      selectedDistrict.value = data.quota?.district || null
+      if (selectedDistrict.value) {
+        await Promise.all([
+          loadHouseholds(selectedDistrict.value),
+          loadQuotas(selectedDistrict.value),
+        ])
+      }
       form.value = {
         ...data,
         allocated_date: data.allocated_date ? new Date(data.allocated_date) : null,
         note: data.note ?? '',
         status: data.status ?? 'pending',
       }
-      // Also load history for this household
       await loadHistory(data.household_id)
     } catch (e) {
       error.value = e.response?.data?.message || 'โหลดข้อมูลไม่สำเร็จ'
@@ -353,6 +417,9 @@ watch(() => props.modelValue, async (open) => {
   } else {
     form.value = defaultForm()
     history.value = []
+    households.value = []
+    quotas.value = []
+    selectedDistrict.value = null
   }
 })
 
