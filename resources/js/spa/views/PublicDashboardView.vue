@@ -15,24 +15,39 @@
         </div>
       </div>
       <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <!-- Mobile: icon-only -->
         <Button
           icon="fi fi-rr-user-add"
           severity="secondary"
           outlined
+          rounded
+          class="sm:!hidden"
           @click="$router.push('/app/register')"
           v-tooltip.bottom="'สมัครสมาชิก'"
-          :pt="{ root: { class: 'sm:px-3' } }"
-        >
-          <span class="hidden sm:inline ml-1">สมัครสมาชิก</span>
-        </Button>
+        />
         <Button
           icon="fi fi-rr-sign-in-alt"
-          iconPos="right"
+          rounded
+          class="sm:!hidden"
           @click="$router.push('/app/login')"
           v-tooltip.bottom="'เข้าสู่ระบบ'"
-        >
-          <span class="hidden sm:inline mr-1">เข้าสู่ระบบ</span>
-        </Button>
+        />
+        <!-- Desktop: full label -->
+        <Button
+          label="สมัครสมาชิก"
+          icon="fi fi-rr-user-add"
+          severity="secondary"
+          outlined
+          class="!hidden sm:!inline-flex whitespace-nowrap"
+          @click="$router.push('/app/register')"
+        />
+        <Button
+          label="เข้าสู่ระบบ"
+          icon="fi fi-rr-sign-in-alt"
+          iconPos="right"
+          class="!hidden sm:!inline-flex whitespace-nowrap"
+          @click="$router.push('/app/login')"
+        />
       </div>
     </header>
 
@@ -46,9 +61,23 @@
             <h2 class="text-lg sm:text-2xl font-bold mt-1">Households Korat — Public Dashboard</h2>
             <p class="text-violet-100 text-xs sm:text-sm mt-1">ภาพรวมครัวเรือน · การเพาะเห็ด · การติดตาม · การตลาด · นครราชสีมา</p>
           </div>
-          <div class="px-3 py-1.5 rounded-lg bg-white/15 backdrop-blur text-xs sm:text-sm whitespace-nowrap">
-            <i class="fi fi-rr-calendar mr-1.5"></i>
-            ปี พ.ศ. {{ thaiYear }}
+          <div class="flex items-center gap-2 bg-white/15 backdrop-blur rounded-lg pl-3 pr-1 py-1 whitespace-nowrap">
+            <i class="fi fi-rr-calendar text-white"></i>
+            <Select
+              v-model="selectedYear"
+              :options="yearOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="ทุกปี"
+              showClear
+              :pt="{
+                root:        { class: 'bg-transparent border-0 shadow-none text-white' },
+                label:       { class: 'text-white text-xs sm:text-sm py-1 pr-1 pl-1' },
+                dropdown:    { class: 'text-white' },
+                clearIcon:   { class: 'text-white/80' },
+                trigger:     { class: 'text-white' },
+              }"
+            />
           </div>
         </div>
       </div>
@@ -225,20 +254,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, defineComponent, h } from 'vue'
+import { ref, computed, onMounted, watch, defineComponent, h } from 'vue'
 import api from '../api/index.js'
 import Chart from 'primevue/chart'
 import Button from 'primevue/button'
+import Select from 'primevue/select'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
+import Tooltip from 'primevue/tooltip'
+
+const vTooltip = Tooltip
 
 const activeTab = ref('0')
 const loading = ref(true)
 const data = ref({})
-const thaiYear = computed(() => new Date().getFullYear() + 543)
+const selectedYear = ref(null)
+const yearOptions = ref([])
 
 // Convenience refs into sections
 const o  = computed(() => data.value.overview  || {})
@@ -441,12 +475,29 @@ const HeroCard = defineComponent({
   },
 })
 
-onMounted(async () => {
+async function fetchData() {
+  loading.value = true
   try {
-    const { data: res } = await api.get('/public/dashboard')
+    const params = {}
+    if (selectedYear.value) params.year = selectedYear.value
+    const { data: res } = await api.get('/public/dashboard', { params })
     data.value = res
   } finally {
     loading.value = false
   }
+}
+
+async function fetchYears() {
+  try {
+    const { data: res } = await api.get('/public/years')
+    yearOptions.value = res.map(y => ({ label: `ปี พ.ศ. ${y}`, value: y }))
+  } catch {}
+}
+
+watch(selectedYear, fetchData)
+
+onMounted(async () => {
+  await fetchYears()
+  await fetchData()
 })
 </script>

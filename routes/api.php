@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login',    [AuthController::class, 'login']);
 Route::post('/register', [RegisterController::class, 'store']);
 Route::get('/public/dashboard', [PublicDashboardController::class, 'index']);
+Route::get('/public/years',     [PublicDashboardController::class, 'years']);
 Route::get('/locations/districts',     [LocationController::class, 'districts']);
 Route::get('/locations/sub-districts', [LocationController::class, 'subDistricts']);
 Route::get('/locations/villages',      [LocationController::class, 'villages']);

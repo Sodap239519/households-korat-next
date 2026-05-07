@@ -315,7 +315,7 @@ async function fetchData() {
 
 async function fetchDistricts() {
   try {
-    const { data } = await api.get('/reports/districts')
+    const { data } = await api.get('/locations/districts')
     districtOptions.value = data
   } catch {}
 }
