@@ -35,7 +35,7 @@
         <MetricCard
           icon="fi fi-rr-shopping-bag"
           gradient="from-violet-500 to-purple-600"
-          label="ก้นเห็ดที่ได้รับ"
+          label="ก้อนเห็ดที่ได้รับ"
           :value="fmt(totals?.total_bags_received)"
           unit="ถุง"
         />

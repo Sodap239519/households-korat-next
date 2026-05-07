@@ -31,6 +31,31 @@
           class="w-full"
         />
       </div>
+
+      <!-- Mushroom-status quick filters -->
+      <div class="flex items-center gap-2 mt-3 flex-wrap">
+        <span class="text-xs text-slate-500 mr-1">สถานะโควต้า:</span>
+        <button
+          v-for="btn in quickFilters"
+          :key="btn.key"
+          type="button"
+          @click="toggleFilter(btn.key)"
+          :class="['px-3 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 border-2',
+            filters[btn.key]
+              ? `${btn.activeBg} ${btn.activeText} ${btn.activeBorder}`
+              : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300']"
+        >
+          <i :class="filters[btn.key] ? 'fi fi-rr-check' : btn.icon"></i>
+          {{ btn.label }}
+        </button>
+        <button
+          v-if="anyFilterActive"
+          @click="clearAllFilters"
+          class="ml-auto text-xs text-rose-500 hover:text-rose-700 hover:underline flex items-center gap-1"
+        >
+          <i class="fi fi-rr-cross-small"></i> ล้างตัวกรอง
+        </button>
+      </div>
     </div>
 
     <!-- Counters -->
@@ -95,7 +120,7 @@
             </p>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <p class="text-slate-400">ก้นเห็ดที่ได้รับ</p>
+                <p class="text-slate-400">ก้อนเห็ดที่ได้รับ</p>
                 <p class="font-bold text-violet-700">{{ fmt(h.total_bags_received) }} <span class="text-[10px] text-slate-500">ถุง</span></p>
               </div>
               <div>
@@ -162,7 +187,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../api/index.js'
 
 import InputText from 'primevue/inputtext'
@@ -174,7 +199,33 @@ import Pagination from './components/Pagination.vue'
 import HouseholdTrackingDialog from './households/HouseholdTrackingDialog.vue'
 
 const search = ref('')
-const filters = ref({ priority: null })
+const filters = ref({
+  priority:    null,
+  has_quota:   false,
+  has_harvest: false,
+  has_revenue: false,
+})
+
+const quickFilters = [
+  {
+    key: 'has_quota',
+    label: 'ได้รับโควต้าแล้ว',
+    icon: 'fi fi-rr-shopping-bag',
+    activeBg: 'bg-violet-100', activeText: 'text-violet-800', activeBorder: 'border-violet-400',
+  },
+  {
+    key: 'has_harvest',
+    label: 'ได้รับผลผลิตแล้ว',
+    icon: 'fi fi-rr-leaf',
+    activeBg: 'bg-emerald-100', activeText: 'text-emerald-800', activeBorder: 'border-emerald-400',
+  },
+  {
+    key: 'has_revenue',
+    label: 'มีรายได้แล้ว',
+    icon: 'fi fi-rr-money-bill-wave',
+    activeBg: 'bg-amber-100', activeText: 'text-amber-800', activeBorder: 'border-amber-400',
+  },
+]
 const items = ref([])
 const meta = ref({})
 const loading = ref(false)
@@ -202,8 +253,11 @@ async function fetchData() {
   loading.value = true
   try {
     const params = { page: currentPage, per_page: 24 }
-    if (search.value) params.search = search.value
-    if (filters.value.priority) params.priority = filters.value.priority
+    if (search.value)              params.search   = search.value
+    if (filters.value.priority)    params.priority = filters.value.priority
+    if (filters.value.has_quota)   params.has_quota   = 1
+    if (filters.value.has_harvest) params.has_harvest = 1
+    if (filters.value.has_revenue) params.has_revenue = 1
     const { data } = await api.get('/households', { params })
     items.value = data.data
     meta.value = { current_page: data.current_page, last_page: data.last_page, total: data.total }
@@ -218,6 +272,25 @@ function onFilter() {
     currentPage = 1
     fetchData()
   }, 300)
+}
+
+function toggleFilter(key) {
+  filters.value[key] = !filters.value[key]
+  currentPage = 1
+  fetchData()
+}
+
+const anyFilterActive = computed(() =>
+  filters.value.has_quota || filters.value.has_harvest || filters.value.has_revenue || filters.value.priority
+)
+
+function clearAllFilters() {
+  filters.value.has_quota   = false
+  filters.value.has_harvest = false
+  filters.value.has_revenue = false
+  filters.value.priority    = null
+  currentPage = 1
+  fetchData()
 }
 
 function onPage(p) { currentPage = p; fetchData() }

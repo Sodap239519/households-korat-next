@@ -39,6 +39,9 @@ class HouseholdApiController extends Controller
         if ($request->has('passed') && $request->input('passed') !== '') {
             $query->where('households.passed', (int) $request->input('passed'));
         }
+        if ($request->boolean('has_quota'))   $query->where('v.total_bags_received', '>', 0);
+        if ($request->boolean('has_harvest')) $query->where('v.total_harvest_kg',    '>', 0);
+        if ($request->boolean('has_revenue')) $query->where('v.total_revenue',       '>', 0);
 
         return response()->json(
             $query->orderBy('households.household_code')->paginate($request->input('per_page', 20))
