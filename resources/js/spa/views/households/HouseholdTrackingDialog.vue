@@ -83,71 +83,102 @@
         </div>
       </FormSection>
 
-      <!-- Allocations + Followups timeline -->
-      <FormSection title="การจัดสรรและติดตามผล" icon="fi fi-rr-seedling" tone="emerald">
+      <!-- Allocations summary — one row per ครั้งที่ -->
+      <FormSection title="การจัดสรรที่ได้รับ" icon="fi fi-rr-seedling" tone="emerald">
         <div v-if="!household?.allocations?.length" class="text-center py-6 text-slate-400 text-sm">
           <i class="fi fi-rr-info text-2xl"></i>
           <p class="mt-2">ยังไม่ได้รับการจัดสรรโควต้าเห็ด</p>
         </div>
-        <div v-else class="space-y-3">
-          <div v-for="(a, idx) in household.allocations" :key="a.id" class="rounded-xl border-2 border-emerald-200 bg-white/60 overflow-hidden">
-            <div class="px-4 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center justify-between flex-wrap gap-2">
-              <div class="flex items-center gap-3">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white font-bold shadow">
-                  {{ idx + 1 }}
-                </span>
-                <div>
-                  <p class="font-semibold text-slate-700 text-sm">
-                    <i class="fi fi-rr-marker text-emerald-600"></i>
-                    ครั้งที่ {{ idx + 1 }} · {{ a.quota?.district || '-' }} · ปี {{ a.quota?.year }}
-                    <span class="text-[11px] font-normal text-slate-500">(โควต้ารอบ {{ a.quota?.round }})</span>
-                  </p>
-                  <p class="text-xs text-slate-500 mt-0.5">
-                    วันที่จัดสรร: {{ fmtThaiDate(a.allocated_date) }}
-                  </p>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-                  {{ fmt(a.bags) }} ก้อน
-                </span>
-                <StatusBadge :status="a.status === 'completed' ? 'completed' : a.status === 'active' ? 'active' : 'pending'"
-                             :label="STATUS_LABEL[a.status] || a.status" />
+        <div v-else class="rounded-xl border-2 border-emerald-200 bg-white/60 overflow-hidden">
+          <div
+            v-for="(a, idx) in household.allocations"
+            :key="a.id"
+            class="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 border-b border-emerald-100 last:border-b-0 hover:bg-emerald-50/40"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white font-bold text-sm shadow">
+                {{ idx + 1 }}
+              </span>
+              <div class="min-w-0">
+                <p class="font-medium text-slate-700 text-sm truncate">
+                  <span class="text-violet-700 font-semibold">ครั้งที่ {{ idx + 1 }}</span>
+                  · {{ a.quota?.district || '-' }} · ปี {{ a.quota?.year }}
+                  <span class="text-[11px] font-normal text-slate-500">(โควต้ารอบ {{ a.quota?.round }})</span>
+                </p>
+                <p class="text-[11px] text-slate-500">
+                  จัดสรรเมื่อ: {{ fmtThaiDate(a.allocated_date) }}
+                </p>
               </div>
             </div>
-            <div v-if="a.followups?.length" class="p-3">
-              <p class="text-xs text-slate-500 mb-2"><i class="fi fi-rr-list-check"></i> ติดตามผล {{ a.followups.length }} รอบ</p>
-              <div class="overflow-x-auto">
-                <table class="w-full text-xs">
-                  <thead>
-                    <tr class="text-left text-slate-500 border-b border-slate-200">
-                      <th class="px-2 py-1 font-medium">รอบ</th>
-                      <th class="px-2 py-1 font-medium">วันที่</th>
-                      <th class="px-2 py-1 font-medium text-right">ผลผลิต (กก.)</th>
-                      <th class="px-2 py-1 font-medium text-right">ขาย (กก.)</th>
-                      <th class="px-2 py-1 font-medium text-right">รายได้ (บาท)</th>
-                      <th class="px-2 py-1 font-medium">ช่องทาง</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="f in a.followups" :key="f.id" class="border-b border-slate-100 hover:bg-slate-50">
-                      <td class="px-2 py-1.5 font-semibold text-violet-700">{{ f.followup_round }}</td>
-                      <td class="px-2 py-1.5 text-slate-600 whitespace-nowrap">{{ fmtThaiDate(f.followup_date, { short: true }) }}</td>
-                      <td class="px-2 py-1.5 text-right">{{ fmt(f.harvest_kg, 2) }}</td>
-                      <td class="px-2 py-1.5 text-right">{{ fmt(f.sold_kg, 2) }}</td>
-                      <td class="px-2 py-1.5 text-right font-semibold text-emerald-700">{{ fmt(f.revenue, 2) }}</td>
-                      <td class="px-2 py-1.5">
-                        <StatusBadge v-if="f.sale_channel" :status="f.sale_channel" :label="CHANNEL_LABEL[f.sale_channel] || f.sale_channel" />
-                        <span v-else class="text-slate-300">-</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold whitespace-nowrap">
+                {{ fmt(a.bags) }} ก้อน
+              </span>
+              <StatusBadge
+                :status="a.status === 'completed' ? 'completed' : a.status === 'active' ? 'active' : 'pending'"
+                :label="STATUS_LABEL[a.status] || a.status"
+              />
             </div>
-            <div v-else class="p-3 text-center text-slate-400 text-xs">
-              <i class="fi fi-rr-info"></i> ยังไม่มีการติดตามผลในรอบนี้
-            </div>
+          </div>
+          <div class="px-4 py-2.5 bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center justify-between text-sm font-semibold">
+            <span class="text-slate-700">
+              <i class="fi fi-rr-shopping-bag text-emerald-600"></i>
+              รวมทั้งหมด {{ household.allocations.length }} ครั้ง
+            </span>
+            <span class="text-emerald-700">{{ fmt(totalBagsAll) }} ก้อน</span>
+          </div>
+        </div>
+      </FormSection>
+
+      <!-- Followups — consolidated across all allocations -->
+      <FormSection title="ติดตามผลผลิตและการขาย" icon="fi fi-rr-list-check" tone="fuchsia">
+        <div v-if="!consolidatedFollowups.length" class="text-center py-6 text-slate-400 text-sm">
+          <i class="fi fi-rr-info text-2xl"></i>
+          <p class="mt-2">ยังไม่มีการติดตามผล</p>
+        </div>
+        <div v-else>
+          <div class="overflow-x-auto rounded-xl border border-fuchsia-100">
+            <table class="w-full text-xs">
+              <thead class="bg-fuchsia-50/60">
+                <tr class="text-left text-slate-500">
+                  <th class="px-3 py-2 font-medium">รอบ</th>
+                  <th class="px-3 py-2 font-medium">วันที่</th>
+                  <th class="px-3 py-2 font-medium text-right">ผลผลิต (กก.)</th>
+                  <th class="px-3 py-2 font-medium text-right">ขาย (กก.)</th>
+                  <th class="px-3 py-2 font-medium text-right">ราคา/กก.</th>
+                  <th class="px-3 py-2 font-medium text-right">รายได้ (บาท)</th>
+                  <th class="px-3 py-2 font-medium">ช่องทาง</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="f in consolidatedFollowups" :key="f.id" class="border-t border-fuchsia-50 hover:bg-fuchsia-50/30">
+                  <td class="px-3 py-2">
+                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-fuchsia-100 text-fuchsia-700 font-semibold">
+                      {{ f.followup_round }}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ fmtThaiDate(f.followup_date, { short: true }) }}</td>
+                  <td class="px-3 py-2 text-right">{{ fmt(f.harvest_kg, 2) }}</td>
+                  <td class="px-3 py-2 text-right">{{ fmt(f.sold_kg, 2) }}</td>
+                  <td class="px-3 py-2 text-right text-slate-500">{{ f.price_per_kg ? fmt(f.price_per_kg, 2) : '-' }}</td>
+                  <td class="px-3 py-2 text-right font-semibold text-emerald-700">{{ fmt(f.revenue, 2) }}</td>
+                  <td class="px-3 py-2">
+                    <StatusBadge v-if="f.sale_channel" :status="f.sale_channel" :label="CHANNEL_LABEL[f.sale_channel] || f.sale_channel" />
+                    <span v-else class="text-slate-300">-</span>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot class="bg-fuchsia-50/60">
+                <tr class="font-semibold">
+                  <td class="px-3 py-2" colspan="2">รวม {{ consolidatedFollowups.length }} รอบ</td>
+                  <td class="px-3 py-2 text-right">{{ fmt(totalHarvestAll, 2) }}</td>
+                  <td class="px-3 py-2 text-right">{{ fmt(totalSoldAll, 2) }}</td>
+                  <td class="px-3 py-2 text-right text-slate-400"></td>
+                  <td class="px-3 py-2 text-right text-emerald-700">{{ fmt(totalRevenueAll, 2) }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       </FormSection>
@@ -210,6 +241,36 @@ const followupCount = computed(() => Number(totals.value?.followup_count || 0))
 const hasHarvest    = computed(() => Number(totals.value?.total_harvest_kg || 0) > 0)
 const hasSold       = computed(() => Number(totals.value?.total_sold_kg    || 0) > 0)
 const hasRevenue    = computed(() => Number(totals.value?.total_revenue    || 0) > 0)
+
+const totalBagsAll = computed(() =>
+  (household.value?.allocations || []).reduce((acc, a) => acc + Number(a.bags || 0), 0)
+)
+
+// All followups across the household's allocations, sorted by round then date
+const consolidatedFollowups = computed(() => {
+  const out = []
+  for (const a of (household.value?.allocations || [])) {
+    for (const f of (a.followups || [])) {
+      out.push(f)
+    }
+  }
+  return out.sort((a, b) => {
+    const rA = Number(a.followup_round) || 0
+    const rB = Number(b.followup_round) || 0
+    if (rA !== rB) return rA - rB
+    return (a.followup_date || '').localeCompare(b.followup_date || '')
+  })
+})
+
+const totalHarvestAll = computed(() =>
+  consolidatedFollowups.value.reduce((acc, f) => acc + Number(f.harvest_kg || 0), 0)
+)
+const totalSoldAll = computed(() =>
+  consolidatedFollowups.value.reduce((acc, f) => acc + Number(f.sold_kg || 0), 0)
+)
+const totalRevenueAll = computed(() =>
+  consolidatedFollowups.value.reduce((acc, f) => acc + Number(f.revenue || 0), 0)
+)
 
 function fmt(v, dec = 0) {
   if (v == null) return '-'
