@@ -117,11 +117,35 @@
                 <i class="fi fi-rr-info"></i> เจ้าหน้าที่ประจำพื้นที่จะจัดสรรโควต้า/ติดตามผลได้เฉพาะอำเภอที่เลือก
               </p>
             </div>
-            <div v-if="!editId">
-              <label class="text-sm font-medium text-slate-700 mb-1 block">รหัสผ่าน <span class="text-rose-500">*</span></label>
-              <Password v-model="form.password" toggleMask fluid inputClass="w-full" />
-              <p class="text-[11px] text-slate-400 mt-1">อย่างน้อย 8 ตัวอักษร</p>
-            </div>
+            <template v-if="!editId">
+              <div>
+                <label class="text-sm font-medium text-slate-700 mb-1 block">รหัสผ่าน <span class="text-rose-500">*</span></label>
+                <Password v-model="form.password" toggleMask fluid inputClass="w-full" />
+                <p class="text-[11px] text-slate-400 mt-1">อย่างน้อย 8 ตัวอักษร</p>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-slate-700 mb-1 block">ยืนยันรหัสผ่าน <span class="text-rose-500">*</span></label>
+                <Password
+                  v-model="form.password_confirmation"
+                  :feedback="false"
+                  toggleMask
+                  fluid
+                  inputClass="w-full"
+                />
+                <p
+                  v-if="form.password_confirmation && form.password !== form.password_confirmation"
+                  class="text-[11px] text-rose-600 mt-1"
+                >
+                  <i class="fi fi-rr-triangle-warning"></i> รหัสผ่านไม่ตรงกัน
+                </p>
+                <p
+                  v-else-if="form.password && form.password === form.password_confirmation"
+                  class="text-[11px] text-emerald-600 mt-1"
+                >
+                  <i class="fi fi-rr-check"></i> รหัสผ่านตรงกัน
+                </p>
+              </div>
+            </template>
           </div>
         </FormSection>
       </form>
@@ -195,14 +219,19 @@ const ROLE_HELP = {
   superadmin:  'ผู้ดูแลระบบสูงสุด · จัดการได้ทุกอย่างรวมถึง superadmin คนอื่น',
 }
 
+// Roles selectable in this dialog (admin / superadmin are not created from here)
 const roleOptions = computed(() => {
   const base = [
-    { label: 'เจ้าหน้าที่',                 value: 'staff' },
-    { label: 'เจ้าหน้าที่ประจำพื้นที่',  value: 'area_staff' },
-    { label: 'ผู้ดูแลระบบ (admin)',          value: 'admin' },
+    { label: 'เจ้าหน้าที่',                value: 'staff' },
+    { label: 'เจ้าหน้าที่ประจำพื้นที่', value: 'area_staff' },
   ]
-  if (isSuperAdmin.value) {
-    base.push({ label: 'ผู้ดูแลระบบสูงสุด (superadmin)', value: 'superadmin' })
+  // When editing an existing admin/superadmin, keep their role visible so it
+  // can be saved unchanged (or demoted) — but never offered for new users.
+  if (editId.value && form.value.role && !base.some(r => r.value === form.value.role)) {
+    const label = form.value.role === 'superadmin'
+      ? 'ผู้ดูแลระบบสูงสุด (superadmin)'
+      : 'ผู้ดูแลระบบ (admin)'
+    base.push({ label, value: form.value.role })
   }
   return base
 })
@@ -247,7 +276,7 @@ function onPage(p) { currentPage = p; fetchData() }
 
 function openCreate() {
   editId.value = null
-  form.value = { name: '', email: '', role: 'staff', assigned_districts: [], password: '' }
+  form.value = { name: '', email: '', role: 'staff', assigned_districts: [], password: '', password_confirmation: '' }
   error.value = ''
   dialogOpen.value = true
 }
@@ -259,12 +288,25 @@ function openEdit(u) {
     role: u.role,
     assigned_districts: u.assigned_districts || [],
     password: '',
+    password_confirmation: '',
   }
   error.value = ''
   dialogOpen.value = true
 }
 
 async function save() {
+  // Client-side guard: password must match confirmation when creating a new user
+  if (!editId.value) {
+    if (!form.value.password || form.value.password.length < 8) {
+      error.value = 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'
+      return
+    }
+    if (form.value.password !== form.value.password_confirmation) {
+      error.value = 'รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน'
+      return
+    }
+  }
+
   saving.value = true
   error.value = ''
   try {
@@ -277,7 +319,11 @@ async function save() {
     if (editId.value) {
       await api.put(`/admin/users/${editId.value}`, payload)
     } else {
-      await api.post('/admin/users', { ...payload, password: form.value.password })
+      await api.post('/admin/users', {
+        ...payload,
+        password: form.value.password,
+        password_confirmation: form.value.password_confirmation,
+      })
     }
     toast.add({ severity: 'success', summary: 'สำเร็จ', life: 2000 })
     dialogOpen.value = false

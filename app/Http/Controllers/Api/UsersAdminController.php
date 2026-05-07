@@ -116,7 +116,7 @@ class UsersAdminController extends Controller
             'role'                => ['required', Rule::in($assignable)],
             'assigned_districts'  => ['nullable', 'array', 'max:' . User::MAX_ASSIGNED_DISTRICTS],
             'assigned_districts.*'=> ['string', 'max:100'],
-            'password'            => ['required', 'string', 'min:8'],
+            'password'            => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         if ($validated['role'] !== User::ROLE_AREA_STAFF) {
