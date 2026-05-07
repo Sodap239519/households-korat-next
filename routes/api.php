@@ -62,7 +62,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('households', HouseholdApiController::class);
 
     // Mushroom Quotas / Allocations / Followups
-    Route::apiResource('mushroom-quotas', MushroomQuotaController::class);
+    // NOTE: the quota controller uses $mushroomQuotaDistrict but the resource name
+    // is "mushroom-quotas" so Laravel's default binding name {mushroom_quota}
+    // wouldn't match the variable. Override the parameter name explicitly.
+    Route::apiResource('mushroom-quotas', MushroomQuotaController::class)
+        ->parameters(['mushroom-quotas' => 'mushroomQuotaDistrict']);
     Route::apiResource('mushroom-allocations', MushroomAllocationController::class);
     Route::apiResource('mushroom-followups', MushroomFollowupController::class);
 

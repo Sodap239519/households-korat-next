@@ -55,13 +55,9 @@ class MushroomQuotaController extends Controller
 
     public function show(MushroomQuotaDistrict $mushroomQuotaDistrict): JsonResponse
     {
-        // Re-query with aggregates instead of using loadCount/loadSum on the
-        // bound model — those internally create a temporary collection and
-        // can throw "getAttributes() on null" when the relation is empty
-        // or the source row is fetched via route-model-binding.
         $quota = MushroomQuotaDistrict::query()
             ->withCount('allocations')
-            ->withSum('allocations as allocations_sum_bags', 'bags')
+            ->withSum('allocations', 'bags')
             ->findOrFail($mushroomQuotaDistrict->id);
 
         return response()->json($quota);
