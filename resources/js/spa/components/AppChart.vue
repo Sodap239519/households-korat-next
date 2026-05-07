@@ -1,14 +1,7 @@
 <template>
-  <div :style="{ minHeight: heightPx }">
-    <VueApexCharts
-      v-if="hasData"
-      :type="apexType"
-      :series="apexSeries"
-      :options="apexOptions"
-      :height="height"
-      width="100%"
-    />
-    <div v-else class="text-center text-slate-400 py-12 text-sm">
+  <div :style="{ minHeight: heightPx, width: '100%' }">
+    <div v-show="hasData" ref="chartEl" class="w-full"></div>
+    <div v-if="!hasData" class="text-center text-slate-400 py-12 text-sm">
       <i class="fi fi-rr-info text-2xl"></i>
       <p class="mt-2">{{ emptyText || 'ยังไม่มีข้อมูล' }}</p>
     </div>
@@ -16,8 +9,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import VueApexCharts from 'vue3-apexcharts'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import ApexCharts from 'apexcharts'
 
 const props = defineProps({
   // 'bar' | 'line' | 'area' | 'donut' | 'pie' | 'stacked-bar'
@@ -42,7 +35,7 @@ const PALETTE = [
 const isCircular = computed(() => props.type === 'donut' || props.type === 'pie')
 
 const heightPx = computed(() =>
-  typeof props.height === 'number' ? `${props.height}px` : props.height
+  typeof props.height === 'number' ? `${props.height}px` : props.height,
 )
 
 const hasData = computed(() => {
@@ -50,31 +43,28 @@ const hasData = computed(() => {
   return (props.series || []).some(s => Array.isArray(s.data) && s.data.length > 0)
 })
 
-const apexType = computed(() => {
-  if (props.type === 'stacked-bar') return 'bar'
-  return props.type
-})
+const apexType = computed(() => props.type === 'stacked-bar' ? 'bar' : props.type)
 
 const apexSeries = computed(() => {
   if (isCircular.value) return [...props.data]
   return props.series.map(s => ({ name: s.name, data: [...(s.data || [])] }))
 })
 
-const apexOptions = computed(() => {
+function buildOptions() {
   const colors = props.colors.length ? props.colors : PALETTE
 
   const base = {
     chart: {
-      id: 'chart-' + Math.random().toString(36).slice(2, 9),
       type: apexType.value,
+      height: typeof props.height === 'number' ? props.height : Number(props.height) || 280,
       stacked: props.type === 'stacked-bar' || props.stacked,
       toolbar: { show: false },
       zoom: { enabled: false },
       animations: { speed: 350 },
       fontFamily: 'Prompt, ui-sans-serif, sans-serif',
-      width: '100%',
     },
     colors,
+    series: apexSeries.value,
     dataLabels: { enabled: false },
     legend: {
       show: props.legend,
@@ -126,12 +116,10 @@ const apexOptions = computed(() => {
     yaxis: {
       labels: {
         style: { fontSize: '11px', fontFamily: 'Prompt, ui-sans-serif, sans-serif' },
-        formatter: (val) => val == null ? '' : Number(val).toLocaleString(),
+        formatter: (v) => v == null ? '' : Number(v).toLocaleString(),
       },
     },
-    plotOptions: {
-      bar: { borderRadius: 6, columnWidth: '60%' },
-    },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
     stroke: {
       width: props.type === 'line' ? 3 : props.type === 'area' ? 2 : 0,
       curve: props.smooth ? 'smooth' : 'straight',
@@ -141,5 +129,51 @@ const apexOptions = computed(() => {
       gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [0, 100] },
     } : { type: 'solid' },
   }
-})
+}
+
+const chartEl = ref(null)
+let chart = null
+
+function destroy() {
+  if (chart) {
+    try { chart.destroy() } catch {}
+    chart = null
+  }
+}
+
+async function build() {
+  destroy()
+  if (!hasData.value) return
+  await nextTick()
+  if (!chartEl.value) return
+  chart = new ApexCharts(chartEl.value, buildOptions())
+  await chart.render()
+}
+
+async function update() {
+  if (!hasData.value) {
+    destroy()
+    return
+  }
+  if (!chart) {
+    await build()
+    return
+  }
+  try {
+    chart.updateOptions(buildOptions(), false, true)
+  } catch (e) {
+    // Fallback to full rebuild on any update error
+    await build()
+  }
+}
+
+onMounted(build)
+onBeforeUnmount(destroy)
+
+// Watch reactive inputs and re-render
+watch(
+  () => [props.type, props.labels, props.series, props.data, props.colors, props.height, props.stacked, props.legend],
+  () => update(),
+  { deep: true },
+)
 </script>

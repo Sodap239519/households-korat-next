@@ -3,7 +3,6 @@ import { createApp } from 'vue'
 import PrimeVue from 'primevue/config'
 import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
-import VueApexCharts from 'vue3-apexcharts'
 import App from './App.vue'
 import router from './router/index.js'
 import { HouseholdPreset } from './theme.js'
@@ -33,6 +32,5 @@ app.use(PrimeVue, {
 })
 app.use(ToastService)
 app.use(ConfirmationService)
-app.component('apexchart', VueApexCharts)
 
 app.mount('#app')
