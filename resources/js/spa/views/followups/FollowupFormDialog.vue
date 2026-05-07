@@ -23,30 +23,58 @@
     <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
 
     <form @submit.prevent="handleSubmit" class="space-y-5">
-      <FormSection title="เลือกการจัดสรร" icon="fi fi-rr-house-blank" tone="violet">
-        <div>
-          <label class="text-sm font-medium text-slate-700 mb-1 block">
-            การจัดสรร <span class="text-rose-500">*</span>
-          </label>
-          <Select
-            v-model="form.allocation_id"
-            :options="allocationOptions"
-            optionLabel="label"
-            optionValue="value"
-            filter
-            placeholder="-- เลือกการจัดสรร --"
-            required
-            class="w-full"
-            :disabled="isEditMode"
-            @change="onAllocationChange"
-          />
+      <FormSection title="เลือกอำเภอ + ครัวเรือน" icon="fi fi-rr-house-blank" tone="violet">
+        <div class="space-y-3">
+          <div>
+            <label class="text-sm font-medium text-slate-700 mb-1 block">
+              อำเภอ <span class="text-rose-500">*</span>
+            </label>
+            <Select
+              v-model="selectedDistrict"
+              :options="districtOptions"
+              filter
+              showClear
+              placeholder="-- เลือกอำเภอ --"
+              class="w-full"
+              :disabled="isEditMode"
+              @change="onDistrictChange"
+            />
+            <p v-if="!selectedDistrict && !isEditMode" class="text-[11px] text-slate-400 mt-1">
+              <i class="fi fi-rr-info"></i> เลือกอำเภอก่อนเพื่อกรองรายชื่อครัวเรือน
+            </p>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-700 mb-1 block">
+              ครัวเรือน <span class="text-rose-500">*</span>
+              <span v-if="combinedHouseholds.length" class="text-[11px] text-slate-400 ml-2">
+                ({{ combinedHouseholds.length }} รายในอำเภอ)
+              </span>
+            </label>
+            <Select
+              v-model="selectedHouseholdId"
+              :options="householdOptions"
+              optionLabel="label"
+              optionValue="value"
+              filter
+              :placeholder="selectedDistrict ? '-- เลือกครัวเรือน --' : 'เลือกอำเภอก่อน'"
+              required
+              class="w-full"
+              :disabled="isEditMode || !selectedDistrict"
+              @change="onHouseholdChange"
+            />
+            <p v-if="selectedHousehold" class="text-xs text-emerald-700 mt-1">
+              <i class="fi fi-rr-info"></i>
+              ได้รับ <span class="font-semibold">{{ selectedHousehold.total_bags }}</span> ก้อนรวม
+              <span v-if="selectedHousehold.count > 1">จาก {{ selectedHousehold.count }} ครั้ง</span>
+            </p>
+          </div>
         </div>
       </FormSection>
 
-      <!-- History table — shown when allocation selected and has past followups -->
+      <!-- History across all the household's allocations -->
       <FormSection
-        v-if="!isEditMode && form.allocation_id && history.length"
-        :title="`ประวัติการติดตามของรายการนี้ (${history.length} รอบ)`"
+        v-if="!isEditMode && selectedHouseholdId && history.length"
+        :title="`ประวัติการติดตามของครัวเรือนนี้ (${history.length} รอบ)`"
         icon="fi fi-rr-time-past"
         tone="fuchsia"
       >
@@ -90,7 +118,7 @@
         <div class="mt-3 flex items-center gap-2 flex-wrap">
           <p class="text-xs text-slate-500 flex-1">
             <i class="fi fi-rr-info text-fuchsia-500"></i>
-            มีการติดตามแล้ว {{ history.length }} รอบ · ผลผลิตรวม {{ totalHarvest }} กก. · รายได้รวม {{ totalRevenue }} บาท
+            ติดตามรวม {{ history.length }} รอบ · ผลผลิตรวม {{ totalHarvest }} กก. · รายได้รวม {{ totalRevenue }} บาท
           </p>
           <Button
             v-if="editingHistoryId"
@@ -116,7 +144,7 @@
             </label>
             <InputNumber v-model="form.followup_round" :min="1" required fluid />
             <p v-if="!isEditMode && history.length" class="text-[11px] text-violet-600 mt-1">
-              <i class="fi fi-rr-info"></i> ระบบตั้งให้เป็นรอบที่ {{ form.followup_round }} อัตโนมัติ (ต่อจากรอบล่าสุด)
+              <i class="fi fi-rr-info"></i> ระบบตั้งให้เป็นรอบที่ {{ form.followup_round }} อัตโนมัติ
             </p>
           </div>
           <div>
@@ -246,13 +274,52 @@ function defaultForm() {
 const form = ref(defaultForm())
 const saving = ref(false)
 const error = ref('')
+const districtOptions = ref([])
+const selectedDistrict = ref(null)
 const allocations = ref([])
+const selectedHouseholdId = ref(null)
 const history = ref([])
 
-const allocationOptions = computed(() => allocations.value.map(a => ({
-  label: `${a.household?.first_name || ''} ${a.household?.last_name || ''} (${a.household?.household_code || '-'}) — ${a.quota?.district || ''} ปี ${a.quota?.year || ''} รอบ ${a.quota?.round || ''} | ${a.bags} ถุง`,
-  value: a.id,
+// Group allocations by household_id, summing bags
+const combinedHouseholds = computed(() => {
+  const grouped = new Map()
+  for (const a of allocations.value) {
+    if (!a.household_id) continue
+    if (!grouped.has(a.household_id)) {
+      grouped.set(a.household_id, {
+        household_id: a.household_id,
+        household:    a.household,
+        allocation_ids: [],
+        latest_allocation_id: a.id,
+        latest_allocated_date: a.allocated_date,
+        total_bags: 0,
+        count: 0,
+      })
+    }
+    const g = grouped.get(a.household_id)
+    g.allocation_ids.push(a.id)
+    g.total_bags += Number(a.bags || 0)
+    g.count += 1
+    // pick latest allocation as the target id when storing
+    const aDate = a.allocated_date || ''
+    if (aDate >= (g.latest_allocated_date || '') && a.id >= g.latest_allocation_id) {
+      g.latest_allocation_id  = a.id
+      g.latest_allocated_date = aDate
+    }
+  }
+  return Array.from(grouped.values()).sort((x, y) =>
+    (x.household?.first_name || '').localeCompare(y.household?.first_name || '', 'th')
+  )
+})
+
+const householdOptions = computed(() => combinedHouseholds.value.map(g => ({
+  label: `${g.household?.prefix || ''} ${g.household?.first_name || ''} ${g.household?.last_name || ''} (${g.household?.household_code || '-'}) — รวม ${g.total_bags} ก้อน${g.count > 1 ? ` · ${g.count} ครั้ง` : ''}`.trim(),
+  value: g.household_id,
 })))
+
+const selectedHousehold = computed(() =>
+  combinedHouseholds.value.find(g => g.household_id === selectedHouseholdId.value)
+)
 
 const totalHarvest = computed(() => history.value.reduce((a, x) => a + Number(x.harvest_kg || 0), 0).toFixed(2))
 const totalRevenue = computed(() => history.value.reduce((a, x) => a + Number(x.revenue    || 0), 0).toLocaleString())
@@ -263,30 +330,56 @@ function recalc() {
   }
 }
 
-async function loadAllocations() {
+async function loadDistricts() {
+  if (districtOptions.value.length) return
   try {
-    const { data } = await api.get('/mushroom-allocations', { params: { per_page: 500 } })
-    allocations.value = data.data
+    const { data } = await api.get('/locations/districts')
+    districtOptions.value = data
   } catch {}
 }
 
-async function loadHistory(allocationId) {
-  if (!allocationId) { history.value = []; return }
+async function loadAllocationsByDistrict(district) {
+  if (!district) { allocations.value = []; return }
+  try {
+    const { data } = await api.get('/mushroom-allocations', {
+      params: { district, per_page: 500 },
+    })
+    allocations.value = data.data
+  } catch { allocations.value = [] }
+}
+
+async function loadHistoryByHousehold(householdId) {
+  if (!householdId) { history.value = []; return }
   try {
     const { data } = await api.get('/mushroom-followups', {
-      params: { allocation_id: allocationId, per_page: 100 },
+      params: { household_id: householdId, per_page: 100 },
     })
     history.value = data.data || []
   } catch { history.value = [] }
 }
 
-async function onAllocationChange() {
-  if (!form.value.allocation_id) {
+async function onDistrictChange() {
+  selectedHouseholdId.value = null
+  history.value = []
+  form.value.allocation_id = null
+  if (selectedDistrict.value) {
+    await loadAllocationsByDistrict(selectedDistrict.value)
+  } else {
+    allocations.value = []
+  }
+}
+
+async function onHouseholdChange() {
+  if (!selectedHouseholdId.value) {
     history.value = []
+    form.value.allocation_id = null
     return
   }
-  await loadHistory(form.value.allocation_id)
-  // Auto-set next round in create mode
+  // Bind the form's allocation_id to the LATEST allocation of this household
+  const grp = combinedHouseholds.value.find(g => g.household_id === selectedHouseholdId.value)
+  form.value.allocation_id = grp?.latest_allocation_id ?? null
+
+  await loadHistoryByHousehold(selectedHouseholdId.value)
   if (!isEditMode.value) {
     const maxRound = history.value.reduce((m, h) => Math.max(m, Number(h.followup_round) || 0), 0)
     form.value.followup_round = maxRound + 1
@@ -319,10 +412,11 @@ function cancelEditHistory() {
 
 function startNewRound() {
   editingHistoryId.value = null
+  const grp = combinedHouseholds.value.find(g => g.household_id === selectedHouseholdId.value)
   const maxRound = history.value.reduce((m, h) => Math.max(m, Number(h.followup_round) || 0), 0)
   form.value = {
     ...defaultForm(),
-    allocation_id: form.value.allocation_id,
+    allocation_id: grp?.latest_allocation_id ?? null,
     followup_round: maxRound + 1,
   }
   scrollDialogToBottom()
@@ -337,10 +431,12 @@ function scrollDialogToBottom() {
 watch(() => props.modelValue, async (open) => {
   if (!open) {
     editingHistoryId.value = null
+    selectedDistrict.value = null
+    selectedHouseholdId.value = null
     return
   }
   error.value = ''
-  await loadAllocations()
+  await loadDistricts()
   if (props.followupId) {
     try {
       const { data } = await api.get(`/mushroom-followups/${props.followupId}`)
@@ -351,13 +447,26 @@ watch(() => props.modelValue, async (open) => {
         enterprise_name: data.enterprise_name ?? '',
         note: data.note ?? '',
       }
-      await loadHistory(data.allocation_id)
+      // Pre-set district + household from the loaded record
+      const householdId = data.allocation?.household_id || null
+      const district    = data.allocation?.quota?.district || null
+      selectedDistrict.value = district
+      if (district) {
+        await loadAllocationsByDistrict(district)
+      }
+      selectedHouseholdId.value = householdId
+      if (householdId) {
+        await loadHistoryByHousehold(householdId)
+      }
     } catch (e) {
       error.value = e.response?.data?.message || 'โหลดข้อมูลไม่สำเร็จ'
     }
   } else {
     form.value = defaultForm()
     history.value = []
+    allocations.value = []
+    selectedDistrict.value = null
+    selectedHouseholdId.value = null
   }
 })
 

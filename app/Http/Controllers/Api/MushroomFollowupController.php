@@ -20,6 +20,11 @@ class MushroomFollowupController extends Controller
         if ($allocationId = $request->input('allocation_id')) $query->where('allocation_id', $allocationId);
         if ($channel = $request->input('sale_channel'))       $query->where('sale_channel',  $channel);
 
+        // Filter by household across all of that household's allocations
+        if ($householdId = $request->input('household_id')) {
+            $query->whereHas('allocation', fn ($q) => $q->where('household_id', $householdId));
+        }
+
         // Filter through allocation -> quota
         if ($district = $request->input('district')) {
             $query->whereHas('allocation.quota', fn ($q) => $q->where('district', $district));
