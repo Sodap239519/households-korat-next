@@ -152,7 +152,7 @@
     </div>
 
     <!-- View Dialog (read-only) -->
-    <Dialog v-model:visible="viewOpen" modal :draggable="false" :style="{ width: '900px' }" :breakpoints="{ '1024px': '95vw', '767px': '100vw' }">
+    <Dialog v-model:visible="viewOpen" modal :draggable="false" :style="{ width: '1000px' }" :breakpoints="{ '1024px': '95vw', '767px': '100vw' }" :contentStyle="{ maxHeight: '80vh' }">
       <template #header>
         <div class="flex items-center gap-3 w-full">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white flex items-center justify-center shadow-md">
@@ -166,58 +166,145 @@
       </template>
 
       <div v-if="viewItem" class="space-y-4">
-        <FormSection title="ข้อมูลพื้นฐาน" icon="fi fi-rr-id-badge" tone="violet">
+        <!-- Priority + Status hero -->
+        <div class="rounded-2xl bg-gradient-to-br from-violet-50 via-fuchsia-50 to-rose-50 border-2 border-violet-200 p-5 sm:p-6 relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-violet-200/40 blur-3xl pointer-events-none"></div>
+          <div class="relative grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <div class="flex items-center gap-4">
+              <div :class="['flex-shrink-0 inline-flex items-center justify-center w-20 h-20 rounded-2xl border-2 font-extrabold text-3xl shadow-lg',
+                priorityClass]">
+                {{ viewItem.priority || '?' }}
+              </div>
+              <div>
+                <p class="text-[11px] uppercase tracking-wide text-slate-500">Priority</p>
+                <p class="text-base sm:text-lg font-bold text-slate-800 leading-tight mt-0.5">
+                  {{ priorityLabel }}
+                </p>
+                <p class="text-xs text-slate-500 mt-0.5">คะแนนรวม {{ viewItem.total_score || 0 }} / 700</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <i :class="['text-3xl', viewItem.passed ? 'fi fi-rr-shield-check text-emerald-600' : 'fi fi-rr-cross-circle text-rose-600']"></i>
+              <div>
+                <p class="text-[11px] uppercase tracking-wide text-slate-500">สถานะ</p>
+                <p :class="['text-base sm:text-lg font-bold leading-tight mt-0.5', viewItem.passed ? 'text-emerald-700' : 'text-rose-700']">
+                  {{ viewItem.passed ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์' }}
+                </p>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  {{ viewItem.completed ? 'ดำเนินการเสร็จสิ้น' : 'อยู่ระหว่างดำเนินการ' }}
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <i class="fi fi-rr-user text-3xl text-violet-600"></i>
+              <div class="min-w-0">
+                <p class="text-[11px] uppercase tracking-wide text-slate-500">ผู้เปราะบาง</p>
+                <p class="text-base sm:text-lg font-bold text-slate-800 leading-tight mt-0.5 truncate">
+                  {{ `${viewItem.prefix || ''} ${viewItem.first_name || ''} ${viewItem.last_name || ''}`.trim() }}
+                </p>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  {{ viewItem.gender || '-' }} · {{ viewItem.age != null ? `อายุ ${viewItem.age} ปี` : 'ไม่ระบุอายุ' }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: ข้อมูลครัวเรือน -->
+        <FormSection title="ส่วนที่ 1: ข้อมูลครัวเรือน" icon="fi fi-rr-house-blank" tone="violet">
           <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             <Field label="รหัสบ้าน" :value="viewItem.household_code" />
-            <Field label="ชื่อ-นามสกุล" :value="`${viewItem.prefix || ''} ${viewItem.first_name || ''} ${viewItem.last_name || ''}`.trim()" />
-            <Field label="บัตรประชาชน" :value="viewItem.id_card" />
-            <Field label="วัน/เดือน/ปีเกิด" :value="fmtThaiDate(viewItem.dob)" />
-            <Field label="อายุ" :value="viewItem.age" />
-            <Field label="เพศ" :value="viewItem.gender" />
-            <Field label="การศึกษา" :value="viewItem.education" />
-            <Field label="สุขภาพ" :value="viewItem.health" />
-            <Field label="เบอร์โทร" :value="viewItem.phone" />
-          </div>
-        </FormSection>
-
-        <FormSection title="ที่อยู่" icon="fi fi-rr-marker" tone="sky">
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-            <Field label="จังหวัด" :value="viewItem.province" />
-            <Field label="อำเภอ" :value="viewItem.district" />
-            <Field label="ตำบล" :value="viewItem.sub_district" />
-            <Field label="หมู่ที่" :value="viewItem.moo_number" />
+            <Field label="จังหวัด"  :value="viewItem.province" />
+            <Field label="อำเภอ"     :value="viewItem.district" />
+            <Field label="ตำบล"      :value="viewItem.sub_district" />
+            <Field label="หมู่ที่"   :value="viewItem.moo_number" />
             <Field label="หมู่บ้าน" :value="viewItem.village" />
             <Field label="บ้านเลขที่" :value="viewItem.house_number" />
+            <Field label="รหัสไปรษณีย์" :value="viewItem.postal_code" />
+            <Field label="จำนวนสมาชิก" :value="viewItem.members_count" />
+            <div class="col-span-2 md:col-span-3">
+              <Field label="ชื่อ-นามสกุลหัวหน้าครัวเรือน" :value="viewItem.head_full_name" />
+            </div>
           </div>
         </FormSection>
 
-        <FormSection title="เศรษฐกิจครัวเรือน" icon="fi fi-rr-money-bill-wave" tone="amber">
+        <!-- Section 2: ข้อมูลผู้เปราะบาง -->
+        <FormSection title="ส่วนที่ 2: ข้อมูลผู้เปราะบาง" icon="fi fi-rr-id-badge" tone="fuchsia">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <Field label="คำนำหน้า" :value="viewItem.prefix" />
+            <Field label="ชื่อ"        :value="viewItem.first_name" />
+            <Field label="นามสกุล"   :value="viewItem.last_name" />
+            <Field label="บัตรประชาชน" :value="viewItem.id_card" />
+            <Field label="เพศ"      :value="viewItem.gender" />
+            <Field label="วัน/เดือน/ปีเกิด" :value="fmtThaiDate(viewItem.dob)" />
+            <Field label="อายุ"     :value="viewItem.age" />
+            <Field label="เบอร์โทรศัพท์" :value="viewItem.phone" />
+            <Field label="การศึกษา" :value="viewItem.education" />
+            <div class="col-span-2 md:col-span-3">
+              <Field label="สุขภาพ" :value="viewItem.health" />
+            </div>
+          </div>
+        </FormSection>
+
+        <!-- Section 3: เศรษฐกิจ -->
+        <FormSection title="ส่วนที่ 3: เศรษฐกิจครัวเรือน" icon="fi fi-rr-money-bill-wave" tone="amber">
           <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             <Field label="อาชีพหลัก" :value="viewItem.main_occupation" />
             <Field label="อาชีพเสริม" :value="viewItem.secondary_occupation" />
-            <Field label="รายได้/เดือน" :value="fmtMoney(viewItem.income_month)" />
-            <Field label="รายจ่าย/เดือน" :value="fmtMoney(viewItem.expense_month)" />
-            <Field label="หนี้สิน" :value="fmtMoney(viewItem.debt_amount)" />
+            <Field label="รายได้/เดือน" :value="fmtMoney(viewItem.income_month)" tone="emerald" />
+            <Field label="รายจ่าย/เดือน" :value="fmtMoney(viewItem.expense_month)" tone="amber" />
+            <Field label="หนี้สิน" :value="fmtMoney(viewItem.debt_amount)" tone="rose" />
             <Field label="แหล่งเงินกู้" :value="viewItem.debt_source" />
           </div>
         </FormSection>
 
-        <FormSection title="คะแนนประเมิน" icon="fi fi-rr-chart-pie-alt" tone="fuchsia">
+        <!-- Section 4: เห็ด/เกษตร -->
+        <FormSection title="ส่วนที่ 4: เห็ด · เกษตร · ความพร้อม" icon="fi fi-rr-mushroom" tone="emerald">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <Field label="มีพื้นที่เพาะเห็ด" :value="boolLabel(viewItem.has_mushroom_area)" />
+            <Field label="ขนาดพื้นที่ (ตร.ม.)" :value="viewItem.mushroom_area_size" />
+            <Field label="น้ำใช้" :value="viewItem.water_source" />
+            <Field label="มีไฟฟ้า" :value="boolLabel(viewItem.has_electricity)" />
+            <Field label="ระยะถึงตลาด (กม.)" :value="viewItem.distance_to_market_km" />
+            <Field label="เคยทำเกษตร" :value="boolLabel(viewItem.ever_agriculture)" />
+            <Field label="เคยเพาะเห็ด" :value="boolLabel(viewItem.ever_mushroom)" />
+            <Field label="ใช้สมาร์ทโฟน" :value="viewItem.smartphone_use" />
+            <Field label="ใช้โซเชียล" :value="boolLabel(viewItem.social_media_use)" />
+            <Field label="ระดับความสนใจ" :value="viewItem.interest_level" />
+            <Field label="ชั่วโมง/สัปดาห์" :value="viewItem.hours_per_week" />
+            <Field label="เงินลงทุนเริ่มต้น" :value="fmtMoney(viewItem.initial_investment)" />
+            <Field label="สมาชิกกลุ่ม" :value="boolLabel(viewItem.group_member)" />
+            <Field label="ความพร้อมรวมกลุ่ม" :value="viewItem.group_readiness" />
+            <div></div>
+            <div class="col-span-2 md:col-span-3">
+              <Field label="เหตุผลที่สนใจ" :value="viewItem.interest_reason" />
+            </div>
+          </div>
+        </FormSection>
+
+        <!-- Section 5: คะแนน -->
+        <FormSection title="ส่วนที่ 5: คะแนนประเมิน" icon="fi fi-rr-chart-pie-alt" tone="rose">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <Field label="ความยากจน" :value="viewItem.poverty_score" />
-            <Field label="แรงจูงใจ" :value="viewItem.motivation_score" />
+            <Field label="ความยากจน"  :value="viewItem.poverty_score" />
+            <Field label="แรงจูงใจ"    :value="viewItem.motivation_score" />
             <Field label="ประสบการณ์" :value="viewItem.experience_score" />
-            <Field label="กลุ่ม" :value="viewItem.grouping_score" />
-            <Field label="ศักยภาพ" :value="viewItem.potential_score" />
-            <Field label="พื้นที่" :value="viewItem.area_score" />
-            <Field label="การตลาด" :value="viewItem.market_score" />
+            <Field label="การรวมกลุ่ม"  :value="viewItem.grouping_score" />
+            <Field label="ศักยภาพ"     :value="viewItem.potential_score" />
+            <Field label="พื้นที่"     :value="viewItem.area_score" />
+            <Field label="การตลาด"   :value="viewItem.market_score" />
             <Field label="คะแนนรวม" :value="viewItem.total_score" highlight />
           </div>
-          <div class="mt-3 flex items-center gap-3">
-            <span class="text-xs text-slate-500">Priority:</span>
-            <StatusBadge v-if="viewItem.priority" :status="viewItem.priority" :label="viewItem.priority" />
-            <span class="text-xs text-slate-500 ml-3">สถานะ:</span>
-            <StatusBadge :status="viewItem.passed ? 'success' : 'failed'" :label="viewItem.passed ? 'ผ่าน' : 'ไม่ผ่าน'" />
+        </FormSection>
+
+        <!-- Section 6: ผู้สำรวจ -->
+        <FormSection title="ส่วนที่ 6: ผู้สำรวจ และหมายเหตุ" icon="fi fi-rr-clipboard-user" tone="sky">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <Field label="วันที่สำรวจ" :value="fmtThaiDate(viewItem.survey_date)" />
+            <Field label="ชื่อผู้สำรวจ" :value="viewItem.surveyor" />
+            <Field label="เปิดใช้งาน" :value="viewItem.is_active ? 'ใช่' : 'ปิด'" />
+            <div class="col-span-2 md:col-span-3">
+              <Field label="หมายเหตุ" :value="viewItem.note" />
+            </div>
           </div>
         </FormSection>
       </div>
@@ -236,7 +323,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted, h, defineComponent } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import api from '../../api/index.js'
@@ -295,6 +382,26 @@ const districtOptions = ref([])
 function fmtMoney(v) {
   return v == null ? '-' : Number(v).toLocaleString('th-TH', { minimumFractionDigits: 2 }) + ' บ.'
 }
+
+function boolLabel(v) {
+  if (v == null) return '-'
+  return v ? 'ใช่' : 'ไม่'
+}
+
+const PRIORITY_BADGE_CLASS = {
+  A: 'bg-slate-800 text-white border-slate-800',
+  B: 'bg-sky-400 text-white border-sky-400',
+  C: 'bg-amber-200 text-amber-900 border-amber-300',
+  D: 'bg-pink-300 text-pink-900 border-pink-400',
+}
+const PRIORITY_TEXT = {
+  A: 'A · ลำดับสูงสุด (เร่งด่วน)',
+  B: 'B · ลำดับสูง',
+  C: 'C · ลำดับปานกลาง',
+  D: 'D · ลำดับต่ำ',
+}
+const priorityClass = computed(() => PRIORITY_BADGE_CLASS[viewItem.value?.priority] || 'bg-slate-100 text-slate-400 border-slate-200')
+const priorityLabel = computed(() => PRIORITY_TEXT[viewItem.value?.priority] || 'ยังไม่ได้ประเมิน')
 
 async function fetchData() {
   loading.value = true
@@ -389,17 +496,22 @@ function confirmDelete(item) {
 }
 
 // Inline Field display helper
-const Field = {
-  props: ['label', 'value', 'highlight'],
+const TONE_TEXT = { emerald: 'text-emerald-700', amber: 'text-amber-700', rose: 'text-rose-700' }
+const Field = defineComponent({
+  props: ['label', 'value', 'highlight', 'tone'],
   setup(p) {
     return () => h('div', { class: 'min-w-0' }, [
       h('p', { class: 'text-[11px] uppercase tracking-wide text-slate-400 mb-0.5' }, p.label),
       h('p', {
-        class: ['truncate', p.highlight ? 'text-violet-700 font-bold text-base' : 'text-slate-700 font-medium'],
+        class: [
+          'truncate',
+          p.highlight ? 'text-violet-700 font-bold text-base'
+            : `font-medium ${TONE_TEXT[p.tone] || 'text-slate-700'}`,
+        ],
       }, p.value === null || p.value === undefined || p.value === '' ? '-' : String(p.value)),
     ])
   },
-}
+})
 
 onMounted(() => {
   fetchData()

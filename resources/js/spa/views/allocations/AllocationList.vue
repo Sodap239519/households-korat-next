@@ -25,7 +25,9 @@
                 placeholder="ทุกปี" showClear filter
                 @change="onFilterChange" class="w-full" />
         <Select v-model="filters.round" :options="roundOptions" optionLabel="label" optionValue="value"
-                placeholder="ทุกรอบ" showClear
+                placeholder="ทุกครั้งที่"
+                v-tooltip.top="'กรองตามครั้งที่ N ที่ครัวเรือนนั้นได้รับการจัดสรร'"
+                showClear
                 @change="onFilterChange" class="w-full" />
         <Select v-model="filters.status" :options="statusOptions" optionLabel="label" optionValue="value"
                 placeholder="ทุกสถานะ" showClear
@@ -156,7 +158,7 @@ const statusOptions = [
   { label: 'กำลังดำเนินการ', value: 'active' },
   { label: 'เสร็จสิ้น',         value: 'completed' },
 ]
-const roundOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ label: `รอบ ${n}`, value: n }))
+const roundOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ label: `ครั้งที่ ${n}`, value: n }))
 const statusLabels = {
   pending:   'รอดำเนินการ',
   active:    'กำลังดำเนินการ',

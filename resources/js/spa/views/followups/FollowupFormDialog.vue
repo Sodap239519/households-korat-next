@@ -155,23 +155,73 @@
       </FormSection>
 
       <FormSection title="ผลผลิตและการขาย" icon="fi fi-rr-mushroom" tone="emerald">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="space-y-3">
+          <!-- ผลผลิต — กก./ขีด toggle -->
           <div>
-            <label class="text-sm font-medium text-slate-700 mb-1 block">ผลผลิต (กก.)</label>
-            <InputNumber v-model="form.harvest_kg" :min="0" :minFractionDigits="0" :maxFractionDigits="3" fluid />
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-sm font-medium text-slate-700">ผลผลิต</label>
+              <div class="flex items-center gap-1 text-xs">
+                <button type="button" @click="harvestUnit = 'kg'"
+                        :class="['px-2.5 py-0.5 rounded-md font-medium transition border',
+                          harvestUnit === 'kg' ? 'bg-emerald-100 border-emerald-400 text-emerald-700' : 'bg-white border-slate-200 text-slate-500']">
+                  กก.
+                </button>
+                <button type="button" @click="harvestUnit = 'qid'"
+                        :class="['px-2.5 py-0.5 rounded-md font-medium transition border',
+                          harvestUnit === 'qid' ? 'bg-emerald-100 border-emerald-400 text-emerald-700' : 'bg-white border-slate-200 text-slate-500']">
+                  ขีด
+                </button>
+              </div>
+            </div>
+            <InputNumber
+              :modelValue="harvestDisplay"
+              @update:modelValue="setHarvestDisplay"
+              :min="0" :minFractionDigits="0" :maxFractionDigits="3" fluid
+              :suffix="harvestUnit === 'kg' ? ' กก.' : ' ขีด'"
+            />
+            <p v-if="form.harvest_kg" class="text-[11px] text-slate-400 mt-0.5">
+              = {{ Number(form.harvest_kg).toFixed(3) }} กก. ({{ (Number(form.harvest_kg) * 10).toFixed(1) }} ขีด)
+            </p>
           </div>
+
+          <!-- ขายได้ — กก./ขีด toggle -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-sm font-medium text-slate-700">ขายได้</label>
+                <div class="flex items-center gap-1 text-xs">
+                  <button type="button" @click="soldUnit = 'kg'"
+                          :class="['px-2.5 py-0.5 rounded-md font-medium transition border',
+                            soldUnit === 'kg' ? 'bg-emerald-100 border-emerald-400 text-emerald-700' : 'bg-white border-slate-200 text-slate-500']">
+                    กก.
+                  </button>
+                  <button type="button" @click="soldUnit = 'qid'"
+                          :class="['px-2.5 py-0.5 rounded-md font-medium transition border',
+                            soldUnit === 'qid' ? 'bg-emerald-100 border-emerald-400 text-emerald-700' : 'bg-white border-slate-200 text-slate-500']">
+                    ขีด
+                  </button>
+                </div>
+              </div>
+              <InputNumber
+                :modelValue="soldDisplay"
+                @update:modelValue="setSoldDisplay"
+                :min="0" :minFractionDigits="0" :maxFractionDigits="3" fluid
+                :suffix="soldUnit === 'kg' ? ' กก.' : ' ขีด'"
+              />
+              <p v-if="form.sold_kg" class="text-[11px] text-slate-400 mt-0.5">
+                = {{ Number(form.sold_kg).toFixed(3) }} กก. ({{ (Number(form.sold_kg) * 10).toFixed(1) }} ขีด)
+              </p>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-slate-700 mb-1 block">ราคา/กก. (บาท)</label>
+              <InputNumber v-model="form.price_per_kg" :min="0" :minFractionDigits="0" :maxFractionDigits="2" fluid @update:modelValue="recalc" suffix=" บาท/กก." />
+            </div>
+          </div>
+
           <div>
-            <label class="text-sm font-medium text-slate-700 mb-1 block">ขายได้ (กก.)</label>
-            <InputNumber v-model="form.sold_kg" :min="0" :minFractionDigits="0" :maxFractionDigits="3" fluid @update:modelValue="recalc" />
-          </div>
-          <div>
-            <label class="text-sm font-medium text-slate-700 mb-1 block">ราคา/กก. (บาท)</label>
-            <InputNumber v-model="form.price_per_kg" :min="0" :minFractionDigits="0" :maxFractionDigits="2" fluid @update:modelValue="recalc" />
-          </div>
-          <div class="md:col-span-3">
             <label class="text-sm font-medium text-slate-700 mb-1 block">รายได้ (บาท)</label>
-            <InputNumber v-model="form.revenue" :min="0" :minFractionDigits="0" :maxFractionDigits="2" fluid />
-            <p class="text-[11px] text-slate-400 mt-1">คำนวณอัตโนมัติจากขาย × ราคา (แก้ไขได้)</p>
+            <InputNumber v-model="form.revenue" :min="0" :minFractionDigits="0" :maxFractionDigits="2" fluid suffix=" บาท" />
+            <p class="text-[11px] text-slate-400 mt-1">คำนวณอัตโนมัติจาก (ขาย กก.) × (ราคา/กก.) — แก้ไขได้</p>
           </div>
         </div>
       </FormSection>
@@ -274,6 +324,29 @@ function defaultForm() {
 const form = ref(defaultForm())
 const saving = ref(false)
 const error = ref('')
+
+// Unit toggles for ผลผลิต / ขายได้ (kg or qid where 1 ขีด = 0.1 kg)
+const harvestUnit = ref('kg')
+const soldUnit    = ref('kg')
+
+const harvestDisplay = computed(() =>
+  form.value.harvest_kg == null ? null :
+  harvestUnit.value === 'qid' ? Number(form.value.harvest_kg) * 10 : Number(form.value.harvest_kg)
+)
+function setHarvestDisplay(v) {
+  if (v == null || v === '') { form.value.harvest_kg = null; return }
+  form.value.harvest_kg = harvestUnit.value === 'qid' ? Number(v) / 10 : Number(v)
+}
+
+const soldDisplay = computed(() =>
+  form.value.sold_kg == null ? null :
+  soldUnit.value === 'qid' ? Number(form.value.sold_kg) * 10 : Number(form.value.sold_kg)
+)
+function setSoldDisplay(v) {
+  if (v == null || v === '') { form.value.sold_kg = null; return }
+  form.value.sold_kg = soldUnit.value === 'qid' ? Number(v) / 10 : Number(v)
+  recalc()
+}
 const districtOptions = ref([])
 const selectedDistrict = ref(null)
 const allocations = ref([])

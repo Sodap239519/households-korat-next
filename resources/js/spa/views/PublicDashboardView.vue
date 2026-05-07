@@ -114,15 +114,22 @@
                     <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                       <i class="fi fi-rr-chart-histogram text-violet-600"></i> Priority Distribution
                     </h3>
-                    <Chart v-if="priorityChart" type="bar" :data="priorityChart" :options="priorityOpts" class="h-64" />
-                    <p v-else class="text-center text-slate-400 py-12 text-sm">ไม่มีข้อมูล</p>
+                    <AppChart type="bar"
+                      :labels="priorityChart?.labels || []"
+                      :series="priorityChart?.series || []"
+                      :colors="priorityChart?.colors || []"
+                      :legend="false"
+                      :height="260" />
                   </div>
                   <div class="box-card p-5">
                     <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                       <i class="fi fi-rr-chart-line-up text-fuchsia-600"></i> รายได้/รายจ่าย/หนี้สิน รายอำเภอ
                     </h3>
-                    <Chart v-if="incomeChart" type="line" :data="incomeChart" :options="incomeOpts" class="h-64" />
-                    <p v-else class="text-center text-slate-400 py-12 text-sm">ไม่มีข้อมูล</p>
+                    <AppChart type="area"
+                      :labels="incomeChart?.labels || []"
+                      :series="incomeChart?.series || []"
+                      :colors="['#3b82f6','#f59e0b','#ef4444']"
+                      :height="260" />
                   </div>
                 </div>
 
@@ -130,8 +137,11 @@
                   <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                     <i class="fi fi-rr-chart-histogram text-fuchsia-600"></i> Priority รายอำเภอ
                   </h3>
-                  <Chart v-if="priorityByDistrictChart" type="bar" :data="priorityByDistrictChart" :options="stackedOpts" class="h-72" />
-                  <p v-else class="text-center text-slate-400 py-12 text-sm">ไม่มีข้อมูล</p>
+                  <AppChart type="stacked-bar"
+                    :labels="priorityByDistrictChart?.labels || []"
+                    :series="priorityByDistrictChart?.series || []"
+                    :colors="['#1e293b','#38bdf8','#fcd34d','#f9a8d4']"
+                    :height="320" />
                 </div>
               </div>
             </TabPanel>
@@ -160,15 +170,21 @@
                     <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                       <i class="fi fi-rr-chart-histogram text-violet-600"></i> โควต้า vs จัดสรร (รายอำเภอ)
                     </h3>
-                    <Chart v-if="quotaChart" type="bar" :data="quotaChart" :options="basicOpts" class="h-72" />
-                    <p v-else class="text-center text-slate-400 py-12 text-sm">ยังไม่มีข้อมูล</p>
+                    <AppChart type="bar"
+                      :labels="quotaChart?.labels || []"
+                      :series="quotaChart?.series || []"
+                      :colors="['#a78bfa','#d946ef']"
+                      :height="320" />
                   </div>
                   <div class="box-card p-5">
                     <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                       <i class="fi fi-rr-chart-histogram text-fuchsia-600"></i> สัดส่วนรายได้ (รายอำเภอ)
                     </h3>
-                    <Chart v-if="districtChart" type="bar" :data="districtChart" :options="basicOpts" class="h-72" />
-                    <p v-else class="text-center text-slate-400 py-12 text-sm">ยังไม่มีข้อมูล</p>
+                    <AppChart type="bar"
+                      :labels="districtChart?.labels || []"
+                      :series="districtChart?.series || []"
+                      :legend="false"
+                      :height="320" />
                   </div>
                 </div>
               </div>
@@ -188,15 +204,21 @@
                     <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                       <i class="fi fi-rr-truck-side text-violet-600"></i> การขายตามช่องทาง
                     </h3>
-                    <Chart v-if="channelChart" type="bar" :data="channelChart" :options="basicOpts" class="h-64" />
-                    <p v-else class="text-center text-slate-400 py-12 text-sm">ไม่มีข้อมูลช่องทาง</p>
+                    <AppChart type="bar"
+                      :labels="channelChart?.labels || []"
+                      :series="channelChart?.series || []"
+                      :colors="['#a78bfa','#d946ef']"
+                      :height="280" />
                   </div>
                   <div class="box-card p-5">
                     <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                       <i class="fi fi-rr-chart-line-up text-fuchsia-600"></i> ผลผลิต/รายได้ รายเดือน
                     </h3>
-                    <Chart v-if="monthlyChart" type="line" :data="monthlyChart" :options="incomeOpts" class="h-64" />
-                    <p v-else class="text-center text-slate-400 py-12 text-sm">ไม่มีข้อมูลรายเดือน</p>
+                    <AppChart type="area"
+                      :labels="monthlyChart?.labels || []"
+                      :series="monthlyChart?.series || []"
+                      :colors="['#10b981','#f59e0b','#ec4899']"
+                      :height="280" />
                   </div>
                 </div>
               </div>
@@ -215,8 +237,12 @@
                   <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                     <i class="fi fi-rr-trophy text-amber-500"></i> Top วิสาหกิจ ตามรายได้
                   </h3>
-                  <Chart v-if="enterpriseChart" type="bar" :data="enterpriseChart" :options="basicOpts" class="h-72" />
-                  <p v-else class="text-center text-slate-400 py-12 text-sm">ยังไม่มีข้อมูลวิสาหกิจ</p>
+                  <AppChart type="bar"
+                    :labels="enterpriseChart?.labels || []"
+                    :series="enterpriseChart?.series || []"
+                    :colors="['#d946ef']"
+                    :legend="false"
+                    :height="320" />
                 </div>
 
                 <div v-if="mk.byEnterprise?.length" class="box-card p-5">
@@ -256,7 +282,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, defineComponent, h } from 'vue'
 import api from '../api/index.js'
-import Chart from 'primevue/chart'
+import AppChart from '../components/AppChart.vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Tabs from 'primevue/tabs'
@@ -292,43 +318,36 @@ const allocPct = computed(() => {
   return Math.round((a / q) * 100) + '%'
 })
 
-// ---- Tab 1 charts ----
+// ---- Charts (AppChart-friendly shape) ----
 const priorityChart = computed(() => {
   if (!o.value.priorityCounts?.length) return null
   const colors = { A: '#1e293b', B: '#38bdf8', C: '#fcd34d', D: '#f9a8d4' }
   return {
     labels: o.value.priorityCounts.map(p => `Priority ${p.priority}`),
-    datasets: [{
-      label: 'จำนวน',
-      data: o.value.priorityCounts.map(p => p.count),
-      backgroundColor: o.value.priorityCounts.map(p => colors[p.priority] || '#a78bfa'),
-      borderRadius: 8,
-    }],
+    series: [{ name: 'จำนวน', data: o.value.priorityCounts.map(p => p.count) }],
+    colors: o.value.priorityCounts.map(p => colors[p.priority] || '#a78bfa'),
   }
 })
 const incomeChart = computed(() => {
   if (!o.value.byDistrict?.length) return null
   return {
     labels: o.value.byDistrict.map(d => d.district),
-    datasets: [
-      { label: 'รายได้ (รวม)', data: o.value.byDistrict.map(d => Number(d.total_income)),  borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.35, fill: true },
-      { label: 'รายจ่าย (รวม)', data: o.value.byDistrict.map(d => Number(d.total_expense)), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.35, fill: true },
-      { label: 'หนี้สิน (รวม)', data: o.value.byDistrict.map(d => Number(d.total_debt)),    borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.35, fill: true },
+    series: [
+      { name: 'รายได้',  data: o.value.byDistrict.map(d => Number(d.total_income)) },
+      { name: 'รายจ่าย', data: o.value.byDistrict.map(d => Number(d.total_expense)) },
+      { name: 'หนี้สิน', data: o.value.byDistrict.map(d => Number(d.total_debt)) },
     ],
   }
 })
 const priorityByDistrictChart = computed(() => {
   if (!o.value.priorityByDistrict?.length) return null
-  const districtSet = [...new Set(o.value.priorityByDistrict.map(r => r.district))]
-  const colors = { A: '#1e293b', B: '#38bdf8', C: '#fcd34d', D: '#f9a8d4' }
+  const districts = [...new Set(o.value.priorityByDistrict.map(r => r.district))]
   const priorities = ['A', 'B', 'C', 'D']
   return {
-    labels: districtSet,
-    datasets: priorities.map(p => ({
-      label: `Priority ${p}`,
-      backgroundColor: colors[p],
-      stack: 'priority',
-      data: districtSet.map(d => {
+    labels: districts,
+    series: priorities.map(p => ({
+      name: `Priority ${p}`,
+      data: districts.map(d => {
         const row = o.value.priorityByDistrict.find(x => x.district === d && x.priority === p)
         return row ? row.count : 0
       }),
@@ -336,14 +355,13 @@ const priorityByDistrictChart = computed(() => {
   }
 })
 
-// ---- Tab 2 charts ----
 const quotaChart = computed(() => {
   if (!m.value.quotaVsAllocated?.length) return null
   return {
     labels: m.value.quotaVsAllocated.map(r => r.district),
-    datasets: [
-      { label: 'โควต้า (ถุง)',     data: m.value.quotaVsAllocated.map(r => Number(r.quota_bags || 0)),     backgroundColor: '#a78bfa', borderRadius: 6 },
-      { label: 'จัดสรรแล้ว (ถุง)', data: m.value.quotaVsAllocated.map(r => Number(r.allocated_bags || 0)), backgroundColor: '#d946ef', borderRadius: 6 },
+    series: [
+      { name: 'โควต้า (ถุง)',     data: m.value.quotaVsAllocated.map(r => Number(r.quota_bags || 0)) },
+      { name: 'จัดสรรแล้ว (ถุง)', data: m.value.quotaVsAllocated.map(r => Number(r.allocated_bags || 0)) },
     ],
   }
 })
@@ -352,24 +370,19 @@ const districtChart = computed(() => {
   const palette = ['#7c3aed','#a855f7','#d946ef','#ec4899','#8b5cf6','#6366f1','#3b82f6','#06b6d4','#10b981','#f59e0b']
   return {
     labels: m.value.byDistrict.map(r => r.district),
-    datasets: [{
-      label: 'รายได้ (บาท)',
-      data: m.value.byDistrict.map(r => Number(r.total_revenue || 0)),
-      backgroundColor: m.value.byDistrict.map((_, i) => palette[i % palette.length]),
-      borderRadius: 6,
-    }],
+    series: [{ name: 'รายได้ (บาท)', data: m.value.byDistrict.map(r => Number(r.total_revenue || 0)) }],
+    colors: m.value.byDistrict.map((_, i) => palette[i % palette.length]),
   }
 })
 
-// ---- Tab 3 charts ----
 const channelLabels = { direct: 'ขายตรง', online: 'ออนไลน์', enterprise: 'วิสาหกิจ', market: 'ตลาด' }
 const channelChart = computed(() => {
   if (!t.value.byChannel?.length) return null
   return {
     labels: t.value.byChannel.map(c => channelLabels[c.sale_channel] || c.sale_channel),
-    datasets: [
-      { label: 'จำนวนครั้ง', data: t.value.byChannel.map(c => c.count),                              backgroundColor: '#a78bfa', borderRadius: 6 },
-      { label: 'รายได้ (บาท)', data: t.value.byChannel.map(c => Number(c.total_revenue || 0) / 100), backgroundColor: '#d946ef', borderRadius: 6 },
+    series: [
+      { name: 'จำนวนครั้ง', data: t.value.byChannel.map(c => c.count) },
+      { name: 'รายได้ (พันบ.)', data: t.value.byChannel.map(c => Number(c.total_revenue || 0) / 1000) },
     ],
   }
 })
@@ -377,56 +390,21 @@ const monthlyChart = computed(() => {
   if (!t.value.monthly?.length) return null
   return {
     labels: t.value.monthly.map(r => r.month),
-    datasets: [
-      { label: 'ผลผลิต (กก.)', data: t.value.monthly.map(r => Number(r.total_harvest_kg)), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3, fill: true },
-      { label: 'ขาย (กก.)',     data: t.value.monthly.map(r => Number(r.total_sold_kg)),    borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.3, fill: true },
-      { label: 'รายได้ (พันบ.)', data: t.value.monthly.map(r => Number(r.total_revenue) / 1000), borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', tension: 0.3, fill: true },
+    series: [
+      { name: 'ผลผลิต (กก.)',   data: t.value.monthly.map(r => Number(r.total_harvest_kg)) },
+      { name: 'ขาย (กก.)',       data: t.value.monthly.map(r => Number(r.total_sold_kg)) },
+      { name: 'รายได้ (พันบ.)', data: t.value.monthly.map(r => Number(r.total_revenue) / 1000) },
     ],
   }
 })
 
-// ---- Tab 4 chart ----
 const enterpriseChart = computed(() => {
   if (!mk.value.byEnterprise?.length) return null
   return {
     labels: mk.value.byEnterprise.map(e => e.enterprise_name),
-    datasets: [{
-      label: 'รายได้ (บาท)',
-      data: mk.value.byEnterprise.map(e => Number(e.total_revenue || 0)),
-      backgroundColor: '#d946ef',
-      borderRadius: 6,
-    }],
+    series: [{ name: 'รายได้ (บาท)', data: mk.value.byEnterprise.map(e => Number(e.total_revenue || 0)) }],
   }
 })
-
-// ---- Chart options ----
-const basicOpts = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { position: 'bottom' } },
-  scales: {
-    x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 45, minRotation: 30 } },
-    y: { beginAtZero: true, ticks: { callback: v => Number(v).toLocaleString() } },
-  },
-}
-const priorityOpts = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { display: false } },
-  scales: { x: { grid: { display: false } }, y: { beginAtZero: true } },
-}
-const incomeOpts = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { position: 'bottom' } },
-  interaction: { mode: 'index', intersect: false },
-  scales: { y: { beginAtZero: true, ticks: { callback: v => Number(v).toLocaleString() } } },
-}
-const stackedOpts = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { position: 'bottom' } },
-  scales: {
-    x: { stacked: true, grid: { display: false }, ticks: { autoSkip: false, maxRotation: 45, minRotation: 30 } },
-    y: { stacked: true, beginAtZero: true },
-  },
-}
 
 // ---- Stat card / Hero card ----
 const TONES = {
