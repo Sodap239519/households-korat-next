@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -19,6 +18,9 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'is_approved',
+        'approved_at',
+        'approved_by',
     ];
 
     protected $hidden = [
@@ -30,7 +32,9 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
+            'is_approved'       => 'boolean',
+            'approved_at'       => 'datetime',
         ];
     }
 
@@ -42,5 +46,10 @@ class User extends Authenticatable
     public function isStaff(): bool
     {
         return in_array($this->role, ['staff', 'superadmin']);
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(self::class, 'approved_by');
     }
 }

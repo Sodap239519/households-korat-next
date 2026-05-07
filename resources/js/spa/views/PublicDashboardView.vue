@@ -14,7 +14,10 @@
           <p class="text-[11px] text-slate-500">ระบบจัดการครัวเรือนเปราะบาง · นครราชสีมา</p>
         </div>
       </div>
-      <Button label="เข้าสู่ระบบ" icon="fi fi-rr-sign-in-alt" iconPos="right" @click="$router.push('/app/login')" />
+      <div class="flex items-center gap-2">
+        <Button label="สมัครสมาชิก" icon="fi fi-rr-user-add" severity="secondary" outlined @click="$router.push('/app/register')" />
+        <Button label="เข้าสู่ระบบ" icon="fi fi-rr-sign-in-alt" iconPos="right" @click="$router.push('/app/login')" />
+      </div>
     </header>
 
     <main class="relative p-6 max-w-7xl mx-auto space-y-5">

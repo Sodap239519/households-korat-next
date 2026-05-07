@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminNotificationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HouseholdApiController;
 use App\Http\Controllers\Api\HouseholdExportController;
@@ -10,12 +11,14 @@ use App\Http\Controllers\Api\MushroomFollowupController;
 use App\Http\Controllers\Api\MushroomQuotaController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicDashboardController;
+use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\UsersAdminController;
 use Illuminate\Support\Facades\Route;
 
 // ===== Public (no auth) =====
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login',    [AuthController::class, 'login']);
+Route::post('/register', [RegisterController::class, 'store']);
 Route::get('/public/dashboard', [PublicDashboardController::class, 'index']);
 Route::get('/locations/districts',     [LocationController::class, 'districts']);
 Route::get('/locations/sub-districts', [LocationController::class, 'subDistricts']);
@@ -34,7 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Login history (own)
     Route::get('/login-history', [LoginHistoryController::class, 'mine']);
 
-    // Admin
+    // Admin: user management
     Route::get('/admin/users',                  [UsersAdminController::class, 'index']);
     Route::post('/admin/users',                 [UsersAdminController::class, 'store']);
     Route::get('/admin/users/{user}',           [UsersAdminController::class, 'show']);
@@ -42,6 +45,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/users/{user}',        [UsersAdminController::class, 'destroy']);
     Route::put('/admin/users/{user}/password',  [UsersAdminController::class, 'resetPassword']);
     Route::get('/admin/users/{user}/login-history', [LoginHistoryController::class, 'forUser']);
+
+    // Admin: notifications + approval
+    Route::get('/admin/notifications/counts',    [AdminNotificationController::class, 'counts']);
+    Route::get('/admin/notifications/pending',   [AdminNotificationController::class, 'pendingUsers']);
+    Route::post('/admin/users/{user}/approve',   [AdminNotificationController::class, 'approve']);
+    Route::post('/admin/users/{user}/reject',    [AdminNotificationController::class, 'reject']);
 
     // Households
     Route::get('/households/export', [HouseholdExportController::class, 'csv']);

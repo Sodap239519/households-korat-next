@@ -112,10 +112,65 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <button class="w-10 h-10 rounded-lg hover:bg-violet-100 flex items-center justify-center text-violet-700 transition relative" v-tooltip.bottom="'แจ้งเตือน'">
+          <!-- Bell -->
+          <button
+            v-if="user?.role === 'superadmin'"
+            @click="toggleBell"
+            class="w-10 h-10 rounded-lg hover:bg-violet-100 flex items-center justify-center text-violet-700 transition relative"
+            v-tooltip.bottom="'การแจ้งเตือน'"
+          >
             <i class="fi fi-rr-bell"></i>
-            <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-fuchsia-500"></span>
+            <span
+              v-if="pendingCount > 0"
+              class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-fuchsia-500 text-white text-[10px] font-bold flex items-center justify-center shadow"
+            >
+              {{ pendingCount > 99 ? '99+' : pendingCount }}
+            </span>
           </button>
+
+          <Popover ref="bellPanel" :pt="{ root: { class: 'mt-2' } }">
+            <div class="w-80">
+              <div class="px-4 py-3 border-b border-slate-200">
+                <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                  <i class="fi fi-rr-bell text-violet-600"></i> การแจ้งเตือน
+                </h3>
+                <p class="text-[11px] text-slate-500 mt-0.5">ผู้สมัครรอการยืนยันสิทธิ์</p>
+              </div>
+
+              <div v-if="loadingPending" class="p-6 text-center text-violet-400">
+                <i class="fi fi-rr-loading text-2xl animate-spin"></i>
+              </div>
+              <div v-else-if="pendingUsers.length === 0" class="p-6 text-center text-slate-400 text-sm">
+                <i class="fi fi-rr-check-circle text-2xl text-emerald-400"></i>
+                <p class="mt-2">ไม่มีคำขอที่รอดำเนินการ</p>
+              </div>
+              <div v-else class="max-h-80 overflow-y-auto">
+                <div v-for="u in pendingUsers" :key="u.id" class="px-4 py-3 border-b border-slate-100 hover:bg-violet-50/40">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-medium text-slate-800 truncate">{{ u.name }}</p>
+                      <p class="text-xs text-slate-500 truncate">{{ u.email }}</p>
+                      <p class="text-[10px] text-slate-400 mt-0.5">
+                        <i class="fi fi-rr-clock"></i> {{ relativeTime(u.created_at) }}
+                      </p>
+                    </div>
+                    <div class="flex gap-1 flex-shrink-0">
+                      <Button icon="fi fi-rr-check" severity="success" rounded size="small"
+                              v-tooltip.top="'อนุมัติ'" @click="approve(u)" :loading="processingId === u.id" />
+                      <Button icon="fi fi-rr-cross-small" severity="danger" rounded size="small"
+                              v-tooltip.top="'ปฏิเสธ'" @click="reject(u)" :loading="processingId === u.id" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="px-4 py-2 border-t border-slate-200 text-center">
+                <button @click="goManageUsers" class="text-xs text-violet-600 hover:underline">
+                  จัดการผู้ใช้ทั้งหมด <i class="fi fi-rr-arrow-small-right"></i>
+                </button>
+              </div>
+            </div>
+          </Popover>
 
           <!-- User chip -> dropdown -->
           <button
@@ -142,15 +197,21 @@
         <router-view />
       </main>
     </div>
+
+    <Toast position="top-right" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { useToast } from 'primevue/usetoast'
+import api from '../api/index.js'
 
 import Menu from 'primevue/menu'
+import Popover from 'primevue/popover'
+import Toast from 'primevue/toast'
 import Tooltip from 'primevue/tooltip'
 
 const vTooltip = Tooltip
@@ -158,6 +219,7 @@ const vTooltip = Tooltip
 const route = useRoute()
 const router = useRouter()
 const { user, logout } = useAuth()
+const toast = useToast()
 
 const collapsed = ref(false)
 
@@ -273,4 +335,94 @@ async function handleLogout() {
   await logout()
   router.push('/app/login')
 }
+
+// ===== Notification bell (superadmin only) =====
+const bellPanel = ref(null)
+const pendingCount = ref(0)
+const pendingUsers = ref([])
+const loadingPending = ref(false)
+const processingId = ref(null)
+let pollTimer = null
+
+async function fetchPendingCount() {
+  if (user.value?.role !== 'superadmin') return
+  try {
+    const { data } = await api.get('/admin/notifications/counts')
+    pendingCount.value = data.pending_users
+  } catch {}
+}
+
+async function fetchPendingUsers() {
+  loadingPending.value = true
+  try {
+    const { data } = await api.get('/admin/notifications/pending', { params: { per_page: 10 } })
+    pendingUsers.value = data.data
+  } finally {
+    loadingPending.value = false
+  }
+}
+
+async function toggleBell(e) {
+  bellPanel.value?.toggle(e)
+  await fetchPendingUsers()
+}
+
+async function approve(u) {
+  processingId.value = u.id
+  try {
+    await api.post(`/admin/users/${u.id}/approve`)
+    toast.add({ severity: 'success', summary: 'อนุมัติแล้ว', detail: u.name, life: 2000 })
+    pendingUsers.value = pendingUsers.value.filter(x => x.id !== u.id)
+    pendingCount.value = Math.max(0, pendingCount.value - 1)
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'ผิดพลาด', detail: e.response?.data?.message || '', life: 3000 })
+  } finally {
+    processingId.value = null
+  }
+}
+
+async function reject(u) {
+  if (!confirm(`ปฏิเสธบัญชี ${u.name} (${u.email})? บัญชีจะถูกลบออกจากระบบ`)) return
+  processingId.value = u.id
+  try {
+    await api.post(`/admin/users/${u.id}/reject`)
+    toast.add({ severity: 'success', summary: 'ปฏิเสธแล้ว', life: 2000 })
+    pendingUsers.value = pendingUsers.value.filter(x => x.id !== u.id)
+    pendingCount.value = Math.max(0, pendingCount.value - 1)
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'ผิดพลาด', detail: e.response?.data?.message || '', life: 3000 })
+  } finally {
+    processingId.value = null
+  }
+}
+
+function goManageUsers() {
+  bellPanel.value?.hide()
+  router.push('/app/admin/users')
+}
+
+function relativeTime(iso) {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.round(diff / 60000)
+  if (m < 1)   return 'เมื่อสักครู่'
+  if (m < 60)  return `${m} นาทีที่แล้ว`
+  const h = Math.round(m / 60)
+  if (h < 24)  return `${h} ชั่วโมงที่แล้ว`
+  const d = Math.round(h / 24)
+  if (d < 30)  return `${d} วันที่แล้ว`
+  return new Date(iso).toLocaleDateString('th-TH')
+}
+
+watch(() => user.value?.role, (role) => {
+  if (role === 'superadmin') fetchPendingCount()
+}, { immediate: true })
+
+onMounted(() => {
+  // Poll every 60s for new pending users
+  pollTimer = setInterval(fetchPendingCount, 60_000)
+})
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
 </script>

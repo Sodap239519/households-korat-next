@@ -165,8 +165,8 @@
         </div>
       </FormSection>
 
-      <!-- Section 5: คะแนนประเมิน -->
-      <FormSection title="ส่วนที่ 5: คะแนนประเมิน (ระบบคำนวณ Priority อัตโนมัติ)" icon="fi fi-rr-chart-pie-alt" tone="rose">
+      <!-- Section 5: คะแนนประเมิน (Priority/passed/completed คำนวณเงียบๆ ไม่แสดง) -->
+      <FormSection title="ส่วนที่ 5: คะแนนประเมิน" icon="fi fi-rr-chart-pie-alt" tone="rose">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <ScoreField v-model="form.poverty_score"    label="ความยากจน" />
           <ScoreField v-model="form.motivation_score" label="แรงจูงใจ" />
@@ -175,32 +175,11 @@
           <ScoreField v-model="form.potential_score"  label="ศักยภาพ" />
           <ScoreField v-model="form.area_score"       label="พื้นที่" />
           <ScoreField v-model="form.market_score"     label="การตลาด" />
-          <Field label="คะแนนรวม (ระบบคำนวณ)">
-            <InputNumber :modelValue="form.total_score" disabled fluid />
-          </Field>
         </div>
-        <div class="mt-4 p-4 rounded-lg bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 border-2 border-rose-200/70">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <div>
-              <p class="text-xs text-slate-500 mb-1">Priority (คำนวณอัตโนมัติจากคะแนนเฉลี่ย)</p>
-              <div class="flex items-center gap-2">
-                <span v-if="form.priority" :class="['inline-flex items-center justify-center w-12 h-12 rounded-xl font-bold text-xl border-2', priorityClass]">
-                  {{ form.priority }}
-                </span>
-                <span v-else class="text-slate-400 text-sm">รอคะแนน</span>
-                <div class="text-xs text-slate-500">
-                  <p v-if="form.total_score">คะแนน: <span class="font-semibold text-slate-700">{{ form.total_score }} / 700</span></p>
-                  <p v-if="avgScore">เฉลี่ย: <span class="font-semibold text-slate-700">{{ avgScore }} / 100</span></p>
-                </div>
-              </div>
-              <p class="text-[11px] text-slate-500 mt-2">
-                เกณฑ์: A ≥ 75 · B ≥ 60 · C ≥ 40 · D &lt; 40
-              </p>
-            </div>
-            <ToggleField v-model="form.passed"    label="ผ่านเกณฑ์" />
-            <ToggleField v-model="form.completed" label="ดำเนินการเสร็จสิ้น" />
-          </div>
-        </div>
+        <p class="text-[11px] text-slate-400 mt-3">
+          <i class="fi fi-rr-info"></i>
+          ระบบจะคำนวณคะแนนรวมและจัดระดับ Priority ให้อัตโนมัติเมื่อบันทึก
+        </p>
       </FormSection>
 
       <!-- Section 6: ผู้สำรวจ + meta -->

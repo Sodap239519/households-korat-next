@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 
 import LoginView from '../views/LoginView.vue'
+import RegisterView from '../views/RegisterView.vue'
 import PublicDashboardView from '../views/PublicDashboardView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import HouseholdList from '../views/households/HouseholdList.vue'
@@ -23,6 +24,7 @@ const routes = [
     { path: '/app',          component: PublicDashboardView, meta: { public: true } },
     { path: '/app/public',   component: PublicDashboardView, meta: { public: true } },
     { path: '/app/login',    component: LoginView, meta: { guest: true } },
+    { path: '/app/register', component: RegisterView, meta: { public: true } },
 
     // Auth-required app shell
     {
