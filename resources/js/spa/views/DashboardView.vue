@@ -98,8 +98,8 @@
           <TabPanel value="1">
             <div class="space-y-5 pt-2">
               <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <HeroCard label="โควต้าทั้งหมด" :value="fmt(m.summary?.total_bags_quota)"     unit="ถุง" icon="fi fi-rr-shopping-bag"   gradient="from-violet-500 via-purple-600 to-fuchsia-600" />
-                <HeroCard label="จัดสรรแล้ว"   :value="fmt(m.summary?.total_bags_allocated)" unit="ถุง" icon="fi fi-rr-seedling"      gradient="from-fuchsia-500 via-pink-500 to-rose-500" :hint="allocPct" />
+                <HeroCard label="โควต้าทั้งหมด" :value="fmt(m.summary?.total_bags_quota)"     unit="ก้อน" icon="fi fi-rr-shopping-bag"   gradient="from-violet-500 via-purple-600 to-fuchsia-600" />
+                <HeroCard label="จัดสรรแล้ว"   :value="fmt(m.summary?.total_bags_allocated)" unit="ก้อน" icon="fi fi-rr-seedling"      gradient="from-fuchsia-500 via-pink-500 to-rose-500" :hint="allocPct" />
                 <HeroCard label="ผลผลิตรวม"   :value="fmt(m.summary?.total_harvest_kg, 2)"  unit="กก." icon="fi fi-rr-mushroom"      gradient="from-emerald-500 via-teal-500 to-cyan-500" />
                 <HeroCard label="รายได้รวม"   :value="fmt(m.summary?.total_revenue, 2)"     unit="บาท" icon="fi fi-rr-money-bill-wave" gradient="from-amber-500 via-orange-500 to-rose-500" />
               </div>
@@ -109,7 +109,7 @@
                 <StatCard label="จัดสรร"      :value="m.summary?.total_allocations" icon="fi fi-rr-seedling"       tone="fuchsia" small />
                 <StatCard label="ติดตามผล"    :value="m.summary?.total_followups"   icon="fi fi-rr-list-check"     tone="purple"  small />
                 <StatCard label="ขายได้ (กก.)" :value="fmt(m.summary?.total_sold_kg, 2)" icon="fi fi-rr-shop" tone="orange" small />
-                <StatCard label="คงเหลือ (ถุง)" :value="fmt((m.summary?.total_bags_quota || 0) - (m.summary?.total_bags_allocated || 0))" icon="fi fi-rr-box-alt" tone="cyan" small />
+                <StatCard label="คงเหลือ (ก้อน)" :value="fmt((m.summary?.total_bags_quota || 0) - (m.summary?.total_bags_allocated || 0))" icon="fi fi-rr-box-alt" tone="cyan" small />
                 <StatCard label="ใช้โควต้า %" :value="allocPct" icon="fi fi-rr-pie-chart" tone="indigo" small />
               </div>
 
@@ -358,8 +358,8 @@ const quotaChart = computed(() => {
   return {
     labels: m.value.quotaVsAllocated.map(r => r.district),
     series: [
-      { name: 'โควต้า (ถุง)',     data: m.value.quotaVsAllocated.map(r => Number(r.quota_bags || 0)) },
-      { name: 'จัดสรรแล้ว (ถุง)', data: m.value.quotaVsAllocated.map(r => Number(r.allocated_bags || 0)) },
+      { name: 'โควต้า (ก้อน)',     data: m.value.quotaVsAllocated.map(r => Number(r.quota_bags || 0)) },
+      { name: 'จัดสรรแล้ว (ก้อน)', data: m.value.quotaVsAllocated.map(r => Number(r.allocated_bags || 0)) },
     ],
   }
 })

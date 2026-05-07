@@ -5,7 +5,7 @@
       <div>
         <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
           <i class="fi fi-rr-seedling text-violet-600"></i>
-          การจัดสรรถุงเห็ด
+          การจัดสรรก้อนเห็ด
         </h2>
         <p class="text-sm text-slate-500 mt-0.5">บันทึกการจัดสรรโควต้าเห็ดให้แต่ละครัวเรือน</p>
       </div>
@@ -25,7 +25,7 @@
                 placeholder="ทุกปี" showClear filter
                 @change="onFilterChange" class="w-full" />
         <Select v-model="filters.round" :options="roundOptions" optionLabel="label" optionValue="value"
-                placeholder="ทุกครั้งที่"
+                placeholder="ทุกรอบ"
                 v-tooltip.top="'กรองตามครั้งที่ N ที่ครัวเรือนนั้นได้รับการจัดสรร'"
                 showClear
                 @change="onFilterChange" class="w-full" />
@@ -47,7 +47,7 @@
         <template #footer>
           <div class="flex items-center justify-between text-sm px-2">
             <span class="text-slate-600">รวม <span class="font-semibold text-violet-700">{{ Number(meta.total || 0).toLocaleString() }}</span> รายการ</span>
-            <span class="text-xs">รวมในหน้านี้: <span class="font-semibold text-fuchsia-700">{{ totalBagsPage.toLocaleString() }}</span> ถุง</span>
+            <span class="text-xs">รวมในหน้านี้: <span class="font-semibold text-fuchsia-700">{{ totalBagsPage.toLocaleString() }}</span> ก้อน</span>
           </div>
         </template>
 
@@ -81,7 +81,7 @@
             </span>
           </template>
         </Column>
-        <Column field="bags" header="จำนวนถุง" sortable :style="{ width: '120px' }">
+        <Column field="bags" header="จำนวนก้อน" sortable :style="{ width: '120px' }">
           <template #body="{ data }">
             <span class="font-semibold text-slate-700">{{ Number(data.bags).toLocaleString() }}</span>
           </template>
@@ -210,7 +210,7 @@ function onPage(p) { currentPage = p; fetchData() }
 
 function confirmDelete(item) {
   confirm.require({
-    message: `ลบการจัดสรร ${item.bags} ถุง ของ ${item.household?.first_name} ${item.household?.last_name} ใช่หรือไม่?`,
+    message: `ลบการจัดสรร ${item.bags} ก้อน ของ ${item.household?.first_name} ${item.household?.last_name} ใช่หรือไม่?`,
     header: 'ยืนยันการลบ',
     icon: 'fi fi-rr-triangle-warning',
     rejectLabel: 'ยกเลิก', acceptLabel: 'ลบ',

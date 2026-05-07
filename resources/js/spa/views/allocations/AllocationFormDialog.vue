@@ -15,7 +15,7 @@
         </div>
         <div>
           <h3 class="text-lg font-bold text-slate-800">{{ isEditMode ? 'แก้ไขการจัดสรร' : 'เพิ่มการจัดสรร' }}</h3>
-          <p class="text-xs text-slate-500">บันทึกการจัดสรรถุงเห็ดให้ครัวเรือน</p>
+          <p class="text-xs text-slate-500">บันทึกการจัดสรรก้อนเห็ดให้ครัวเรือน</p>
         </div>
       </div>
     </template>
@@ -83,7 +83,7 @@
             />
             <p v-if="selectedQuota" class="text-xs text-emerald-700 mt-1">
               <i class="fi fi-rr-info"></i>
-              คงเหลือ <span class="font-semibold">{{ remainingBags }}</span> ถุง จากทั้งหมด {{ selectedQuota.quota_bags }} ถุง
+              คงเหลือ <span class="font-semibold">{{ remainingBags }}</span> ก้อน จากทั้งหมด {{ selectedQuota.quota_bags }} ก้อน
             </p>
           </div>
         </div>
@@ -102,7 +102,7 @@
               <tr class="text-left text-slate-500 border-b border-violet-100">
                 <th class="px-2 py-1.5 font-medium">รอบ</th>
                 <th class="px-2 py-1.5 font-medium">โควต้า (อำเภอ/ปี/รอบ)</th>
-                <th class="px-2 py-1.5 font-medium text-right">ถุง</th>
+                <th class="px-2 py-1.5 font-medium text-right">ก้อน</th>
                 <th class="px-2 py-1.5 font-medium">วันที่</th>
                 <th class="px-2 py-1.5 font-medium">สถานะ</th>
                 <th class="px-2 py-1.5 font-medium text-center">จัดการ</th>
@@ -149,7 +149,7 @@
         <div class="mt-3 flex items-center gap-2 flex-wrap">
           <p class="text-xs text-slate-500 flex-1">
             <i class="fi fi-rr-info text-violet-500"></i>
-            ครัวเรือนนี้ได้รับการจัดสรรไปแล้ว {{ history.length }} ครั้ง · รวม {{ historyTotalBags }} ถุง
+            ครัวเรือนนี้ได้รับการจัดสรรไปแล้ว {{ history.length }} ครั้ง · รวม {{ historyTotalBags }} ก้อน
           </p>
           <Button
             v-if="editingHistoryId"
@@ -167,9 +167,9 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1 block">
-              จำนวนถุง <span class="text-rose-500">*</span>
+              จำนวนก้อน <span class="text-rose-500">*</span>
             </label>
-            <InputNumber v-model="form.bags" :min="1" :max="remainingBags || 9999" required fluid suffix=" ถุง" />
+            <InputNumber v-model="form.bags" :min="1" :max="remainingBags || 9999" required fluid suffix=" ก้อน" />
           </div>
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1 block">วันที่จัดสรร</label>
@@ -262,7 +262,7 @@ const districtOptions = ref([])
 const selectedDistrict = ref(null)
 
 const quotaOptions = computed(() => quotas.value.map(q => ({
-  label: `${q.district} ปี ${q.year} รอบ ${q.round} (คงเหลือ ${(q.quota_bags - (q.allocations_sum_bags || 0))} ถุง)`,
+  label: `${q.district} ปี ${q.year} รอบ ${q.round} (คงเหลือ ${(q.quota_bags - (q.allocations_sum_bags || 0))} ก้อน)`,
   value: q.id,
 })))
 const householdOptions = computed(() => households.value.map(h => ({

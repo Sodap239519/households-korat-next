@@ -37,7 +37,7 @@
           gradient="from-violet-500 to-purple-600"
           label="ก้อนเห็ดที่ได้รับ"
           :value="fmt(totals?.total_bags_received)"
-          unit="ถุง"
+          unit="ก้อน"
         />
         <MetricCard
           icon="fi fi-rr-mushroom"
@@ -109,7 +109,7 @@
               </div>
               <div class="flex items-center gap-2">
                 <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-                  {{ fmt(a.bags) }} ถุง
+                  {{ fmt(a.bags) }} ก้อน
                 </span>
                 <StatusBadge :status="a.status === 'completed' ? 'completed' : a.status === 'active' ? 'active' : 'pending'"
                              :label="STATUS_LABEL[a.status] || a.status" />

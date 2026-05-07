@@ -50,7 +50,7 @@
               </Column>
               <Column field="district" header="อำเภอ" sortable />
               <Column field="participating_households" header="ครัวเรือน" sortable :style="{ minWidth: '120px' }" />
-              <Column field="total_allocated_bags" header="ถุงจัดสรร" sortable :style="{ minWidth: '130px' }">
+              <Column field="total_allocated_bags" header="ก้อนจัดสรร" sortable :style="{ minWidth: '130px' }">
                 <template #body="{ data }">{{ fmt(data.total_allocated_bags) }}</template>
               </Column>
               <Column field="total_harvest_kg" header="ผลผลิต (กก.)" sortable :style="{ minWidth: '130px' }">
@@ -74,9 +74,9 @@
                 <div class="flex items-center justify-between text-sm px-2 flex-wrap gap-2">
                   <span class="text-slate-600">รวม <span class="font-semibold text-violet-700">{{ quotaData.length }}</span> รายการ</span>
                   <div class="flex gap-3 text-xs">
-                    <span>โควต้า: <span class="font-semibold">{{ fmt(sum(quotaData, 'quota_bags')) }}</span> ถุง</span>
-                    <span>จัดสรร: <span class="font-semibold">{{ fmt(sum(quotaData, 'total_allocated')) }}</span> ถุง</span>
-                    <span>คงเหลือ: <span class="font-semibold text-emerald-700">{{ fmt(sum(quotaData, 'remaining')) }}</span> ถุง</span>
+                    <span>โควต้า: <span class="font-semibold">{{ fmt(sum(quotaData, 'quota_bags')) }}</span> ก้อน</span>
+                    <span>จัดสรร: <span class="font-semibold">{{ fmt(sum(quotaData, 'total_allocated')) }}</span> ก้อน</span>
+                    <span>คงเหลือ: <span class="font-semibold text-emerald-700">{{ fmt(sum(quotaData, 'remaining')) }}</span> ก้อน</span>
                   </div>
                 </div>
               </template>
@@ -303,7 +303,7 @@ function exportCsv() {
 
   if (tab === 'district') {
     filename = 'report_by_district'
-    headers = ['อำเภอ', 'ครัวเรือน', 'ถุงจัดสรร', 'ผลผลิต(กก.)', 'ขาย(กก.)', 'รายได้(บาท)']
+    headers = ['อำเภอ', 'ครัวเรือน', 'ก้อนจัดสรร', 'ผลผลิต(กก.)', 'ขาย(กก.)', 'รายได้(บาท)']
     rows = districtData.value.map(r => [r.district, r.participating_households, r.total_allocated_bags, r.total_harvest_kg, r.total_sold_kg, r.total_revenue])
   } else if (tab === 'quota') {
     filename = 'report_quota_vs_allocated'

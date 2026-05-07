@@ -86,9 +86,9 @@
           <div class="flex items-center justify-between text-sm px-2 flex-wrap gap-2">
             <span class="text-slate-600">รวม <span class="font-semibold text-violet-700">{{ items.length }}</span> รายการในหน้านี้</span>
             <div class="flex items-center gap-4 text-xs">
-              <span>โควต้ารวม: <span class="font-semibold text-violet-700">{{ Number(totalQuotaBags).toLocaleString() }}</span> ถุง</span>
-              <span>จัดสรรแล้ว: <span class="font-semibold text-fuchsia-700">{{ Number(totalAllocated).toLocaleString() }}</span> ถุง</span>
-              <span>คงเหลือ: <span :class="['font-semibold', totalRemaining < 0 ? 'text-rose-700' : 'text-emerald-700']">{{ Number(totalRemaining).toLocaleString() }}</span> ถุง</span>
+              <span>โควต้ารวม: <span class="font-semibold text-violet-700">{{ Number(totalQuotaBags).toLocaleString() }}</span> ก้อน</span>
+              <span>จัดสรรแล้ว: <span class="font-semibold text-fuchsia-700">{{ Number(totalAllocated).toLocaleString() }}</span> ก้อน</span>
+              <span>คงเหลือ: <span :class="['font-semibold', totalRemaining < 0 ? 'text-rose-700' : 'text-emerald-700']">{{ Number(totalRemaining).toLocaleString() }}</span> ก้อน</span>
             </div>
           </div>
         </template>
@@ -110,7 +110,7 @@
             </span>
           </template>
         </Column>
-        <Column field="quota_bags" header="โควต้า (ถุง)" sortable>
+        <Column field="quota_bags" header="โควต้า (ก้อน)" sortable>
           <template #body="{ data }">
             <span class="font-semibold text-slate-700">{{ Number(data.quota_bags).toLocaleString() }}</span>
           </template>

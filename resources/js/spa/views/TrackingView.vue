@@ -130,7 +130,7 @@
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div>
                 <p class="text-slate-400">ก้อนเห็ดที่ได้รับ</p>
-                <p class="font-bold text-violet-700">{{ fmt(h.total_bags_received) }} <span class="text-[10px] text-slate-500">ถุง</span></p>
+                <p class="font-bold text-violet-700">{{ fmt(h.total_bags_received) }} <span class="text-[10px] text-slate-500">ก้อน</span></p>
               </div>
               <div>
                 <p class="text-slate-400">ผลผลิต</p>

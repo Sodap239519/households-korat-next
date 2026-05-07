@@ -62,7 +62,7 @@
               <tr class="text-left text-slate-500 border-b border-amber-100">
                 <th class="px-2 py-1.5 font-medium">ปี</th>
                 <th class="px-2 py-1.5 font-medium">รอบ</th>
-                <th class="px-2 py-1.5 font-medium text-right">โควต้า (ถุง)</th>
+                <th class="px-2 py-1.5 font-medium text-right">โควต้า (ก้อน)</th>
                 <th class="px-2 py-1.5 font-medium text-right">จัดสรรแล้ว</th>
                 <th class="px-2 py-1.5 font-medium text-right">คงเหลือ</th>
                 <th class="px-2 py-1.5 font-medium">สถานะ</th>
@@ -115,7 +115,7 @@
         <div class="mt-3 flex items-center gap-2 flex-wrap">
           <p class="text-xs text-slate-600 flex-1">
             <i class="fi fi-rr-info text-amber-500"></i>
-            รวม {{ historyTotalBags.toLocaleString() }} ถุง · ระบบแนะนำให้เพิ่มเป็น <span class="font-semibold text-amber-700">ปี {{ form.year }} รอบ {{ form.round }}</span>
+            รวม {{ historyTotalBags.toLocaleString() }} ก้อน · ระบบแนะนำให้เพิ่มเป็น <span class="font-semibold text-amber-700">ปี {{ form.year }} รอบ {{ form.round }}</span>
           </p>
           <Button
             v-if="editingHistoryId"
@@ -145,7 +145,7 @@
           </div>
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1.5 block">
-              โควต้า (ถุง) <span class="text-rose-500">*</span>
+              โควต้า (ก้อน) <span class="text-rose-500">*</span>
             </label>
             <InputNumber v-model="form.quota_bags" :min="1" required fluid />
           </div>
@@ -165,8 +165,8 @@
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div class="bg-white rounded-lg p-3 border border-emerald-200">
-            <p class="text-xs text-slate-500">จำนวนถุง</p>
-            <p class="font-bold text-emerald-700">{{ Number(form.quota_bags).toLocaleString() }} ถุง</p>
+            <p class="text-xs text-slate-500">จำนวนก้อน</p>
+            <p class="font-bold text-emerald-700">{{ Number(form.quota_bags).toLocaleString() }} ก้อน</p>
           </div>
           <div class="bg-white rounded-lg p-3 border border-emerald-200">
             <p class="text-xs text-slate-500">เทียบเป็นขีด</p>

@@ -1,36 +1,34 @@
 <template>
-  <apexchart
-    v-if="hasData"
-    :type="type"
-    :series="apexSeries"
-    :options="apexOptions"
-    :height="height"
-  />
-  <div v-else class="text-center text-slate-400 py-12 text-sm">
-    <i class="fi fi-rr-info text-2xl"></i>
-    <p class="mt-2">{{ emptyText || 'ยังไม่มีข้อมูล' }}</p>
+  <div :style="{ minHeight: heightPx }">
+    <VueApexCharts
+      v-if="hasData"
+      :type="apexType"
+      :series="apexSeries"
+      :options="apexOptions"
+      :height="height"
+      width="100%"
+    />
+    <div v-else class="text-center text-slate-400 py-12 text-sm">
+      <i class="fi fi-rr-info text-2xl"></i>
+      <p class="mt-2">{{ emptyText || 'ยังไม่มีข้อมูล' }}</p>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import VueApexCharts from 'vue3-apexcharts'
 
 const props = defineProps({
   // 'bar' | 'line' | 'area' | 'donut' | 'pie' | 'stacked-bar'
   type:       { type: String, default: 'bar' },
-  // labels along the x-axis (for bar/line/area)
   labels:     { type: Array, default: () => [] },
-  // [{ name, data: [...], color? }, ...] for cartesian
   series:     { type: Array, default: () => [] },
-  // For donut/pie use plain numbers in `data` and `labels` array
   data:       { type: Array, default: () => [] },
-  // Color override (per-bar/donut slice)
   colors:     { type: Array, default: () => [] },
   height:     { type: [Number, String], default: 280 },
   emptyText:  { type: String, default: '' },
-  // For stacked bar
   stacked:    { type: Boolean, default: false },
-  // Smooth area / line
   smooth:     { type: Boolean, default: true },
   yFormatter: { type: Function, default: null },
   legend:     { type: Boolean, default: true },
@@ -43,9 +41,13 @@ const PALETTE = [
 
 const isCircular = computed(() => props.type === 'donut' || props.type === 'pie')
 
+const heightPx = computed(() =>
+  typeof props.height === 'number' ? `${props.height}px` : props.height
+)
+
 const hasData = computed(() => {
   if (isCircular.value) return (props.data || []).length > 0
-  return (props.series || []).some(s => (s.data || []).length > 0)
+  return (props.series || []).some(s => Array.isArray(s.data) && s.data.length > 0)
 })
 
 const apexType = computed(() => {
@@ -54,8 +56,8 @@ const apexType = computed(() => {
 })
 
 const apexSeries = computed(() => {
-  if (isCircular.value) return props.data
-  return props.series.map(s => ({ name: s.name, data: s.data || [] }))
+  if (isCircular.value) return [...props.data]
+  return props.series.map(s => ({ name: s.name, data: [...(s.data || [])] }))
 })
 
 const apexOptions = computed(() => {
@@ -63,12 +65,14 @@ const apexOptions = computed(() => {
 
   const base = {
     chart: {
+      id: 'chart-' + Math.random().toString(36).slice(2, 9),
       type: apexType.value,
       stacked: props.type === 'stacked-bar' || props.stacked,
       toolbar: { show: false },
       zoom: { enabled: false },
       animations: { speed: 350 },
       fontFamily: 'Prompt, ui-sans-serif, sans-serif',
+      width: '100%',
     },
     colors,
     dataLabels: { enabled: false },
@@ -108,7 +112,6 @@ const apexOptions = computed(() => {
     }
   }
 
-  // bar / line / area / stacked-bar
   return {
     ...base,
     xaxis: {
@@ -123,24 +126,20 @@ const apexOptions = computed(() => {
     yaxis: {
       labels: {
         style: { fontSize: '11px', fontFamily: 'Prompt, ui-sans-serif, sans-serif' },
-        formatter: (val) =>
-          val == null ? '' : Number(val).toLocaleString(),
+        formatter: (val) => val == null ? '' : Number(val).toLocaleString(),
       },
     },
     plotOptions: {
-      bar: {
-        borderRadius: 6,
-        columnWidth: '60%',
-      },
+      bar: { borderRadius: 6, columnWidth: '60%' },
     },
     stroke: {
-      width: props.type === 'line' ? 2 : props.type === 'area' ? 2 : 0,
+      width: props.type === 'line' ? 3 : props.type === 'area' ? 2 : 0,
       curve: props.smooth ? 'smooth' : 'straight',
     },
     fill: props.type === 'area' ? {
       type: 'gradient',
-      gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] },
-    } : undefined,
+      gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [0, 100] },
+    } : { type: 'solid' },
   }
 })
 </script>
