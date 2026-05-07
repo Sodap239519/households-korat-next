@@ -6,11 +6,11 @@
           <i class="fi fi-rr-search text-violet-600"></i>
           การติดตามครัวเรือน
         </h2>
-        <p class="text-sm text-slate-500 mt-0.5">ค้นหาและติดตามสถานะ ครัวเรือนเปราะบางในระบบ</p>
+        <p class="text-sm text-slate-500 mt-0.5">คลิกที่การ์ดเพื่อดูรายละเอียดโควต้าเห็ด · ผลผลิต · รายได้</p>
       </div>
     </div>
 
-    <!-- Quick search + filters -->
+    <!-- Filters -->
     <div class="box-card p-4">
       <div class="flex items-center gap-2 mb-3 text-sm text-violet-700 font-semibold">
         <i class="fi fi-rr-filter"></i> ตัวกรอง
@@ -60,56 +60,109 @@
         <p class="mt-2">ไม่พบครัวเรือน</p>
       </div>
 
-      <div v-else class="space-y-3">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div
-            v-for="h in items"
-            :key="h.id"
-            class="box-card p-4 cursor-pointer hover:scale-[1.01] transition"
-            @click="goDetail(h)"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <p class="font-mono text-sm text-violet-700 font-semibold">{{ h.household_code }}</p>
-                  <StatusBadge v-if="h.priority" :status="h.priority" :label="h.priority" />
-                </div>
-                <p class="font-medium text-slate-800 mt-1 truncate">
-                  {{ h.prefix }} {{ h.first_name }} {{ h.last_name }}
-                </p>
-                <p class="text-xs text-slate-500 mt-0.5 truncate">
-                  <i class="fi fi-rr-marker"></i>
-                  {{ h.district || '-' }} · {{ h.sub_district || '-' }}
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div
+          v-for="h in items"
+          :key="h.id"
+          class="box-card p-4 cursor-pointer hover:scale-[1.01] transition group"
+          @click="openDetail(h)"
+        >
+          <!-- Header line: code + priority + status -->
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <p class="font-mono text-sm text-violet-700 font-semibold">{{ h.household_code }}</p>
+                <StatusBadge v-if="h.priority" :status="h.priority" :label="h.priority" />
+              </div>
+              <p class="font-medium text-slate-800 mt-1 truncate">
+                {{ h.prefix }} {{ h.first_name }} {{ h.last_name }}
+              </p>
+              <p class="text-xs text-slate-500 mt-0.5 truncate">
+                <i class="fi fi-rr-marker"></i>
+                {{ h.district || '-' }} · {{ h.sub_district || '-' }}
+              </p>
+            </div>
+            <StatusBadge :status="h.passed ? 'success' : 'failed'" :label="h.passed ? 'ผ่าน' : 'ไม่ผ่าน'" />
+          </div>
+
+          <!-- Mushroom summary -->
+          <div :class="['mt-3 rounded-lg border-2 p-3',
+            Number(h.total_revenue) > 0 ? 'border-emerald-200 bg-emerald-50/40' :
+            Number(h.total_bags_received) > 0 ? 'border-violet-200 bg-violet-50/40' :
+            'border-slate-200 bg-slate-50/40']">
+            <p class="text-[11px] font-semibold text-violet-700 uppercase tracking-wide mb-2">
+              <i class="fi fi-rr-leaf"></i> ข้อมูลโควต้าเห็ด
+            </p>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p class="text-slate-400">ก้นเห็ดที่ได้รับ</p>
+                <p class="font-bold text-violet-700">{{ fmt(h.total_bags_received) }} <span class="text-[10px] text-slate-500">ถุง</span></p>
+              </div>
+              <div>
+                <p class="text-slate-400">ผลผลิต</p>
+                <p :class="['font-bold', Number(h.total_harvest_kg) > 0 ? 'text-emerald-700' : 'text-slate-400']">
+                  {{ fmt(h.total_harvest_kg, 2) }} <span class="text-[10px] text-slate-500">กก.</span>
                 </p>
               </div>
-              <StatusBadge :status="h.passed ? 'success' : 'failed'" :label="h.passed ? 'ผ่าน' : 'ไม่ผ่าน'" />
-            </div>
-            <div class="grid grid-cols-3 gap-2 mt-3 text-xs">
+              <div>
+                <p class="text-slate-400">ขายได้</p>
+                <p :class="['font-bold', Number(h.total_sold_kg) > 0 ? 'text-orange-700' : 'text-slate-400']">
+                  {{ fmt(h.total_sold_kg, 2) }} <span class="text-[10px] text-slate-500">กก.</span>
+                </p>
+              </div>
               <div>
                 <p class="text-slate-400">รายได้</p>
-                <p class="font-semibold text-emerald-700 truncate">{{ fmtMoney(h.income_month) }}</p>
-              </div>
-              <div>
-                <p class="text-slate-400">รายจ่าย</p>
-                <p class="font-semibold text-amber-700 truncate">{{ fmtMoney(h.expense_month) }}</p>
-              </div>
-              <div>
-                <p class="text-slate-400">หนี้สิน</p>
-                <p class="font-semibold text-rose-700 truncate">{{ fmtMoney(h.debt_amount) }}</p>
+                <p :class="['font-bold', Number(h.total_revenue) > 0 ? 'text-amber-700' : 'text-slate-400']">
+                  {{ fmt(h.total_revenue, 2) }} <span class="text-[10px] text-slate-500">บ.</span>
+                </p>
               </div>
             </div>
+            <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+              <span v-if="Number(h.allocation_count) > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                จัดสรร {{ h.allocation_count }} ครั้ง
+              </span>
+              <span v-if="Number(h.followup_count) > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                ติดตาม {{ h.followup_count }} รอบ
+              </span>
+              <span v-if="Number(h.total_bags_received) === 0" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                ยังไม่ได้รับโควต้า
+              </span>
+            </div>
+          </div>
+
+          <!-- Bottom: economic snapshot -->
+          <div class="grid grid-cols-3 gap-2 mt-3 text-[11px]">
+            <div>
+              <p class="text-slate-400">รายได้ครัวเรือน</p>
+              <p class="font-medium text-emerald-700 truncate">{{ fmtMoney(h.income_month) }}</p>
+            </div>
+            <div>
+              <p class="text-slate-400">รายจ่าย</p>
+              <p class="font-medium text-amber-700 truncate">{{ fmtMoney(h.expense_month) }}</p>
+            </div>
+            <div>
+              <p class="text-slate-400">หนี้สิน</p>
+              <p class="font-medium text-rose-700 truncate">{{ fmtMoney(h.debt_amount) }}</p>
+            </div>
+          </div>
+
+          <!-- Click hint -->
+          <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] text-violet-600 group-hover:text-violet-800 flex items-center gap-1">
+            <i class="fi fi-rr-eye"></i> คลิกเพื่อดูรายละเอียด
           </div>
         </div>
-
-        <Pagination :meta="meta" @change="onPage" class="mt-3" />
       </div>
+
+      <Pagination v-if="items.length" :meta="meta" @change="onPage" class="mt-3" />
     </div>
+
+    <!-- Detail dialog -->
+    <HouseholdTrackingDialog v-model="detailOpen" :householdId="detailId" />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import api from '../api/index.js'
 
 import InputText from 'primevue/inputtext'
@@ -118,13 +171,15 @@ import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
 import StatusBadge from '../components/StatusBadge.vue'
 import Pagination from './components/Pagination.vue'
+import HouseholdTrackingDialog from './households/HouseholdTrackingDialog.vue'
 
-const router = useRouter()
 const search = ref('')
 const filters = ref({ priority: null })
 const items = ref([])
 const meta = ref({})
 const loading = ref(false)
+const detailOpen = ref(false)
+const detailId = ref(null)
 let currentPage = 1
 let filterTimer = null
 
@@ -135,6 +190,10 @@ const priorityOptions = [
   { label: 'D (ต่ำ)',     value: 'D' },
 ]
 
+function fmt(v, dec = 0) {
+  if (v == null) return '-'
+  return Number(v).toLocaleString('th-TH', { minimumFractionDigits: dec, maximumFractionDigits: dec })
+}
 function fmtMoney(v) {
   return v == null ? '-' : Number(v).toLocaleString('th-TH', { minimumFractionDigits: 0 }) + ' บ.'
 }
@@ -163,8 +222,9 @@ function onFilter() {
 
 function onPage(p) { currentPage = p; fetchData() }
 
-function goDetail(h) {
-  router.push(`/app/households?focus=${h.id}`)
+function openDetail(h) {
+  detailId.value = h.id
+  detailOpen.value = true
 }
 
 onMounted(fetchData)

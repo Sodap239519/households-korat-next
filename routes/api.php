@@ -57,7 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/users/{user}/reject',                   [AdminNotificationController::class, 'reject']);
 
     // Households
-    Route::get('/households/export', [HouseholdExportController::class, 'csv']);
+    Route::get('/households/export',           [HouseholdExportController::class, 'csv']);
+    Route::get('/households/{household}/tracking', [HouseholdApiController::class, 'tracking']);
     Route::apiResource('households', HouseholdApiController::class);
 
     // Mushroom Quotas / Allocations / Followups
