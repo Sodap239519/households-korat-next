@@ -14,14 +14,14 @@ class MushroomQuotaController extends Controller
     {
         $query = MushroomQuotaDistrict::query();
 
-        if ($year = $request->input('year')) {
-            $query->where('year', $year);
-        }
-        if ($district = $request->input('district')) {
-            $query->where('district', $district);
-        }
-        if ($request->has('active')) {
-            $query->where('is_active', (bool) $request->input('active'));
+        if ($year     = $request->input('year'))     $query->where('year',     $year);
+        if ($round    = $request->input('round'))    $query->where('round',    $round);
+        if ($district = $request->input('district')) $query->where('district', $district);
+
+        // Accept both ?active= and ?is_active= for compatibility
+        $activeRaw = $request->input('is_active', $request->input('active'));
+        if ($activeRaw !== null && $activeRaw !== '') {
+            $query->where('is_active', (int) $activeRaw);
         }
 
         $quotas = $query->withCount('allocations')

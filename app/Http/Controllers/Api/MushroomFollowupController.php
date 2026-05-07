@@ -17,11 +17,18 @@ class MushroomFollowupController extends Controller
             'allocation.quota',
         ]);
 
-        if ($allocationId = $request->input('allocation_id')) {
-            $query->where('allocation_id', $allocationId);
+        if ($allocationId = $request->input('allocation_id')) $query->where('allocation_id', $allocationId);
+        if ($channel = $request->input('sale_channel'))       $query->where('sale_channel',  $channel);
+
+        // Filter through allocation -> quota
+        if ($district = $request->input('district')) {
+            $query->whereHas('allocation.quota', fn ($q) => $q->where('district', $district));
         }
-        if ($channel = $request->input('sale_channel')) {
-            $query->where('sale_channel', $channel);
+        if ($year = $request->input('year')) {
+            $query->whereHas('allocation.quota', fn ($q) => $q->where('year', $year));
+        }
+        if ($round = $request->input('round')) {
+            $query->whereHas('allocation.quota', fn ($q) => $q->where('round', $round));
         }
 
         $followups = $query->orderBy('followup_date', 'desc')

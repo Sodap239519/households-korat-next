@@ -22,32 +22,37 @@
       <div class="flex items-center gap-2 mb-3 text-sm text-violet-700 font-semibold">
         <i class="fi fi-rr-filter"></i> ตัวกรอง
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <Select
           v-model="filters.district"
           :options="districtOptions"
           placeholder="ทุกอำเภอ"
-          showClear
-          filter
+          showClear filter
           @change="onFilterChange"
           class="w-full"
         />
         <Select
           v-model="filters.year"
           :options="yearOptions"
-          optionLabel="label"
-          optionValue="value"
+          optionLabel="label" optionValue="value"
           placeholder="ทุกปี"
+          showClear filter
+          @change="onFilterChange"
+          class="w-full"
+        />
+        <Select
+          v-model="filters.round"
+          :options="roundOptions"
+          optionLabel="label" optionValue="value"
+          placeholder="ทุกรอบ"
           showClear
-          filter
           @change="onFilterChange"
           class="w-full"
         />
         <Select
           v-model="filters.is_active"
           :options="statusOptions"
-          optionLabel="label"
-          optionValue="value"
+          optionLabel="label" optionValue="value"
           placeholder="ทุกสถานะ"
           showClear
           @change="onFilterChange"
@@ -182,7 +187,9 @@ const meta = ref({})
 const loading = ref(false)
 const years = ref([])
 const districtOptions = ref([])
-const filters = ref({ district: null, year: null, is_active: null })
+const filters = ref({ district: null, year: null, round: null, is_active: null })
+
+const roundOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ label: `รอบ ${n}`, value: n }))
 
 const dialogOpen = ref(false)
 const editId = ref(null)
@@ -206,7 +213,8 @@ async function fetchData() {
     const params = { page: currentPage, per_page: 20 }
     if (filters.value.district)         params.district  = filters.value.district
     if (filters.value.year)             params.year      = filters.value.year
-    if (filters.value.is_active !== null) params.is_active = filters.value.is_active
+    if (filters.value.round)            params.round     = filters.value.round
+    if (filters.value.is_active !== null && filters.value.is_active !== undefined) params.is_active = filters.value.is_active
     const { data } = await api.get('/mushroom-quotas', { params })
     items.value = data.data
     meta.value = { current_page: data.current_page, last_page: data.last_page, total: data.total }

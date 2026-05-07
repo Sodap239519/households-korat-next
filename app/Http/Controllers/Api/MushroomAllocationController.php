@@ -15,14 +15,19 @@ class MushroomAllocationController extends Controller
     {
         $query = MushroomAllocation::with(['quota', 'household']);
 
-        if ($quotaId = $request->input('quota_id')) {
-            $query->where('quota_id', $quotaId);
+        if ($quotaId     = $request->input('quota_id'))     $query->where('quota_id',     $quotaId);
+        if ($householdId = $request->input('household_id')) $query->where('household_id', $householdId);
+        if ($status      = $request->input('status'))       $query->where('status',       $status);
+
+        // Filter through the related quota (district / year / round)
+        if ($district = $request->input('district')) {
+            $query->whereHas('quota', fn ($q) => $q->where('district', $district));
         }
-        if ($householdId = $request->input('household_id')) {
-            $query->where('household_id', $householdId);
+        if ($year = $request->input('year')) {
+            $query->whereHas('quota', fn ($q) => $q->where('year', $year));
         }
-        if ($status = $request->input('status')) {
-            $query->where('status', $status);
+        if ($round = $request->input('round')) {
+            $query->whereHas('quota', fn ($q) => $q->where('round', $round));
         }
 
         $allocations = $query->orderBy('allocated_date', 'desc')

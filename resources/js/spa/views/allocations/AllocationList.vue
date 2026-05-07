@@ -14,9 +14,22 @@
 
     <!-- Filter -->
     <div class="box-card p-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="flex items-center gap-2 mb-3 text-sm text-violet-700 font-semibold">
+        <i class="fi fi-rr-filter"></i> ตัวกรอง
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Select v-model="filters.district" :options="districtOptions"
+                placeholder="ทุกอำเภอ" showClear filter
+                @change="onFilterChange" class="w-full" />
+        <Select v-model="filters.year" :options="yearOptions" optionLabel="label" optionValue="value"
+                placeholder="ทุกปี" showClear filter
+                @change="onFilterChange" class="w-full" />
+        <Select v-model="filters.round" :options="roundOptions" optionLabel="label" optionValue="value"
+                placeholder="ทุกรอบ" showClear
+                @change="onFilterChange" class="w-full" />
         <Select v-model="filters.status" :options="statusOptions" optionLabel="label" optionValue="value"
-                placeholder="ทุกสถานะ" showClear class="w-full" @change="onFilterChange" />
+                placeholder="ทุกสถานะ" showClear
+                @change="onFilterChange" class="w-full" />
       </div>
     </div>
 
@@ -114,9 +127,11 @@ const toast = useToast()
 const items = ref([])
 const meta = ref({})
 const loading = ref(false)
-const filters = ref({ status: null })
+const filters = ref({ district: null, year: null, round: null, status: null })
 const dialogOpen = ref(false)
 const editId = ref(null)
+const districtOptions = ref([])
+const yearOptions = ref([])
 let currentPage = 1, filterTimer = null
 
 function openCreate() { editId.value = null; dialogOpen.value = true }
@@ -131,6 +146,7 @@ const statusOptions = [
   { label: 'กำลังดำเนินการ', value: 'active' },
   { label: 'เสร็จสิ้น',         value: 'completed' },
 ]
+const roundOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ label: `รอบ ${n}`, value: n }))
 const statusLabels = {
   pending:   'รอดำเนินการ',
   active:    'กำลังดำเนินการ',
@@ -146,7 +162,10 @@ async function fetchData() {
   loading.value = true
   try {
     const params = { page: currentPage, per_page: 20 }
-    if (filters.value.status) params.status = filters.value.status
+    if (filters.value.district) params.district = filters.value.district
+    if (filters.value.year)     params.year     = filters.value.year
+    if (filters.value.round)    params.round    = filters.value.round
+    if (filters.value.status)   params.status   = filters.value.status
     const { data } = await api.get('/mushroom-allocations', { params })
     items.value = data.data
     meta.value = { current_page: data.current_page, last_page: data.last_page, total: data.total }
@@ -155,6 +174,20 @@ async function fetchData() {
   } finally {
     loading.value = false
   }
+}
+
+async function fetchDistricts() {
+  try {
+    const { data } = await api.get('/locations/districts')
+    districtOptions.value = data
+  } catch {}
+}
+
+async function fetchYears() {
+  try {
+    const { data } = await api.get('/reports/years')
+    yearOptions.value = data.map(y => ({ label: `ปี ${y}`, value: y }))
+  } catch {}
 }
 
 function onFilterChange() {
@@ -183,5 +216,9 @@ function confirmDelete(item) {
   })
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  fetchDistricts()
+  fetchYears()
+})
 </script>
