@@ -44,6 +44,8 @@ class MushroomFollowupController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->canCreateFollowup(), 403, 'ไม่มีสิทธิ์บันทึกการติดตามผล');
+
         $validated = $request->validate([
             'allocation_id'     => ['required', 'exists:mushroom_allocations,id'],
             'followup_round'    => ['required', 'integer', 'min:1'],
@@ -58,6 +60,15 @@ class MushroomFollowupController extends Controller
             'enterprise_name'   => ['nullable', 'string', 'max:255'],
             'note'              => ['nullable', 'string'],
         ]);
+
+        // ตรวจสิทธิ์ตามเขตพื้นที่ผ่านความสัมพันธ์ allocation -> quota
+        $allocation = \App\Models\MushroomAllocation::with('quota')->findOrFail($validated['allocation_id']);
+        $district = $allocation->quota?->district;
+        abort_unless(
+            $request->user()->canActInDistrict($district),
+            403,
+            "ไม่มีสิทธิ์บันทึกการติดตามในอำเภอ {$district}",
+        );
 
         // คำนวณรายได้อัตโนมัติ
         if (empty($validated['revenue']) && !empty($validated['sold_kg']) && !empty($validated['price_per_kg'])) {
@@ -81,6 +92,14 @@ class MushroomFollowupController extends Controller
 
     public function update(Request $request, MushroomFollowup $mushroomFollowup): JsonResponse
     {
+        abort_unless($request->user()->canCreateFollowup(), 403, 'ไม่มีสิทธิ์แก้ไขการติดตาม');
+        $district = $mushroomFollowup->allocation?->quota?->district;
+        abort_unless(
+            $request->user()->canActInDistrict($district),
+            403,
+            "ไม่มีสิทธิ์แก้ไขการติดตามในอำเภอ {$district}",
+        );
+
         $validated = $request->validate([
             'followup_date'     => ['nullable', 'date'],
             'harvest_kg'        => ['nullable', 'numeric', 'min:0'],
@@ -108,8 +127,16 @@ class MushroomFollowupController extends Controller
         return response()->json($mushroomFollowup);
     }
 
-    public function destroy(MushroomFollowup $mushroomFollowup): JsonResponse
+    public function destroy(Request $request, MushroomFollowup $mushroomFollowup): JsonResponse
     {
+        abort_unless($request->user()->canCreateFollowup(), 403, 'ไม่มีสิทธิ์ลบ');
+        $district = $mushroomFollowup->allocation?->quota?->district;
+        abort_unless(
+            $request->user()->canActInDistrict($district),
+            403,
+            "ไม่มีสิทธิ์ลบในอำเภอ {$district}",
+        );
+
         $mushroomFollowup->delete();
 
         return response()->json(['message' => 'ลบข้อมูลติดตามผลสำเร็จ']);

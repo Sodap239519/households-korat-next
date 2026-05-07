@@ -155,58 +155,48 @@
       </FormSection>
 
       <FormSection title="ผลผลิตและการขาย" icon="fi fi-rr-mushroom" tone="emerald">
+        <!-- Single shared unit toggle controls both ผลผลิต and ขายได้ -->
+        <div class="flex items-center justify-between mb-3 px-3 py-2 rounded-lg bg-emerald-50/50 border border-emerald-200">
+          <span class="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+            <i class="fi fi-rr-balance-scale text-emerald-600"></i>
+            หน่วยที่ใช้:
+          </span>
+          <div class="flex items-center gap-1 text-xs">
+            <button type="button" @click="unit = 'kg'"
+                    :class="['px-3 py-1 rounded-md font-semibold transition border',
+                      unit === 'kg' ? 'bg-emerald-500 border-emerald-500 text-white shadow' : 'bg-white border-slate-200 text-slate-500']">
+              กิโลกรัม (กก.)
+            </button>
+            <button type="button" @click="unit = 'qid'"
+                    :class="['px-3 py-1 rounded-md font-semibold transition border',
+                      unit === 'qid' ? 'bg-emerald-500 border-emerald-500 text-white shadow' : 'bg-white border-slate-200 text-slate-500']">
+              ขีด (1 ขีด = 0.1 กก.)
+            </button>
+          </div>
+        </div>
+
         <div class="space-y-3">
-          <!-- ผลผลิต — กก./ขีด toggle -->
           <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-sm font-medium text-slate-700">ผลผลิต</label>
-              <div class="flex items-center gap-1 text-xs">
-                <button type="button" @click="harvestUnit = 'kg'"
-                        :class="['px-2.5 py-0.5 rounded-md font-medium transition border',
-                          harvestUnit === 'kg' ? 'bg-emerald-100 border-emerald-400 text-emerald-700' : 'bg-white border-slate-200 text-slate-500']">
-                  กก.
-                </button>
-                <button type="button" @click="harvestUnit = 'qid'"
-                        :class="['px-2.5 py-0.5 rounded-md font-medium transition border',
-                          harvestUnit === 'qid' ? 'bg-emerald-100 border-emerald-400 text-emerald-700' : 'bg-white border-slate-200 text-slate-500']">
-                  ขีด
-                </button>
-              </div>
-            </div>
+            <label class="text-sm font-medium text-slate-700 mb-1 block">ผลผลิต</label>
             <InputNumber
               :modelValue="harvestDisplay"
               @update:modelValue="setHarvestDisplay"
               :min="0" :minFractionDigits="0" :maxFractionDigits="3" fluid
-              :suffix="harvestUnit === 'kg' ? ' กก.' : ' ขีด'"
+              :suffix="unit === 'kg' ? ' กก.' : ' ขีด'"
             />
             <p v-if="form.harvest_kg" class="text-[11px] text-slate-400 mt-0.5">
               = {{ Number(form.harvest_kg).toFixed(3) }} กก. ({{ (Number(form.harvest_kg) * 10).toFixed(1) }} ขีด)
             </p>
           </div>
 
-          <!-- ขายได้ — กก./ขีด toggle -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="text-sm font-medium text-slate-700">ขายได้</label>
-                <div class="flex items-center gap-1 text-xs">
-                  <button type="button" @click="soldUnit = 'kg'"
-                          :class="['px-2.5 py-0.5 rounded-md font-medium transition border',
-                            soldUnit === 'kg' ? 'bg-emerald-100 border-emerald-400 text-emerald-700' : 'bg-white border-slate-200 text-slate-500']">
-                    กก.
-                  </button>
-                  <button type="button" @click="soldUnit = 'qid'"
-                          :class="['px-2.5 py-0.5 rounded-md font-medium transition border',
-                            soldUnit === 'qid' ? 'bg-emerald-100 border-emerald-400 text-emerald-700' : 'bg-white border-slate-200 text-slate-500']">
-                    ขีด
-                  </button>
-                </div>
-              </div>
+              <label class="text-sm font-medium text-slate-700 mb-1 block">ขายได้</label>
               <InputNumber
                 :modelValue="soldDisplay"
                 @update:modelValue="setSoldDisplay"
                 :min="0" :minFractionDigits="0" :maxFractionDigits="3" fluid
-                :suffix="soldUnit === 'kg' ? ' กก.' : ' ขีด'"
+                :suffix="unit === 'kg' ? ' กก.' : ' ขีด'"
               />
               <p v-if="form.sold_kg" class="text-[11px] text-slate-400 mt-0.5">
                 = {{ Number(form.sold_kg).toFixed(3) }} กก. ({{ (Number(form.sold_kg) * 10).toFixed(1) }} ขีด)
@@ -272,6 +262,9 @@ import api from '../../api/index.js'
 import FormSection from '../../components/FormSection.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { fmtThaiDate } from '../../utils/date.js'
+import { useAuth } from '../../composables/useAuth.js'
+
+const { isAdmin, assignedDistricts } = useAuth()
 
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -325,26 +318,26 @@ const form = ref(defaultForm())
 const saving = ref(false)
 const error = ref('')
 
-// Unit toggles for ผลผลิต / ขายได้ (kg or qid where 1 ขีด = 0.1 kg)
-const harvestUnit = ref('kg')
-const soldUnit    = ref('kg')
+// Single shared unit toggle (kg or qid) drives both ผลผลิต and ขายได้.
+// Internally form.harvest_kg / form.sold_kg always store kilograms.
+const unit = ref('kg')
 
 const harvestDisplay = computed(() =>
   form.value.harvest_kg == null ? null :
-  harvestUnit.value === 'qid' ? Number(form.value.harvest_kg) * 10 : Number(form.value.harvest_kg)
+  unit.value === 'qid' ? Number(form.value.harvest_kg) * 10 : Number(form.value.harvest_kg)
 )
 function setHarvestDisplay(v) {
   if (v == null || v === '') { form.value.harvest_kg = null; return }
-  form.value.harvest_kg = harvestUnit.value === 'qid' ? Number(v) / 10 : Number(v)
+  form.value.harvest_kg = unit.value === 'qid' ? Number(v) / 10 : Number(v)
 }
 
 const soldDisplay = computed(() =>
   form.value.sold_kg == null ? null :
-  soldUnit.value === 'qid' ? Number(form.value.sold_kg) * 10 : Number(form.value.sold_kg)
+  unit.value === 'qid' ? Number(form.value.sold_kg) * 10 : Number(form.value.sold_kg)
 )
 function setSoldDisplay(v) {
   if (v == null || v === '') { form.value.sold_kg = null; return }
-  form.value.sold_kg = soldUnit.value === 'qid' ? Number(v) / 10 : Number(v)
+  form.value.sold_kg = unit.value === 'qid' ? Number(v) / 10 : Number(v)
   recalc()
 }
 const districtOptions = ref([])
@@ -407,7 +400,11 @@ async function loadDistricts() {
   if (districtOptions.value.length) return
   try {
     const { data } = await api.get('/locations/districts')
-    districtOptions.value = data
+    if (!isAdmin.value && Array.isArray(assignedDistricts.value) && assignedDistricts.value.length) {
+      districtOptions.value = data.filter(d => assignedDistricts.value.includes(d))
+    } else {
+      districtOptions.value = data
+    }
   } catch {}
 }
 

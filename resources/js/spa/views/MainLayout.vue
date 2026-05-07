@@ -129,9 +129,9 @@
         </div>
 
         <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          <!-- Bell -->
+          <!-- Bell (admin+) -->
           <button
-            v-if="user?.role === 'superadmin'"
+            v-if="isAdmin"
             @click="toggleBell"
             class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg hover:bg-violet-100 flex items-center justify-center text-violet-700 transition relative"
             v-tooltip.bottom="'การแจ้งเตือน'"
@@ -263,7 +263,7 @@ const vTooltip = Tooltip
 
 const route = useRoute()
 const router = useRouter()
-const { user, logout } = useAuth()
+const { user, logout, isAdmin, isAreaStaff, canManageUsers, roleLabel: roleLabelFn } = useAuth()
 const toast = useToast()
 
 const collapsed = ref(false)
@@ -276,34 +276,42 @@ const collapsedDisplay = computed(() => collapsed.value && !mobileOpen.value)
 // Close drawer when navigating
 watch(() => route.path, () => { mobileOpen.value = false })
 
-const navItems = [
-  { to: '/app/dashboard', icon: 'fi fi-rr-dashboard', label: 'แดชบอร์ด' },
+const allNavItems = [
+  // visible to all roles (staff +)
+  { to: '/app/dashboard', icon: 'fi fi-rr-dashboard', label: 'แดชบอร์ด', show: () => true },
   {
     label: 'รายการครัวเรือน',
     icon: 'fi fi-rr-house-blank',
     matchPrefix: '/app/households',
+    show: () => true,
     children: [
-      { to: '/app/households',        icon: 'fi fi-rr-list',           label: 'แสดงรายการครัวเรือน' },
-      { to: '/app/households/create', icon: 'fi fi-rr-add-document',   label: 'เพิ่มรายการครัวเรือน' },
+      { to: '/app/households',        icon: 'fi fi-rr-list',         label: 'แสดงรายการครัวเรือน' },
+      { to: '/app/households/create', icon: 'fi fi-rr-add-document', label: 'เพิ่มรายการครัวเรือน' },
     ],
   },
-  { to: '/app/tracking', icon: 'fi fi-rr-search', label: 'การติดตาม' },
+  { to: '/app/tracking', icon: 'fi fi-rr-search', label: 'การติดตาม', show: () => true },
+
+  // mushroom — area_staff and above
   {
     label: 'โควต้าเห็ด',
     icon: 'fi fi-rr-mushroom',
     matchPrefix: '/app/mushroom',
+    show: () => isAreaStaff.value,
     children: [
       { to: '/app/mushroom/quotas',      icon: 'fi fi-rr-clipboard-list', label: 'โควต้าอำเภอ' },
       { to: '/app/mushroom/allocations', icon: 'fi fi-rr-seedling',       label: 'การจัดสรร' },
       { to: '/app/mushroom/followups',   icon: 'fi fi-rr-list-check',     label: 'ติดตามผลผลิต' },
     ],
   },
-  { to: '/app/marketing', icon: 'fi fi-rr-shop',       label: 'การตลาด' },
-  { to: '/app/reports',   icon: 'fi fi-rr-chart-pie',  label: 'รายงาน' },
+
+  { to: '/app/marketing', icon: 'fi fi-rr-shop',      label: 'การตลาด', show: () => isAreaStaff.value },
+  { to: '/app/reports',   icon: 'fi fi-rr-chart-pie', label: 'รายงาน',   show: () => isAreaStaff.value },
 ]
 
+const navItems = computed(() => allNavItems.filter(item => item.show()))
+
 const openGroups = reactive({})
-navItems.forEach((item, idx) => {
+navItems.value.forEach((item, idx) => {
   if (item.children && item.matchPrefix && route.path.startsWith(item.matchPrefix)) {
     openGroups[idx] = true
   }
@@ -346,7 +354,7 @@ const initials = computed(() => {
   return (parts[0]?.[0] || '?') + (parts[1]?.[0] || '')
 })
 
-const roleLabel = computed(() => user.value?.role === 'superadmin' ? 'ผู้ดูแลระบบ' : 'เจ้าหน้าที่')
+const roleLabel = computed(() => roleLabelFn(user.value?.role))
 
 const userMenu = ref(null)
 function toggleUserMenu(e) {
@@ -364,7 +372,7 @@ const userMenuItems = computed(() => {
     },
   ]
 
-  if (user.value?.role === 'superadmin') {
+  if (canManageUsers.value) {
     items.push({
       label: 'ผู้ดูแลระบบ',
       items: [
@@ -407,7 +415,7 @@ const TYPE_STYLES = {
 function typeStyle(t) { return TYPE_STYLES[t] || { bg: 'bg-slate-500', icon: 'fi fi-rr-bell' } }
 
 async function fetchCounts() {
-  if (user.value?.role !== 'superadmin') return
+  if (!isAdmin.value) return
   try {
     const { data } = await api.get('/admin/notifications/counts')
     pendingCount.value = data.unread_total
@@ -499,8 +507,8 @@ function goManageUsers() {
 
 const relativeTime = relTimeUtil
 
-watch(() => user.value?.role, (role) => {
-  if (role === 'superadmin') fetchCounts()
+watch(() => user.value?.role, () => {
+  if (isAdmin.value) fetchCounts()
 }, { immediate: true })
 
 onMounted(() => {

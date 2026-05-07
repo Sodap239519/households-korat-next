@@ -36,6 +36,8 @@ class MushroomQuotaController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->canManageQuotas(), 403, 'ต้องเป็นผู้ดูแลระบบเท่านั้นที่สร้างโควต้าได้');
+
         $validated = $request->validate([
             'district'   => ['required', 'string', 'max:100'],
             'province'   => ['nullable', 'string', 'max:100'],
@@ -65,6 +67,8 @@ class MushroomQuotaController extends Controller
 
     public function update(Request $request, MushroomQuotaDistrict $mushroomQuotaDistrict): JsonResponse
     {
+        abort_unless($request->user()->canManageQuotas(), 403, 'ต้องเป็นผู้ดูแลระบบเท่านั้นที่แก้ไขโควต้าได้');
+
         $validated = $request->validate([
             'district'   => ['sometimes', 'string', 'max:100'],
             'province'   => ['nullable', 'string', 'max:100'],
@@ -80,8 +84,10 @@ class MushroomQuotaController extends Controller
         return response()->json($mushroomQuotaDistrict);
     }
 
-    public function destroy(MushroomQuotaDistrict $mushroomQuotaDistrict): JsonResponse
+    public function destroy(Request $request, MushroomQuotaDistrict $mushroomQuotaDistrict): JsonResponse
     {
+        abort_unless($request->user()->canManageQuotas(), 403, 'ต้องเป็นผู้ดูแลระบบเท่านั้นที่ลบโควต้าได้');
+
         if ($mushroomQuotaDistrict->allocations()->exists()) {
             return response()->json(['message' => 'ไม่สามารถลบได้ มีการจัดสรรแล้ว'], 422);
         }

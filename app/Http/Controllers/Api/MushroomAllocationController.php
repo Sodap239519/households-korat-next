@@ -51,6 +51,8 @@ class MushroomAllocationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->canCreateAllocation(), 403, 'ไม่มีสิทธิ์จัดสรรโควต้า');
+
         $validated = $request->validate([
             'quota_id'       => ['required', 'exists:mushroom_quota_districts,id'],
             'household_id'   => ['required', 'exists:households,id'],
@@ -60,8 +62,14 @@ class MushroomAllocationController extends Controller
             'note'           => ['nullable', 'string'],
         ]);
 
-        // ตรวจสอบโควต้าคงเหลือ (trigger จะจัดการด้วย แต่ตรวจก่อนเพื่อ error message ที่ดี)
+        // ตรวจสอบโควต้าคงเหลือ
         $quota = \App\Models\MushroomQuotaDistrict::lockForUpdate()->findOrFail($validated['quota_id']);
+
+        abort_unless(
+            $request->user()->canActInDistrict($quota->district),
+            403,
+            "ไม่มีสิทธิ์จัดสรรในอำเภอ {$quota->district} (เกินเขตพื้นที่ที่คุณดูแล)",
+        );
         $allocated = $quota->allocations()->sum('bags');
         $remaining = $quota->quota_bags - $allocated;
 
@@ -88,6 +96,14 @@ class MushroomAllocationController extends Controller
 
     public function update(Request $request, MushroomAllocation $mushroomAllocation): JsonResponse
     {
+        abort_unless($request->user()->canCreateAllocation(), 403, 'ไม่มีสิทธิ์แก้ไขการจัดสรร');
+        $district = $mushroomAllocation->quota?->district;
+        abort_unless(
+            $request->user()->canActInDistrict($district),
+            403,
+            "ไม่มีสิทธิ์แก้ไขในอำเภอ {$district} (เกินเขตพื้นที่ที่คุณดูแล)",
+        );
+
         $validated = $request->validate([
             'bags'           => ['sometimes', 'integer', 'min:1'],
             'allocated_date' => ['nullable', 'date'],
@@ -100,8 +116,16 @@ class MushroomAllocationController extends Controller
         return response()->json($mushroomAllocation);
     }
 
-    public function destroy(MushroomAllocation $mushroomAllocation): JsonResponse
+    public function destroy(Request $request, MushroomAllocation $mushroomAllocation): JsonResponse
     {
+        abort_unless($request->user()->canCreateAllocation(), 403, 'ไม่มีสิทธิ์ลบการจัดสรร');
+        $district = $mushroomAllocation->quota?->district;
+        abort_unless(
+            $request->user()->canActInDistrict($district),
+            403,
+            "ไม่มีสิทธิ์ลบในอำเภอ {$district}",
+        );
+
         if ($mushroomAllocation->followups()->exists()) {
             return response()->json(['message' => 'ไม่สามารถลบได้ มีข้อมูลติดตามผลแล้ว'], 422);
         }

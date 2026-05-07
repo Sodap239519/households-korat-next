@@ -9,7 +9,7 @@
         </h2>
         <p class="text-sm text-slate-500 mt-0.5">บันทึกการจัดสรรโควต้าเห็ดให้แต่ละครัวเรือน</p>
       </div>
-      <Button label="เพิ่มการจัดสรร" icon="fi fi-rr-plus" @click="openCreate" />
+      <Button v-if="canCreateAllocation" label="เพิ่มการจัดสรร" icon="fi fi-rr-plus" @click="openCreate" />
     </div>
 
     <!-- Filter -->
@@ -97,8 +97,9 @@
         <Column header="จัดการ" :style="{ width: '140px' }">
           <template #body="{ data }">
             <div class="flex gap-1">
-              <Button icon="fi fi-rr-edit" severity="info" text rounded @click="openEdit(data)" v-tooltip.top="'แก้ไข'" />
-              <Button icon="fi fi-rr-trash" severity="danger" text rounded @click="confirmDelete(data)" v-tooltip.top="'ลบ'" />
+              <Button v-if="canActOn(data)" icon="fi fi-rr-edit" severity="info" text rounded @click="openEdit(data)" v-tooltip.top="'แก้ไข'" />
+              <Button v-if="canActOn(data)" icon="fi fi-rr-trash" severity="danger" text rounded @click="confirmDelete(data)" v-tooltip.top="'ลบ'" />
+              <span v-if="!canActOn(data)" class="text-xs text-slate-400">ดูอย่างเดียว</span>
             </div>
           </template>
         </Column>
@@ -131,6 +132,12 @@ import Pagination from '../components/Pagination.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import AllocationFormDialog from './AllocationFormDialog.vue'
 import { fmtThaiDate } from '../../utils/date.js'
+import { useAuth } from '../../composables/useAuth.js'
+
+const { canCreateAllocation, canActInDistrict } = useAuth()
+function canActOn(row) {
+  return canActInDistrict(row.quota?.district)
+}
 
 const vTooltip = Tooltip
 const confirm = useConfirm()

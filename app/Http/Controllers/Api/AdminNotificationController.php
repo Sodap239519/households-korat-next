@@ -13,9 +13,9 @@ class AdminNotificationController extends Controller
     private function authorize(Request $request): void
     {
         abort_unless(
-            $request->user() && $request->user()->isSuperAdmin(),
+            $request->user() && $request->user()->isAdmin(),
             403,
-            'ต้องเป็น superadmin เท่านั้น'
+            'ต้องเป็นผู้ดูแลระบบเท่านั้น',
         );
     }
 

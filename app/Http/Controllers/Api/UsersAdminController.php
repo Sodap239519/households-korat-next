@@ -13,7 +13,20 @@ class UsersAdminController extends Controller
 {
     private function authorizeAdmin(Request $request): void
     {
-        abort_unless($request->user() && $request->user()->isSuperAdmin(), 403, 'ต้องเป็น superadmin เท่านั้น');
+        abort_unless(
+            $request->user() && $request->user()->isAdmin(),
+            403,
+            'ต้องเป็นผู้ดูแลระบบ (admin หรือ superadmin)',
+        );
+    }
+
+    /** Roles a user is allowed to assign */
+    private function assignableRoles(User $actor): array
+    {
+        // superadmin can assign any role; admin cannot create superadmin
+        return $actor->isSuperAdmin()
+            ? User::ROLES_ALL
+            : [User::ROLE_STAFF, User::ROLE_AREA_STAFF, User::ROLE_ADMIN];
     }
 
     public function index(Request $request): JsonResponse
@@ -47,11 +60,25 @@ class UsersAdminController extends Controller
     {
         $this->authorizeAdmin($request);
 
+        // Only superadmin can edit a superadmin
+        if ($user->isSuperAdmin() && !$request->user()->isSuperAdmin()) {
+            abort(403, 'ต้องเป็น superadmin เท่านั้นที่แก้ไขบัญชี superadmin');
+        }
+
+        $assignable = $this->assignableRoles($request->user());
+
         $validated = $request->validate([
-            'name'  => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
-            'role'  => ['required', Rule::in(['superadmin', 'staff'])],
+            'name'                => ['required', 'string', 'max:120'],
+            'email'               => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'role'                => ['required', Rule::in($assignable)],
+            'assigned_districts'  => ['nullable', 'array', 'max:' . User::MAX_ASSIGNED_DISTRICTS],
+            'assigned_districts.*'=> ['string', 'max:100'],
         ]);
+
+        // Districts only meaningful for area_staff
+        if (($validated['role'] ?? null) !== User::ROLE_AREA_STAFF) {
+            $validated['assigned_districts'] = null;
+        }
 
         $user->update($validated);
 
@@ -61,6 +88,10 @@ class UsersAdminController extends Controller
     public function resetPassword(Request $request, User $user): JsonResponse
     {
         $this->authorizeAdmin($request);
+
+        if ($user->isSuperAdmin() && !$request->user()->isSuperAdmin()) {
+            abort(403, 'ต้องเป็น superadmin เท่านั้นที่รีเซ็ตรหัสของ superadmin');
+        }
 
         $request->validate([
             'new_password' => ['required', 'string', 'min:8'],
@@ -77,14 +108,25 @@ class UsersAdminController extends Controller
     {
         $this->authorizeAdmin($request);
 
+        $assignable = $this->assignableRoles($request->user());
+
         $validated = $request->validate([
-            'name'     => ['required', 'string', 'max:120'],
-            'email'    => ['required', 'email', 'unique:users,email'],
-            'role'     => ['required', Rule::in(['superadmin', 'staff'])],
-            'password' => ['required', 'string', 'min:8'],
+            'name'                => ['required', 'string', 'max:120'],
+            'email'               => ['required', 'email', 'unique:users,email'],
+            'role'                => ['required', Rule::in($assignable)],
+            'assigned_districts'  => ['nullable', 'array', 'max:' . User::MAX_ASSIGNED_DISTRICTS],
+            'assigned_districts.*'=> ['string', 'max:100'],
+            'password'            => ['required', 'string', 'min:8'],
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
+        if ($validated['role'] !== User::ROLE_AREA_STAFF) {
+            $validated['assigned_districts'] = null;
+        }
+
+        $validated['password']    = Hash::make($validated['password']);
+        $validated['is_approved'] = true;
+        $validated['approved_at'] = now();
+        $validated['approved_by'] = $request->user()->id;
         $user = User::create($validated);
 
         return response()->json($user, 201);
@@ -96,6 +138,9 @@ class UsersAdminController extends Controller
 
         if ($user->id === $request->user()->id) {
             return response()->json(['message' => 'ลบบัญชีตัวเองไม่ได้'], 422);
+        }
+        if ($user->isSuperAdmin() && !$request->user()->isSuperAdmin()) {
+            abort(403, 'ต้องเป็น superadmin เท่านั้นที่ลบบัญชี superadmin');
         }
 
         $user->delete();

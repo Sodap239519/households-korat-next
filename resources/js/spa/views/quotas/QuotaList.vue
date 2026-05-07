@@ -10,6 +10,7 @@
         <p class="text-sm text-slate-500 mt-0.5">กำหนด/แก้ไขโควต้าเห็ดของแต่ละอำเภอตามปีและรอบ</p>
       </div>
       <Button
+        v-if="canManageQuotas"
         label="เพิ่มโควต้า"
         icon="fi fi-rr-plus"
         size="large"
@@ -138,8 +139,9 @@
         <Column header="จัดการ" :style="{ width: '160px' }">
           <template #body="{ data }">
             <div class="flex gap-1">
-              <Button icon="fi fi-rr-edit" severity="info" text rounded @click="openEdit(data)" v-tooltip.top="'แก้ไข'" />
-              <Button icon="fi fi-rr-trash" severity="danger" text rounded @click="confirmDelete(data)" v-tooltip.top="'ลบ'" />
+              <Button v-if="canManageQuotas" icon="fi fi-rr-edit" severity="info" text rounded @click="openEdit(data)" v-tooltip.top="'แก้ไข'" />
+              <Button v-if="canManageQuotas" icon="fi fi-rr-trash" severity="danger" text rounded @click="confirmDelete(data)" v-tooltip.top="'ลบ'" />
+              <span v-if="!canManageQuotas" class="text-xs text-slate-400">ดูอย่างเดียว</span>
             </div>
           </template>
         </Column>
@@ -177,6 +179,9 @@ import Tooltip from 'primevue/tooltip'
 import QuotaFormDialog from './QuotaFormDialog.vue'
 import Pagination from '../components/Pagination.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
+import { useAuth } from '../../composables/useAuth.js'
+
+const { canManageQuotas } = useAuth()
 
 const vTooltip = Tooltip
 const confirm = useConfirm()

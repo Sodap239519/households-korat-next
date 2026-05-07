@@ -205,6 +205,9 @@ import api from '../../api/index.js'
 import FormSection from '../../components/FormSection.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { fmtThaiDate } from '../../utils/date.js'
+import { useAuth } from '../../composables/useAuth.js'
+
+const { isAdmin, assignedDistricts } = useAuth()
 
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
@@ -288,7 +291,12 @@ const historyTotalBags = computed(() => history.value.reduce((acc, h) => acc + N
 async function loadDistricts() {
   try {
     const { data } = await api.get('/locations/districts')
-    districtOptions.value = data
+    // For area_staff, restrict the list to their assigned districts
+    if (!isAdmin.value && Array.isArray(assignedDistricts.value) && assignedDistricts.value.length) {
+      districtOptions.value = data.filter(d => assignedDistricts.value.includes(d))
+    } else {
+      districtOptions.value = data
+    }
   } catch {}
 }
 

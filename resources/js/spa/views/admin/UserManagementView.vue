@@ -97,6 +97,25 @@
             <div>
               <label class="text-sm font-medium text-slate-700 mb-1 block">บทบาท <span class="text-rose-500">*</span></label>
               <Select v-model="form.role" :options="roleOptions" optionLabel="label" optionValue="value" class="w-full" />
+              <p v-if="form.role" class="text-[11px] text-slate-500 mt-1">{{ ROLE_HELP[form.role] }}</p>
+            </div>
+            <div v-if="form.role === 'area_staff'" class="rounded-xl border-2 border-violet-200 bg-violet-50/40 p-3">
+              <label class="text-sm font-medium text-slate-700 mb-1 block">
+                อำเภอที่ดูแล (เลือกได้สูงสุด 4)
+                <span class="text-[11px] text-slate-500 ml-1">— ปัจจุบันเลือก {{ (form.assigned_districts || []).length }}/4</span>
+              </label>
+              <MultiSelect
+                v-model="form.assigned_districts"
+                :options="districtOptions"
+                placeholder="-- เลือกอำเภอ --"
+                filter
+                display="chip"
+                :selectionLimit="4"
+                class="w-full"
+              />
+              <p class="text-[11px] text-slate-500 mt-1">
+                <i class="fi fi-rr-info"></i> เจ้าหน้าที่ประจำพื้นที่จะจัดสรรโควต้า/ติดตามผลได้เฉพาะอำเภอที่เลือก
+              </p>
             </div>
             <div v-if="!editId">
               <label class="text-sm font-medium text-slate-700 mb-1 block">รหัสผ่าน <span class="text-rose-500">*</span></label>
@@ -131,7 +150,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -144,6 +163,7 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
+import MultiSelect from 'primevue/multiselect'
 import Password from 'primevue/password'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
@@ -154,11 +174,13 @@ import Tooltip from 'primevue/tooltip'
 import Pagination from '../components/Pagination.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import FormSection from '../../components/FormSection.vue'
+import { useAuth } from '../../composables/useAuth.js'
 
 const vTooltip = Tooltip
 const toast = useToast()
 const confirm = useConfirm()
 const router = useRouter()
+const { isSuperAdmin } = useAuth()
 
 const items = ref([])
 const meta = ref({})
@@ -166,14 +188,30 @@ const loading = ref(false)
 const filters = ref({ search: '', role: null })
 let currentPage = 1, filterTimer = null
 
-const roleOptions = [
-  { label: 'ผู้ดูแลระบบ',  value: 'superadmin' },
-  { label: 'เจ้าหน้าที่', value: 'staff' },
-]
+const ROLE_HELP = {
+  staff:       'กรอกข้อมูลครัวเรือนและดู Dashboard ได้เท่านั้น',
+  area_staff:  'จัดสรรโควต้า + ติดตามผล ได้เฉพาะอำเภอที่ได้รับมอบหมาย',
+  admin:       'จัดการได้ทุกอย่างในระบบ ยกเว้นบัญชี superadmin',
+  superadmin:  'ผู้ดูแลระบบสูงสุด · จัดการได้ทุกอย่างรวมถึง superadmin คนอื่น',
+}
+
+const roleOptions = computed(() => {
+  const base = [
+    { label: 'เจ้าหน้าที่',                 value: 'staff' },
+    { label: 'เจ้าหน้าที่ประจำพื้นที่',  value: 'area_staff' },
+    { label: 'ผู้ดูแลระบบ (admin)',          value: 'admin' },
+  ]
+  if (isSuperAdmin.value) {
+    base.push({ label: 'ผู้ดูแลระบบสูงสุด (superadmin)', value: 'superadmin' })
+  }
+  return base
+})
+
+const districtOptions = ref([])
 
 const dialogOpen = ref(false)
 const editId = ref(null)
-const form = ref({ name: '', email: '', role: 'staff', password: '' })
+const form = ref({ name: '', email: '', role: 'staff', assigned_districts: [], password: '' })
 const saving = ref(false)
 const error = ref('')
 
@@ -209,13 +247,19 @@ function onPage(p) { currentPage = p; fetchData() }
 
 function openCreate() {
   editId.value = null
-  form.value = { name: '', email: '', role: 'staff', password: '' }
+  form.value = { name: '', email: '', role: 'staff', assigned_districts: [], password: '' }
   error.value = ''
   dialogOpen.value = true
 }
 function openEdit(u) {
   editId.value = u.id
-  form.value = { name: u.name, email: u.email, role: u.role, password: '' }
+  form.value = {
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    assigned_districts: u.assigned_districts || [],
+    password: '',
+  }
   error.value = ''
   dialogOpen.value = true
 }
@@ -224,12 +268,16 @@ async function save() {
   saving.value = true
   error.value = ''
   try {
+    const payload = {
+      name: form.value.name,
+      email: form.value.email,
+      role: form.value.role,
+      assigned_districts: form.value.role === 'area_staff' ? (form.value.assigned_districts || []) : null,
+    }
     if (editId.value) {
-      await api.put(`/admin/users/${editId.value}`, {
-        name: form.value.name, email: form.value.email, role: form.value.role,
-      })
+      await api.put(`/admin/users/${editId.value}`, payload)
     } else {
-      await api.post('/admin/users', form.value)
+      await api.post('/admin/users', { ...payload, password: form.value.password })
     }
     toast.add({ severity: 'success', summary: 'สำเร็จ', life: 2000 })
     dialogOpen.value = false
@@ -240,6 +288,13 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+async function fetchDistricts() {
+  try {
+    const { data } = await api.get('/locations/districts')
+    districtOptions.value = data
+  } catch {}
 }
 
 function openResetPwd(u) { resetTarget.value = u; resetPwd.value = ''; resetOpen.value = true }
@@ -284,5 +339,8 @@ function confirmDelete(u) {
   })
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  fetchDistricts()
+})
 </script>
