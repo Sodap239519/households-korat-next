@@ -9,7 +9,7 @@
         </h2>
         <p class="text-sm text-slate-500 mt-0.5">บันทึกการจัดสรรโควต้าเห็ดให้แต่ละครัวเรือน</p>
       </div>
-      <Button label="เพิ่มการจัดสรร" icon="fi fi-rr-plus" @click="$router.push('/app/mushroom/allocations/create')" />
+      <Button label="เพิ่มการจัดสรร" icon="fi fi-rr-plus" @click="openCreate" />
     </div>
 
     <!-- Filter -->
@@ -61,8 +61,8 @@
             <span class="font-semibold text-slate-700">{{ Number(data.bags).toLocaleString() }}</span>
           </template>
         </Column>
-        <Column field="allocated_date" header="วันที่จัดสรร" sortable :style="{ width: '140px' }">
-          <template #body="{ data }">{{ data.allocated_date ?? '-' }}</template>
+        <Column field="allocated_date" header="วันที่จัดสรร" sortable :style="{ minWidth: '160px' }">
+          <template #body="{ data }">{{ fmtThaiDate(data.allocated_date) }}</template>
         </Column>
         <Column header="สถานะ" :style="{ width: '160px' }">
           <template #body="{ data }">
@@ -72,7 +72,7 @@
         <Column header="จัดการ" :style="{ width: '140px' }">
           <template #body="{ data }">
             <div class="flex gap-1">
-              <Button icon="fi fi-rr-edit" severity="info" text rounded @click="$router.push(`/app/mushroom/allocations/${data.id}/edit`)" v-tooltip.top="'แก้ไข'" />
+              <Button icon="fi fi-rr-edit" severity="info" text rounded @click="openEdit(data)" v-tooltip.top="'แก้ไข'" />
               <Button icon="fi fi-rr-trash" severity="danger" text rounded @click="confirmDelete(data)" v-tooltip.top="'ลบ'" />
             </div>
           </template>
@@ -80,6 +80,8 @@
       </DataTable>
       <Pagination :meta="meta" @change="onPage" class="p-4" />
     </div>
+
+    <AllocationFormDialog v-model="dialogOpen" :allocationId="editId" @saved="onSaved" />
 
     <ConfirmDialog />
     <Toast position="top-right" />
@@ -102,6 +104,8 @@ import Tooltip from 'primevue/tooltip'
 
 import Pagination from '../components/Pagination.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
+import AllocationFormDialog from './AllocationFormDialog.vue'
+import { fmtThaiDate } from '../../utils/date.js'
 
 const vTooltip = Tooltip
 const confirm = useConfirm()
@@ -111,7 +115,16 @@ const items = ref([])
 const meta = ref({})
 const loading = ref(false)
 const filters = ref({ status: null })
+const dialogOpen = ref(false)
+const editId = ref(null)
 let currentPage = 1, filterTimer = null
+
+function openCreate() { editId.value = null; dialogOpen.value = true }
+function openEdit(item) { editId.value = item.id; dialogOpen.value = true }
+function onSaved() {
+  toast.add({ severity: 'success', summary: 'สำเร็จ', detail: editId.value ? 'แก้ไขข้อมูลแล้ว' : 'เพิ่มการจัดสรรแล้ว', life: 2000 })
+  fetchData()
+}
 
 const statusOptions = [
   { label: 'รอดำเนินการ',     value: 'pending' },

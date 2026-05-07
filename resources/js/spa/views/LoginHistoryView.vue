@@ -78,6 +78,7 @@ import Button from 'primevue/button'
 
 import Pagination from './components/Pagination.vue'
 import StatusBadge from '../components/StatusBadge.vue'
+import { fmtThaiDateTime } from '../utils/date.js'
 
 const items = ref([])
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
@@ -85,11 +86,7 @@ const loading = ref(false)
 let currentPage = 1
 
 function fmtDate(d) {
-  if (!d) return '-'
-  return new Date(d).toLocaleString('th-TH', {
-    year: 'numeric', month: 'short', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  })
+  return fmtThaiDateTime(d, { short: true })
 }
 
 function duration(item) {

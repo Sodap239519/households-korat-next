@@ -10,9 +10,7 @@ import HouseholdCreatePage from '../views/households/HouseholdCreatePage.vue'
 import TrackingView from '../views/TrackingView.vue'
 import QuotaList from '../views/quotas/QuotaList.vue'
 import AllocationList from '../views/allocations/AllocationList.vue'
-import AllocationForm from '../views/allocations/AllocationForm.vue'
 import FollowupList from '../views/followups/FollowupList.vue'
-import FollowupForm from '../views/followups/FollowupForm.vue'
 import MarketingHome from '../views/marketing/MarketingHome.vue'
 import ReportView from '../views/reports/ReportView.vue'
 import ProfileView from '../views/ProfileView.vue'
@@ -45,11 +43,7 @@ const routes = [
             { path: 'mushroom', redirect: '/app/mushroom/quotas' },
             { path: 'mushroom/quotas',                component: QuotaList },
             { path: 'mushroom/allocations',           component: AllocationList },
-            { path: 'mushroom/allocations/create',    component: AllocationForm },
-            { path: 'mushroom/allocations/:id/edit',  component: AllocationForm },
             { path: 'mushroom/followups',             component: FollowupList },
-            { path: 'mushroom/followups/create',      component: FollowupForm },
-            { path: 'mushroom/followups/:id/edit',    component: FollowupForm },
 
             // Backwards compat (old paths)
             { path: 'quotas',      redirect: '/app/mushroom/quotas' },

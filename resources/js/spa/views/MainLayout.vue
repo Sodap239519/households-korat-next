@@ -252,6 +252,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useToast } from 'primevue/usetoast'
 import api from '../api/index.js'
+import { fmtThaiDateLong, relativeTime as relTimeUtil } from '../utils/date.js'
 
 import Menu from 'primevue/menu'
 import Popover from 'primevue/popover'
@@ -337,9 +338,7 @@ const pageTitle = computed(() => {
   return pageTitleMap[seg] || 'Households Korat'
 })
 
-const today = computed(() =>
-  new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
-)
+const today = computed(() => fmtThaiDateLong(new Date()))
 
 const initials = computed(() => {
   const n = user.value?.name || ''
@@ -498,18 +497,7 @@ function goManageUsers() {
   router.push('/app/admin/users')
 }
 
-function relativeTime(iso) {
-  if (!iso) return ''
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.round(diff / 60000)
-  if (m < 1)   return 'เมื่อสักครู่'
-  if (m < 60)  return `${m} นาทีที่แล้ว`
-  const h = Math.round(m / 60)
-  if (h < 24)  return `${h} ชั่วโมงที่แล้ว`
-  const d = Math.round(h / 24)
-  if (d < 30)  return `${d} วันที่แล้ว`
-  return new Date(iso).toLocaleDateString('th-TH')
-}
+const relativeTime = relTimeUtil
 
 watch(() => user.value?.role, (role) => {
   if (role === 'superadmin') fetchCounts()

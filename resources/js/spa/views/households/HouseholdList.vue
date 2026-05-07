@@ -171,7 +171,7 @@
             <Field label="รหัสบ้าน" :value="viewItem.household_code" />
             <Field label="ชื่อ-นามสกุล" :value="`${viewItem.prefix || ''} ${viewItem.first_name || ''} ${viewItem.last_name || ''}`.trim()" />
             <Field label="บัตรประชาชน" :value="viewItem.id_card" />
-            <Field label="วัน/เดือน/ปีเกิด" :value="viewItem.dob" />
+            <Field label="วัน/เดือน/ปีเกิด" :value="fmtThaiDate(viewItem.dob)" />
             <Field label="อายุ" :value="viewItem.age" />
             <Field label="เพศ" :value="viewItem.gender" />
             <Field label="การศึกษา" :value="viewItem.education" />
@@ -257,6 +257,7 @@ import Pagination from '../components/Pagination.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import FormSection from '../../components/FormSection.vue'
 import HouseholdFormDialog from './HouseholdFormDialog.vue'
+import { fmtThaiDate } from '../../utils/date.js'
 
 const props = defineProps({
   autoCreate: { type: Boolean, default: false },

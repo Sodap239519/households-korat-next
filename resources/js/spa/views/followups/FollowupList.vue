@@ -8,7 +8,7 @@
         </h2>
         <p class="text-sm text-slate-500 mt-0.5">บันทึกผลผลิตและรายได้จากการเพาะเห็ดของแต่ละครัวเรือน</p>
       </div>
-      <Button label="เพิ่มการติดตาม" icon="fi fi-rr-plus" @click="$router.push('/app/mushroom/followups/create')" />
+      <Button label="เพิ่มการติดตาม" icon="fi fi-rr-plus" @click="openCreate" />
     </div>
 
     <div class="box-card p-4">
@@ -57,8 +57,8 @@
             </span>
           </template>
         </Column>
-        <Column field="followup_date" header="วันที่ติดตาม" sortable :style="{ width: '130px' }">
-          <template #body="{ data }">{{ data.followup_date ?? '-' }}</template>
+        <Column field="followup_date" header="วันที่ติดตาม" sortable :style="{ minWidth: '160px' }">
+          <template #body="{ data }">{{ fmtThaiDate(data.followup_date) }}</template>
         </Column>
         <Column field="harvest_kg" header="ผลผลิต (กก.)" sortable :style="{ width: '120px' }">
           <template #body="{ data }">{{ Number(data.harvest_kg || 0).toFixed(2) }}</template>
@@ -80,7 +80,7 @@
         <Column header="จัดการ" :style="{ width: '120px' }">
           <template #body="{ data }">
             <div class="flex gap-1">
-              <Button icon="fi fi-rr-edit" severity="info" text rounded @click="$router.push(`/app/mushroom/followups/${data.id}/edit`)" v-tooltip.top="'แก้ไข'" />
+              <Button icon="fi fi-rr-edit" severity="info" text rounded @click="openEdit(data)" v-tooltip.top="'แก้ไข'" />
               <Button icon="fi fi-rr-trash" severity="danger" text rounded @click="confirmDelete(data)" v-tooltip.top="'ลบ'" />
             </div>
           </template>
@@ -88,6 +88,8 @@
       </DataTable>
       <Pagination :meta="meta" @change="onPage" class="p-4" />
     </div>
+
+    <FollowupFormDialog v-model="dialogOpen" :followupId="editId" @saved="onSaved" />
 
     <ConfirmDialog />
     <Toast position="top-right" />
@@ -110,6 +112,8 @@ import Tooltip from 'primevue/tooltip'
 
 import Pagination from '../components/Pagination.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
+import FollowupFormDialog from './FollowupFormDialog.vue'
+import { fmtThaiDate } from '../../utils/date.js'
 
 const vTooltip = Tooltip
 const confirm = useConfirm()
@@ -119,7 +123,16 @@ const items = ref([])
 const meta = ref({})
 const loading = ref(false)
 const filters = ref({ sale_channel: null })
+const dialogOpen = ref(false)
+const editId = ref(null)
 let currentPage = 1, filterTimer = null
+
+function openCreate() { editId.value = null; dialogOpen.value = true }
+function openEdit(item) { editId.value = item.id; dialogOpen.value = true }
+function onSaved() {
+  toast.add({ severity: 'success', summary: 'สำเร็จ', detail: editId.value ? 'แก้ไขข้อมูลแล้ว' : 'เพิ่มการติดตามแล้ว', life: 2000 })
+  fetchData()
+}
 
 const channelOptions = [
   { label: 'ขายตรง',   value: 'direct' },
