@@ -1,4 +1,5 @@
 import { ref, readonly } from 'vue'
+import axios from 'axios'
 import api from '../api/index.js'
 
 const user = ref(null)
@@ -18,8 +19,8 @@ export function useAuth() {
     }
 
     async function login(email, password) {
-        // First get CSRF cookie
-        await axios.get('/sanctum/csrf-cookie')
+        // Sanctum CSRF cookie endpoint is at the app root (NOT /api/...)
+        await axios.get('/sanctum/csrf-cookie', { withCredentials: true })
         const { data } = await api.post('/login', { email, password })
         user.value = data.user
         return data.user
