@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MushroomFollowup;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -53,6 +54,8 @@ class MushroomFollowupController extends Controller
 
         $followup = MushroomFollowup::create($validated);
         $followup->load(['allocation.household', 'allocation.quota']);
+
+        AdminNotificationService::followupCreated($followup, $request->user());
 
         return response()->json($followup, 201);
     }

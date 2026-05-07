@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +26,8 @@ class RegisterController extends Controller
             'role'        => 'staff',
             'is_approved' => false,
         ]);
+
+        AdminNotificationService::userRegistered($user);
 
         return response()->json([
             'message' => 'สมัครสมาชิกสำเร็จ — กรุณารอผู้ดูแลระบบยืนยันสิทธิ์ก่อนเข้าใช้งาน',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Household;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -38,6 +39,9 @@ class HouseholdApiController extends Controller
         $validated = $this->validatePayload($request);
         $validated['recorded_by'] = $request->user()->id;
         $household = Household::create($validated);
+
+        AdminNotificationService::householdCreated($household, $request->user());
+
         return response()->json($household, 201);
     }
 

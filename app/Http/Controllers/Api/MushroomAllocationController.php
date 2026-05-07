@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MushroomAllocation;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -54,6 +55,8 @@ class MushroomAllocationController extends Controller
 
         $allocation = MushroomAllocation::create($validated);
         $allocation->load(['quota', 'household']);
+
+        AdminNotificationService::allocationCreated($allocation, $request->user());
 
         return response()->json($allocation, 201);
     }

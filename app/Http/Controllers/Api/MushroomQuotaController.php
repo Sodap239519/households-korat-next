@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MushroomQuotaDistrict;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -46,6 +47,8 @@ class MushroomQuotaController extends Controller
         ]);
 
         $quota = MushroomQuotaDistrict::create($validated);
+
+        AdminNotificationService::quotaCreated($quota, $request->user());
 
         return response()->json($quota, 201);
     }

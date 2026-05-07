@@ -129,36 +129,64 @@
           </button>
 
           <Popover ref="bellPanel" :pt="{ root: { class: 'mt-2' } }">
-            <div class="w-80">
-              <div class="px-4 py-3 border-b border-slate-200">
-                <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                  <i class="fi fi-rr-bell text-violet-600"></i> การแจ้งเตือน
-                </h3>
-                <p class="text-[11px] text-slate-500 mt-0.5">ผู้สมัครรอการยืนยันสิทธิ์</p>
+            <div class="w-96">
+              <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                  <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <i class="fi fi-rr-bell text-violet-600"></i> การแจ้งเตือน
+                    <span v-if="unreadTotal > 0" class="ml-1 px-1.5 py-0 rounded-full bg-fuchsia-100 text-fuchsia-700 text-[10px] font-bold">
+                      {{ unreadTotal }} ใหม่
+                    </span>
+                  </h3>
+                  <p class="text-[11px] text-slate-500 mt-0.5">กิจกรรมล่าสุดในระบบ</p>
+                </div>
+                <button v-if="unreadTotal > 0" @click="markAllRead" class="text-[11px] text-violet-600 hover:underline">
+                  อ่านทั้งหมด
+                </button>
               </div>
 
-              <div v-if="loadingPending" class="p-6 text-center text-violet-400">
+              <div v-if="loadingNotifs" class="p-6 text-center text-violet-400">
                 <i class="fi fi-rr-loading text-2xl animate-spin"></i>
               </div>
-              <div v-else-if="pendingUsers.length === 0" class="p-6 text-center text-slate-400 text-sm">
+              <div v-else-if="notifs.length === 0" class="p-6 text-center text-slate-400 text-sm">
                 <i class="fi fi-rr-check-circle text-2xl text-emerald-400"></i>
-                <p class="mt-2">ไม่มีคำขอที่รอดำเนินการ</p>
+                <p class="mt-2">ยังไม่มีการแจ้งเตือน</p>
               </div>
-              <div v-else class="max-h-80 overflow-y-auto">
-                <div v-for="u in pendingUsers" :key="u.id" class="px-4 py-3 border-b border-slate-100 hover:bg-violet-50/40">
-                  <div class="flex items-start justify-between gap-2">
+              <div v-else class="max-h-96 overflow-y-auto">
+                <div
+                  v-for="n in notifs"
+                  :key="n.id"
+                  :class="['px-4 py-3 border-b border-slate-100 cursor-pointer transition relative',
+                    n.read_at ? 'bg-white hover:bg-slate-50' : 'bg-violet-50/40 hover:bg-violet-100/50']"
+                  @click="onNotifClick(n)"
+                >
+                  <div class="flex items-start gap-3">
+                    <div :class="['flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-white shadow-sm',
+                      typeStyle(n.type).bg]">
+                      <i :class="typeStyle(n.type).icon"></i>
+                    </div>
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-slate-800 truncate">{{ u.name }}</p>
-                      <p class="text-xs text-slate-500 truncate">{{ u.email }}</p>
-                      <p class="text-[10px] text-slate-400 mt-0.5">
-                        <i class="fi fi-rr-clock"></i> {{ relativeTime(u.created_at) }}
+                      <div class="flex items-center gap-1.5">
+                        <p class="text-sm font-medium text-slate-800 truncate">{{ n.title }}</p>
+                        <span v-if="!n.read_at" class="w-1.5 h-1.5 rounded-full bg-fuchsia-500 flex-shrink-0"></span>
+                      </div>
+                      <p class="text-xs text-slate-500 truncate">{{ n.message }}</p>
+                      <p class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                        <i class="fi fi-rr-clock"></i> {{ relativeTime(n.created_at) }}
+                        <span v-if="n.actor" class="ml-1">· โดย {{ n.actor.name }}</span>
                       </p>
                     </div>
-                    <div class="flex gap-1 flex-shrink-0">
+
+                    <!-- Inline approve/reject only for user_registered + when target user still exists -->
+                    <div v-if="n.type === 'user_registered' && n.meta?.user_id" class="flex gap-1 flex-shrink-0">
                       <Button icon="fi fi-rr-check" severity="success" rounded size="small"
-                              v-tooltip.top="'อนุมัติ'" @click="approve(u)" :loading="processingId === u.id" />
+                              v-tooltip.top="'อนุมัติ'"
+                              @click.stop="approveById(n.meta.user_id, n.id)"
+                              :loading="processingId === n.meta.user_id" />
                       <Button icon="fi fi-rr-cross-small" severity="danger" rounded size="small"
-                              v-tooltip.top="'ปฏิเสธ'" @click="reject(u)" :loading="processingId === u.id" />
+                              v-tooltip.top="'ปฏิเสธ'"
+                              @click.stop="rejectById(n.meta.user_id, n.id)"
+                              :loading="processingId === n.meta.user_id" />
                     </div>
                   </div>
                 </div>
@@ -333,47 +361,88 @@ const userMenuItems = computed(() => {
 
 async function handleLogout() {
   await logout()
-  router.push('/app/login')
+  router.push('/app')
 }
 
 // ===== Notification bell (superadmin only) =====
 const bellPanel = ref(null)
-const pendingCount = ref(0)
-const pendingUsers = ref([])
-const loadingPending = ref(false)
+const pendingCount = ref(0)   // unread total (for badge)
+const unreadTotal = ref(0)
+const notifs = ref([])
+const loadingNotifs = ref(false)
 const processingId = ref(null)
 let pollTimer = null
 
-async function fetchPendingCount() {
+const TYPE_STYLES = {
+  user_registered:    { bg: 'bg-violet-500',  icon: 'fi fi-rr-user-add' },
+  household_created:  { bg: 'bg-indigo-500',  icon: 'fi fi-rr-house-blank' },
+  quota_created:      { bg: 'bg-fuchsia-500', icon: 'fi fi-rr-clipboard-list' },
+  allocation_created: { bg: 'bg-emerald-500', icon: 'fi fi-rr-seedling' },
+  followup_created:   { bg: 'bg-orange-500',  icon: 'fi fi-rr-list-check' },
+}
+function typeStyle(t) { return TYPE_STYLES[t] || { bg: 'bg-slate-500', icon: 'fi fi-rr-bell' } }
+
+async function fetchCounts() {
   if (user.value?.role !== 'superadmin') return
   try {
     const { data } = await api.get('/admin/notifications/counts')
-    pendingCount.value = data.pending_users
+    pendingCount.value = data.unread_total
+    unreadTotal.value = data.unread_total
   } catch {}
 }
 
-async function fetchPendingUsers() {
-  loadingPending.value = true
+async function fetchNotifs() {
+  loadingNotifs.value = true
   try {
-    const { data } = await api.get('/admin/notifications/pending', { params: { per_page: 10 } })
-    pendingUsers.value = data.data
+    const { data } = await api.get('/admin/notifications', { params: { per_page: 15 } })
+    notifs.value = data.data
   } finally {
-    loadingPending.value = false
+    loadingNotifs.value = false
   }
 }
 
 async function toggleBell(e) {
   bellPanel.value?.toggle(e)
-  await fetchPendingUsers()
+  await fetchNotifs()
 }
 
-async function approve(u) {
-  processingId.value = u.id
+async function onNotifClick(n) {
+  if (!n.read_at) {
+    try {
+      await api.post(`/admin/notifications/${n.id}/read`)
+      n.read_at = new Date().toISOString()
+      pendingCount.value = Math.max(0, pendingCount.value - 1)
+      unreadTotal.value  = Math.max(0, unreadTotal.value  - 1)
+    } catch {}
+  }
+  if (n.link) {
+    bellPanel.value?.hide()
+    router.push(n.link)
+  }
+}
+
+async function markAllRead() {
   try {
-    await api.post(`/admin/users/${u.id}/approve`)
-    toast.add({ severity: 'success', summary: 'อนุมัติแล้ว', detail: u.name, life: 2000 })
-    pendingUsers.value = pendingUsers.value.filter(x => x.id !== u.id)
-    pendingCount.value = Math.max(0, pendingCount.value - 1)
+    await api.post('/admin/notifications/read-all')
+    notifs.value.forEach(n => { if (!n.read_at) n.read_at = new Date().toISOString() })
+    pendingCount.value = 0
+    unreadTotal.value = 0
+    toast.add({ severity: 'success', summary: 'อ่านทั้งหมดแล้ว', life: 1500 })
+  } catch {}
+}
+
+async function approveById(userId, notifId) {
+  processingId.value = userId
+  try {
+    await api.post(`/admin/users/${userId}/approve`)
+    toast.add({ severity: 'success', summary: 'อนุมัติแล้ว', life: 1800 })
+    // Mark this notif as read locally
+    const n = notifs.value.find(x => x.id === notifId)
+    if (n && !n.read_at) {
+      n.read_at = new Date().toISOString()
+      pendingCount.value = Math.max(0, pendingCount.value - 1)
+      unreadTotal.value = Math.max(0, unreadTotal.value - 1)
+    }
   } catch (e) {
     toast.add({ severity: 'error', summary: 'ผิดพลาด', detail: e.response?.data?.message || '', life: 3000 })
   } finally {
@@ -381,14 +450,18 @@ async function approve(u) {
   }
 }
 
-async function reject(u) {
-  if (!confirm(`ปฏิเสธบัญชี ${u.name} (${u.email})? บัญชีจะถูกลบออกจากระบบ`)) return
-  processingId.value = u.id
+async function rejectById(userId, notifId) {
+  if (!confirm('ปฏิเสธและลบบัญชีนี้ออกจากระบบ?')) return
+  processingId.value = userId
   try {
-    await api.post(`/admin/users/${u.id}/reject`)
-    toast.add({ severity: 'success', summary: 'ปฏิเสธแล้ว', life: 2000 })
-    pendingUsers.value = pendingUsers.value.filter(x => x.id !== u.id)
-    pendingCount.value = Math.max(0, pendingCount.value - 1)
+    await api.post(`/admin/users/${userId}/reject`)
+    toast.add({ severity: 'success', summary: 'ปฏิเสธแล้ว', life: 1800 })
+    const n = notifs.value.find(x => x.id === notifId)
+    if (n && !n.read_at) {
+      n.read_at = new Date().toISOString()
+      pendingCount.value = Math.max(0, pendingCount.value - 1)
+      unreadTotal.value = Math.max(0, unreadTotal.value - 1)
+    }
   } catch (e) {
     toast.add({ severity: 'error', summary: 'ผิดพลาด', detail: e.response?.data?.message || '', life: 3000 })
   } finally {
@@ -415,12 +488,12 @@ function relativeTime(iso) {
 }
 
 watch(() => user.value?.role, (role) => {
-  if (role === 'superadmin') fetchPendingCount()
+  if (role === 'superadmin') fetchCounts()
 }, { immediate: true })
 
 onMounted(() => {
-  // Poll every 60s for new pending users
-  pollTimer = setInterval(fetchPendingCount, 60_000)
+  // Poll every 60s for new notifications
+  pollTimer = setInterval(fetchCounts, 60_000)
 })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)

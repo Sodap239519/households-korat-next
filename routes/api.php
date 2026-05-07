@@ -47,10 +47,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/users/{user}/login-history', [LoginHistoryController::class, 'forUser']);
 
     // Admin: notifications + approval
-    Route::get('/admin/notifications/counts',    [AdminNotificationController::class, 'counts']);
-    Route::get('/admin/notifications/pending',   [AdminNotificationController::class, 'pendingUsers']);
-    Route::post('/admin/users/{user}/approve',   [AdminNotificationController::class, 'approve']);
-    Route::post('/admin/users/{user}/reject',    [AdminNotificationController::class, 'reject']);
+    Route::get('/admin/notifications/counts',                   [AdminNotificationController::class, 'counts']);
+    Route::get('/admin/notifications',                          [AdminNotificationController::class, 'list']);
+    Route::post('/admin/notifications/read-all',                [AdminNotificationController::class, 'markAllRead']);
+    Route::post('/admin/notifications/{notification}/read',     [AdminNotificationController::class, 'markRead']);
+    Route::get('/admin/notifications/pending-users',            [AdminNotificationController::class, 'pendingUsers']);
+    Route::post('/admin/users/{user}/approve',                  [AdminNotificationController::class, 'approve']);
+    Route::post('/admin/users/{user}/reject',                   [AdminNotificationController::class, 'reject']);
 
     // Households
     Route::get('/households/export', [HouseholdExportController::class, 'csv']);
