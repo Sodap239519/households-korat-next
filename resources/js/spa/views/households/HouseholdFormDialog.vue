@@ -122,7 +122,7 @@
       </FormSection>
 
       <!-- Section 4: เห็ด/เกษตร -->
-      <FormSection title="ส่วนที่ 4: เห็ด · เกษตร · ความพร้อม" icon="fi fi-rr-leaf" tone="emerald">
+      <FormSection title="ส่วนที่ 4: เห็ด · เกษตร · ความพร้อม" icon="fi fi-rr-mushroom" tone="emerald">
         <!-- Toggles -->
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4 p-3 rounded-lg bg-emerald-50/50 border border-emerald-200/50">
           <ToggleField v-model="form.has_mushroom_area"  label="มีพื้นที่เพาะเห็ด" />

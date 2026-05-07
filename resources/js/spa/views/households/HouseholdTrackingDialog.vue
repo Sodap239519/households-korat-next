@@ -40,7 +40,7 @@
           unit="ถุง"
         />
         <MetricCard
-          icon="fi fi-rr-leaf"
+          icon="fi fi-rr-mushroom"
           gradient="from-emerald-500 to-teal-600"
           label="ผลผลิต"
           :value="fmt(totals?.total_harvest_kg, 2)"

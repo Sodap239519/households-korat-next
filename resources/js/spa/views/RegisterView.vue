@@ -7,7 +7,7 @@
       <div class="glass rounded-3xl shadow-2xl shadow-violet-500/20 p-8 sm:p-10">
         <div class="text-center mb-8">
           <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 text-white text-3xl shadow-lg shadow-violet-500/40 mb-4">
-            <i class="fi fi-rr-user-add"></i>
+            <i class="fi fi-rr-house-blank"></i>
           </div>
           <h1 class="text-2xl font-bold bg-gradient-to-r from-violet-700 via-purple-700 to-fuchsia-700 bg-clip-text text-transparent tracking-tight">
             สมัครสมาชิก

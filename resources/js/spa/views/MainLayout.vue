@@ -25,7 +25,7 @@
       <!-- Brand -->
       <div class="relative px-4 py-5 border-b border-white/10 flex items-center gap-3">
         <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center text-xl shadow">
-          <i class="fi fi-rr-leaf"></i>
+          <i class="fi fi-rr-house-blank"></i>
         </div>
         <div v-if="!collapsedDisplay" class="overflow-hidden flex-1">
           <h1 class="text-base font-bold leading-tight whitespace-nowrap">Households Korat</h1>
@@ -290,7 +290,7 @@ const navItems = [
   { to: '/app/tracking', icon: 'fi fi-rr-search', label: 'การติดตาม' },
   {
     label: 'โควต้าเห็ด',
-    icon: 'fi fi-rr-leaf',
+    icon: 'fi fi-rr-mushroom',
     matchPrefix: '/app/mushroom',
     children: [
       { to: '/app/mushroom/quotas',      icon: 'fi fi-rr-clipboard-list', label: 'โควต้าอำเภอ' },

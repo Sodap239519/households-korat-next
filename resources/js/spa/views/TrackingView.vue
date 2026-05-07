@@ -125,7 +125,7 @@
             Number(h.total_bags_received) > 0 ? 'border-violet-200 bg-violet-50/40' :
             'border-slate-200 bg-slate-50/40']">
             <p class="text-[11px] font-semibold text-violet-700 uppercase tracking-wide mb-2">
-              <i class="fi fi-rr-leaf"></i> ข้อมูลโควต้าเห็ด
+              <i class="fi fi-rr-mushroom"></i> ข้อมูลโควต้าเห็ด
             </p>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div>
@@ -227,7 +227,7 @@ const quickFilters = [
   {
     key: 'has_harvest',
     label: 'ได้รับผลผลิตแล้ว',
-    icon: 'fi fi-rr-leaf',
+    icon: 'fi fi-rr-mushroom',
     activeBg: 'bg-emerald-100', activeText: 'text-emerald-800', activeBorder: 'border-emerald-400',
   },
   {

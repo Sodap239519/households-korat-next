@@ -41,7 +41,7 @@
       <Tabs v-model:value="activeTab">
         <TabList>
           <Tab value="0"><span class="flex items-center gap-2"><i class="fi fi-rr-house-blank"></i> ภาพรวมครัวเรือน</span></Tab>
-          <Tab value="1"><span class="flex items-center gap-2"><i class="fi fi-rr-leaf"></i> การเพาะเห็ด</span></Tab>
+          <Tab value="1"><span class="flex items-center gap-2"><i class="fi fi-rr-mushroom"></i> การเพาะเห็ด</span></Tab>
           <Tab value="2"><span class="flex items-center gap-2"><i class="fi fi-rr-search"></i> การติดตาม</span></Tab>
           <Tab value="3"><span class="flex items-center gap-2"><i class="fi fi-rr-shop"></i> การตลาด</span></Tab>
         </TabList>
@@ -92,7 +92,7 @@
               <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <HeroCard label="โควต้าทั้งหมด" :value="fmt(m.summary?.total_bags_quota)"     unit="ถุง" icon="fi fi-rr-shopping-bag"   gradient="from-violet-500 via-purple-600 to-fuchsia-600" />
                 <HeroCard label="จัดสรรแล้ว"   :value="fmt(m.summary?.total_bags_allocated)" unit="ถุง" icon="fi fi-rr-seedling"      gradient="from-fuchsia-500 via-pink-500 to-rose-500" :hint="allocPct" />
-                <HeroCard label="ผลผลิตรวม"   :value="fmt(m.summary?.total_harvest_kg, 2)"  unit="กก." icon="fi fi-rr-leaf"          gradient="from-emerald-500 via-teal-500 to-cyan-500" />
+                <HeroCard label="ผลผลิตรวม"   :value="fmt(m.summary?.total_harvest_kg, 2)"  unit="กก." icon="fi fi-rr-mushroom"      gradient="from-emerald-500 via-teal-500 to-cyan-500" />
                 <HeroCard label="รายได้รวม"   :value="fmt(m.summary?.total_revenue, 2)"     unit="บาท" icon="fi fi-rr-money-bill-wave" gradient="from-amber-500 via-orange-500 to-rose-500" />
               </div>
 
