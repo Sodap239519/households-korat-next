@@ -62,6 +62,16 @@
             <div class="font-mono text-xs text-violet-600">{{ data.household?.household_code }}</div>
           </template>
         </Column>
+        <Column header="ครั้งที่" :style="{ width: '90px' }" :pt="{ headerCell: { class: 'text-center' } }">
+          <template #body="{ data }">
+            <div class="flex items-center justify-center">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white font-bold text-sm shadow"
+                    v-tooltip.top="`ครั้งที่ ${data.allocation_round} ของครัวเรือนนี้`">
+                {{ data.allocation_round || 1 }}
+              </span>
+            </div>
+          </template>
+        </Column>
         <Column header="โควต้า (อำเภอ/ปี/รอบ)" :style="{ minWidth: '200px' }">
           <template #body="{ data }">
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 text-xs border border-violet-200">

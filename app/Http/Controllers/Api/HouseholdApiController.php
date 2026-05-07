@@ -72,6 +72,9 @@ class HouseholdApiController extends Controller
     public function tracking(Household $household): JsonResponse
     {
         $household->load([
+            'allocations' => function ($q) {
+                $q->orderByRaw('COALESCE(allocated_date, "9999-12-31") asc')->orderBy('id');
+            },
             'allocations.quota',
             'allocations.followups' => function ($q) {
                 $q->orderBy('followup_round');

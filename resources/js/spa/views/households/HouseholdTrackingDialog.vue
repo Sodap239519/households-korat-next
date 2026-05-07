@@ -90,16 +90,22 @@
           <p class="mt-2">ยังไม่ได้รับการจัดสรรโควต้าเห็ด</p>
         </div>
         <div v-else class="space-y-3">
-          <div v-for="a in household.allocations" :key="a.id" class="rounded-xl border-2 border-emerald-200 bg-white/60 overflow-hidden">
+          <div v-for="(a, idx) in household.allocations" :key="a.id" class="rounded-xl border-2 border-emerald-200 bg-white/60 overflow-hidden">
             <div class="px-4 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <p class="font-semibold text-slate-700 text-sm">
-                  <i class="fi fi-rr-marker text-emerald-600"></i>
-                  {{ a.quota?.district || '-' }} · ปี {{ a.quota?.year }} · รอบ {{ a.quota?.round }}
-                </p>
-                <p class="text-xs text-slate-500 mt-0.5">
-                  วันที่จัดสรร: {{ fmtThaiDate(a.allocated_date) }}
-                </p>
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white font-bold shadow">
+                  {{ idx + 1 }}
+                </span>
+                <div>
+                  <p class="font-semibold text-slate-700 text-sm">
+                    <i class="fi fi-rr-marker text-emerald-600"></i>
+                    ครั้งที่ {{ idx + 1 }} · {{ a.quota?.district || '-' }} · ปี {{ a.quota?.year }}
+                    <span class="text-[11px] font-normal text-slate-500">(โควต้ารอบ {{ a.quota?.round }})</span>
+                  </p>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    วันที่จัดสรร: {{ fmtThaiDate(a.allocated_date) }}
+                  </p>
+                </div>
               </div>
               <div class="flex items-center gap-2">
                 <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">

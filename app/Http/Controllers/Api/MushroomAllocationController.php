@@ -33,6 +33,28 @@ class MushroomAllocationController extends Controller
         $allocations = $query->orderBy('allocated_date', 'desc')
             ->paginate($request->input('per_page', 20));
 
+        // Annotate each row with allocation_round (Nth time this household
+        // has been allocated, ordered by allocated_date then id ASC).
+        $householdIds = $allocations->pluck('household_id')->unique()->filter()->values()->all();
+        if (!empty($householdIds)) {
+            $all = MushroomAllocation::whereIn('household_id', $householdIds)
+                ->orderBy('household_id')
+                ->orderByRaw('COALESCE(allocated_date, "9999-12-31") asc')
+                ->orderBy('id')
+                ->get(['id', 'household_id']);
+
+            $ranks = [];
+            $counts = [];
+            foreach ($all as $row) {
+                $counts[$row->household_id] = ($counts[$row->household_id] ?? 0) + 1;
+                $ranks[$row->id] = $counts[$row->household_id];
+            }
+
+            $allocations->getCollection()->each(function ($a) use ($ranks) {
+                $a->allocation_round = $ranks[$a->id] ?? 1;
+            });
+        }
+
         return response()->json($allocations);
     }
 
