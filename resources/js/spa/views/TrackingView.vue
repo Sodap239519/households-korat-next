@@ -15,11 +15,20 @@
       <div class="flex items-center gap-2 mb-3 text-sm text-violet-700 font-semibold">
         <i class="fi fi-rr-filter"></i> ตัวกรอง
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
         <IconField class="md:col-span-2">
           <InputIcon class="fi fi-rr-search text-slate-400" />
           <InputText v-model="search" @input="onFilter" placeholder="รหัสบ้าน / ชื่อ / บัตรประชาชน..." class="w-full" />
         </IconField>
+        <Select
+          v-model="filters.district"
+          :options="districtOptions"
+          placeholder="ทุกอำเภอ"
+          showClear
+          filter
+          @change="onFilter"
+          class="w-full"
+        />
         <Select
           v-model="filters.priority"
           :options="priorityOptions"
@@ -200,11 +209,13 @@ import HouseholdTrackingDialog from './households/HouseholdTrackingDialog.vue'
 
 const search = ref('')
 const filters = ref({
+  district:    null,
   priority:    null,
   has_quota:   false,
   has_harvest: false,
   has_revenue: false,
 })
+const districtOptions = ref([])
 
 const quickFilters = [
   {
@@ -254,6 +265,7 @@ async function fetchData() {
   try {
     const params = { page: currentPage, per_page: 24 }
     if (search.value)              params.search   = search.value
+    if (filters.value.district)    params.district = filters.value.district
     if (filters.value.priority)    params.priority = filters.value.priority
     if (filters.value.has_quota)   params.has_quota   = 1
     if (filters.value.has_harvest) params.has_harvest = 1
@@ -264,6 +276,13 @@ async function fetchData() {
   } finally {
     loading.value = false
   }
+}
+
+async function fetchDistricts() {
+  try {
+    const { data } = await api.get('/locations/districts')
+    districtOptions.value = data
+  } catch {}
 }
 
 function onFilter() {
@@ -281,7 +300,8 @@ function toggleFilter(key) {
 }
 
 const anyFilterActive = computed(() =>
-  filters.value.has_quota || filters.value.has_harvest || filters.value.has_revenue || filters.value.priority
+  filters.value.has_quota || filters.value.has_harvest || filters.value.has_revenue
+  || filters.value.priority || filters.value.district
 )
 
 function clearAllFilters() {
@@ -289,6 +309,7 @@ function clearAllFilters() {
   filters.value.has_harvest = false
   filters.value.has_revenue = false
   filters.value.priority    = null
+  filters.value.district    = null
   currentPage = 1
   fetchData()
 }
@@ -300,5 +321,8 @@ function openDetail(h) {
   detailOpen.value = true
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  fetchDistricts()
+})
 </script>
