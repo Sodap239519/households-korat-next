@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 space-y-5">
+  <div class="p-3 sm:p-6 space-y-4 sm:space-y-5">
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">

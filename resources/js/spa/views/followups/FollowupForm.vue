@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 max-w-2xl mx-auto">
+  <div class="p-3 sm:p-6 max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ isEdit ? 'แก้ไขการติดตามผล' : 'เพิ่มการติดตามผล' }}</h2>
 
     <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{{ error }}</div>

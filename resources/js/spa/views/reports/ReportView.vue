@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6">
+  <div class="p-3 sm:p-6">
     <h2 class="text-2xl font-bold text-gray-800 mb-6">รายงาน</h2>
 
     <!-- Tab navigation -->

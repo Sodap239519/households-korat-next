@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 space-y-5">
+  <div class="p-3 sm:p-6 space-y-4 sm:space-y-5">
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
@@ -152,7 +152,7 @@
     </div>
 
     <!-- View Dialog (read-only) -->
-    <Dialog v-model:visible="viewOpen" modal :draggable="false" :style="{ width: '900px' }">
+    <Dialog v-model:visible="viewOpen" modal :draggable="false" :style="{ width: '900px' }" :breakpoints="{ '1024px': '95vw', '767px': '100vw' }">
       <template #header>
         <div class="flex items-center gap-3 w-full">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white flex items-center justify-center shadow-md">

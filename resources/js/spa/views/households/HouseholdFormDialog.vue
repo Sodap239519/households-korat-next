@@ -4,6 +4,7 @@
     modal
     :draggable="false"
     :style="{ width: '1100px' }"
+    :breakpoints="{ '1199px': '95vw', '767px': '100vw' }"
     :contentStyle="{ maxHeight: '78vh' }"
     :closeOnEscape="!saving"
     :pt="{ root: { class: 'rounded-2xl overflow-hidden' } }"

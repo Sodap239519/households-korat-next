@@ -5,6 +5,7 @@
     modal
     :draggable="false"
     :style="{ width: '720px' }"
+    :breakpoints="{ '767px': '95vw' }"
     :closeOnEscape="!saving"
     :pt="{ root: { class: 'rounded-2xl overflow-hidden' } }"
   >

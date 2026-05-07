@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 space-y-5">
+  <div class="p-3 sm:p-6 space-y-4 sm:space-y-5">
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
         <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -71,7 +71,7 @@
     </div>
 
     <!-- Edit/Create Dialog -->
-    <Dialog v-model:visible="dialogOpen" modal :draggable="false" :style="{ width: '520px' }">
+    <Dialog v-model:visible="dialogOpen" modal :draggable="false" :style="{ width: '520px' }" :breakpoints="{ '767px': '95vw' }">
       <template #header>
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white flex items-center justify-center shadow">
@@ -114,7 +114,7 @@
     </Dialog>
 
     <!-- Reset password dialog -->
-    <Dialog v-model:visible="resetOpen" modal :draggable="false" :style="{ width: '420px' }" header="รีเซ็ตรหัสผ่าน">
+    <Dialog v-model:visible="resetOpen" modal :draggable="false" :style="{ width: '420px' }" :breakpoints="{ '767px': '95vw' }" header="รีเซ็ตรหัสผ่าน">
       <p class="text-sm text-slate-600 mb-3">
         กำหนดรหัสผ่านใหม่ให้ <span class="font-semibold text-violet-700">{{ resetTarget?.name }}</span>
       </p>

@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 max-w-7xl mx-auto">
+  <div class="p-3 sm:p-6 max-w-7xl mx-auto">
     <div class="flex items-center justify-between mb-5">
       <div>
         <Button label="กลับไปรายการ" icon="fi fi-rr-arrow-small-left" severity="secondary" outlined @click="$router.push('/app/households')" />

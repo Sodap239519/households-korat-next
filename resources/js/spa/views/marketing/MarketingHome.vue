@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6">
+  <div class="p-3 sm:p-6">
     <div class="box-card p-12 text-center max-w-2xl mx-auto">
       <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 text-white text-3xl shadow-lg shadow-violet-500/30 mb-5">
         <i class="fi fi-rr-shop"></i>

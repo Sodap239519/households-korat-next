@@ -4,33 +4,49 @@
     <div class="absolute -bottom-32 -right-32 w-[28rem] h-[28rem] rounded-full bg-fuchsia-300/30 blur-3xl pointer-events-none"></div>
 
     <!-- Top bar -->
-    <header class="relative h-16 flex items-center justify-between px-6 bg-white/70 backdrop-blur-xl border-b border-violet-200/50 z-10">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 text-white flex items-center justify-center shadow">
+    <header class="relative h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 bg-white/70 backdrop-blur-xl border-b border-violet-200/50 z-10 gap-2">
+      <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <div class="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 text-white flex items-center justify-center shadow">
           <i class="fi fi-rr-leaf"></i>
         </div>
-        <div>
-          <h1 class="text-base font-bold text-slate-800">Households Korat</h1>
-          <p class="text-[11px] text-slate-500">ระบบจัดการครัวเรือนเปราะบาง · นครราชสีมา</p>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-base font-bold text-slate-800 truncate">Households Korat</h1>
+          <p class="text-[10px] sm:text-[11px] text-slate-500 truncate hidden sm:block">ระบบจัดการครัวเรือนเปราะบาง · นครราชสีมา</p>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <Button label="สมัครสมาชิก" icon="fi fi-rr-user-add" severity="secondary" outlined @click="$router.push('/app/register')" />
-        <Button label="เข้าสู่ระบบ" icon="fi fi-rr-sign-in-alt" iconPos="right" @click="$router.push('/app/login')" />
+      <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <Button
+          icon="fi fi-rr-user-add"
+          severity="secondary"
+          outlined
+          @click="$router.push('/app/register')"
+          v-tooltip.bottom="'สมัครสมาชิก'"
+          :pt="{ root: { class: 'sm:px-3' } }"
+        >
+          <span class="hidden sm:inline ml-1">สมัครสมาชิก</span>
+        </Button>
+        <Button
+          icon="fi fi-rr-sign-in-alt"
+          iconPos="right"
+          @click="$router.push('/app/login')"
+          v-tooltip.bottom="'เข้าสู่ระบบ'"
+        >
+          <span class="hidden sm:inline mr-1">เข้าสู่ระบบ</span>
+        </Button>
       </div>
     </header>
 
-    <main class="relative p-6 max-w-7xl mx-auto space-y-5">
+    <main class="relative p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-5">
       <!-- Hero -->
-      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white p-6 shadow-lg shadow-violet-500/30">
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white p-4 sm:p-6 shadow-lg shadow-violet-500/30">
         <div class="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10 blur-3xl pointer-events-none"></div>
-        <div class="relative flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <p class="text-violet-100 text-sm">ภาพรวมข้อมูลสาธารณะ</p>
-            <h2 class="text-2xl font-bold mt-1">Households Korat — Public Dashboard</h2>
-            <p class="text-violet-100 text-sm mt-1">ภาพรวมครัวเรือน · การเพาะเห็ด · การติดตาม · การตลาด · จังหวัดนครราชสีมา</p>
+        <div class="relative flex items-start sm:items-center justify-between flex-wrap gap-3 sm:gap-4">
+          <div class="min-w-0">
+            <p class="text-violet-100 text-xs sm:text-sm">ภาพรวมข้อมูลสาธารณะ</p>
+            <h2 class="text-lg sm:text-2xl font-bold mt-1">Households Korat — Public Dashboard</h2>
+            <p class="text-violet-100 text-xs sm:text-sm mt-1">ภาพรวมครัวเรือน · การเพาะเห็ด · การติดตาม · การตลาด · นครราชสีมา</p>
           </div>
-          <div class="px-4 py-2 rounded-lg bg-white/15 backdrop-blur text-sm">
+          <div class="px-3 py-1.5 rounded-lg bg-white/15 backdrop-blur text-xs sm:text-sm whitespace-nowrap">
             <i class="fi fi-rr-calendar mr-1.5"></i>
             ปี พ.ศ. {{ thaiYear }}
           </div>

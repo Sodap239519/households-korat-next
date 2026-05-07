@@ -1,10 +1,23 @@
 <template>
-  <div class="flex h-screen overflow-hidden">
+  <div class="flex h-screen overflow-hidden relative">
+    <!-- Mobile backdrop -->
+    <div
+      v-if="mobileOpen"
+      class="md:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30"
+      @click="mobileOpen = false"
+    ></div>
+
     <!-- Sidebar -->
     <aside
       :class="[
-        'relative transition-all duration-300 flex flex-col bg-gradient-to-b from-violet-700 via-purple-800 to-fuchsia-800 text-white shadow-xl z-20',
-        collapsed ? 'w-20' : 'w-64'
+        'flex flex-col bg-gradient-to-b from-violet-700 via-purple-800 to-fuchsia-800 text-white shadow-xl',
+        // Position
+        'fixed md:relative inset-y-0 left-0 z-40 transition-all duration-300',
+        // Width on desktop (collapsed vs full)
+        collapsed ? 'md:w-20' : 'md:w-64',
+        // On mobile, always w-64 when open, off-screen when closed
+        'w-64',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
       ]"
     >
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_50%)] pointer-events-none"></div>
@@ -14,24 +27,24 @@
         <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center text-xl shadow">
           <i class="fi fi-rr-leaf"></i>
         </div>
-        <div v-if="!collapsed" class="overflow-hidden">
+        <div v-if="!collapsedDisplay" class="overflow-hidden flex-1">
           <h1 class="text-base font-bold leading-tight whitespace-nowrap">Households Korat</h1>
           <p class="text-violet-200 text-[10px] mt-0.5 whitespace-nowrap">นครราชสีมา</p>
         </div>
+        <button
+          @click="mobileOpen = false"
+          class="md:hidden flex-shrink-0 w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80"
+        >
+          <i class="fi fi-rr-cross-small"></i>
+        </button>
       </div>
 
       <!-- Nav -->
       <nav class="relative flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <template v-for="(item, idx) in navItems" :key="idx">
-          <!-- Single link -->
-          <router-link
-            v-if="!item.children"
-            :to="item.to"
-            v-slot="{ isActive }"
-            custom
-          >
+          <router-link v-if="!item.children" :to="item.to" v-slot="{ isActive }" custom>
             <a
-              @click.prevent="$router.push(item.to)"
+              @click.prevent="goNav(item.to)"
               :class="[
                 'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm cursor-pointer transition',
                 isActive
@@ -40,11 +53,10 @@
               ]"
             >
               <i :class="[item.icon, 'text-lg flex-shrink-0']"></i>
-              <span v-if="!collapsed" class="whitespace-nowrap">{{ item.label }}</span>
+              <span v-if="!collapsedDisplay" class="whitespace-nowrap">{{ item.label }}</span>
             </a>
           </router-link>
 
-          <!-- Group with children -->
           <div v-else>
             <button
               @click="toggleGroup(idx)"
@@ -56,13 +68,10 @@
               ]"
             >
               <i :class="[item.icon, 'text-lg flex-shrink-0']"></i>
-              <span v-if="!collapsed" class="flex-1 text-left whitespace-nowrap">{{ item.label }}</span>
-              <i v-if="!collapsed" :class="['text-xs transition-transform', openGroups[idx] ? 'fi fi-rr-angle-small-down' : 'fi fi-rr-angle-small-right']"></i>
+              <span v-if="!collapsedDisplay" class="flex-1 text-left whitespace-nowrap">{{ item.label }}</span>
+              <i v-if="!collapsedDisplay" :class="['text-xs transition-transform', openGroups[idx] ? 'fi fi-rr-angle-small-down' : 'fi fi-rr-angle-small-right']"></i>
             </button>
-            <div
-              v-if="!collapsed && openGroups[idx]"
-              class="mt-1 ml-3 pl-4 border-l border-white/15 space-y-0.5"
-            >
+            <div v-if="!collapsedDisplay && openGroups[idx]" class="mt-1 ml-3 pl-4 border-l border-white/15 space-y-0.5">
               <router-link
                 v-for="child in item.children"
                 :key="child.to"
@@ -71,7 +80,7 @@
                 custom
               >
                 <a
-                  @click.prevent="$router.push(child.to)"
+                  @click.prevent="goNav(child.to)"
                   :class="[
                     'flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer transition',
                     isActive
@@ -88,8 +97,8 @@
         </template>
       </nav>
 
-      <!-- Collapse handle / footer -->
-      <div class="relative px-3 py-3 border-t border-white/10">
+      <!-- Collapse handle (desktop only) -->
+      <div class="relative px-3 py-3 border-t border-white/10 hidden md:block">
         <button
           @click="collapsed = !collapsed"
           :class="['w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-violet-100 hover:bg-white/10 hover:text-white transition', collapsed ? 'justify-center' : '']"
@@ -101,22 +110,30 @@
     </aside>
 
     <!-- Main wrapper -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden min-w-0">
       <!-- Topbar -->
-      <header class="h-16 flex items-center justify-between px-6 bg-white/70 backdrop-blur-xl border-b border-violet-200/50 z-10">
-        <div class="flex items-center gap-3">
-          <div>
-            <h2 class="text-base font-semibold text-slate-800">{{ pageTitle }}</h2>
-            <p class="text-xs text-slate-400">{{ today }}</p>
+      <header class="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 bg-white/70 backdrop-blur-xl border-b border-violet-200/50 z-10 gap-2">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <!-- Mobile hamburger -->
+          <button
+            @click="mobileOpen = true"
+            class="md:hidden flex-shrink-0 w-9 h-9 rounded-lg hover:bg-violet-100 flex items-center justify-center text-violet-700 transition"
+            aria-label="เปิดเมนู"
+          >
+            <i class="fi fi-rr-menu-burger"></i>
+          </button>
+          <div class="min-w-0">
+            <h2 class="text-sm sm:text-base font-semibold text-slate-800 truncate">{{ pageTitle }}</h2>
+            <p class="text-[10px] sm:text-xs text-slate-400 truncate hidden sm:block">{{ today }}</p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <!-- Bell -->
           <button
             v-if="user?.role === 'superadmin'"
             @click="toggleBell"
-            class="w-10 h-10 rounded-lg hover:bg-violet-100 flex items-center justify-center text-violet-700 transition relative"
+            class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg hover:bg-violet-100 flex items-center justify-center text-violet-700 transition relative"
             v-tooltip.bottom="'การแจ้งเตือน'"
           >
             <i class="fi fi-rr-bell"></i>
@@ -128,8 +145,8 @@
             </span>
           </button>
 
-          <Popover ref="bellPanel" :pt="{ root: { class: 'mt-2' } }">
-            <div class="w-96">
+          <Popover ref="bellPanel" :pt="{ root: { class: 'mt-2' } }" :breakpoints="{ '640px': '95vw' }">
+            <div class="w-[90vw] sm:w-96 max-w-md">
               <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                 <div>
                   <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
@@ -140,7 +157,7 @@
                   </h3>
                   <p class="text-[11px] text-slate-500 mt-0.5">กิจกรรมล่าสุดในระบบ</p>
                 </div>
-                <button v-if="unreadTotal > 0" @click="markAllRead" class="text-[11px] text-violet-600 hover:underline">
+                <button v-if="unreadTotal > 0" @click="markAllRead" class="text-[11px] text-violet-600 hover:underline whitespace-nowrap">
                   อ่านทั้งหมด
                 </button>
               </div>
@@ -152,7 +169,7 @@
                 <i class="fi fi-rr-check-circle text-2xl text-emerald-400"></i>
                 <p class="mt-2">ยังไม่มีการแจ้งเตือน</p>
               </div>
-              <div v-else class="max-h-96 overflow-y-auto">
+              <div v-else class="max-h-[60vh] overflow-y-auto">
                 <div
                   v-for="n in notifs"
                   :key="n.id"
@@ -173,11 +190,10 @@
                       <p class="text-xs text-slate-500 truncate">{{ n.message }}</p>
                       <p class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                         <i class="fi fi-rr-clock"></i> {{ relativeTime(n.created_at) }}
-                        <span v-if="n.actor" class="ml-1">· โดย {{ n.actor.name }}</span>
+                        <span v-if="n.actor" class="ml-1 truncate">· โดย {{ n.actor.name }}</span>
                       </p>
                     </div>
 
-                    <!-- Inline approve/reject only for user_registered + when target user still exists -->
                     <div v-if="n.type === 'user_registered' && n.meta?.user_id" class="flex gap-1 flex-shrink-0">
                       <Button icon="fi fi-rr-check" severity="success" rounded size="small"
                               v-tooltip.top="'อนุมัติ'"
@@ -204,16 +220,16 @@
           <button
             ref="userMenuBtn"
             @click="toggleUserMenu"
-            class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white border border-violet-200 hover:border-violet-400 hover:shadow-md hover:shadow-violet-200/50 transition"
+            class="flex items-center gap-2 pl-1 pr-1 sm:pr-3 py-1 rounded-full bg-white border border-violet-200 hover:border-violet-400 hover:shadow-md hover:shadow-violet-200/50 transition"
           >
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white flex items-center justify-center font-semibold text-xs shadow">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white flex items-center justify-center font-semibold text-xs shadow flex-shrink-0">
               {{ initials }}
             </div>
-            <div class="text-left">
-              <p class="text-xs font-semibold text-slate-700 leading-none">{{ user?.name || 'ผู้ใช้' }}</p>
+            <div class="text-left hidden sm:block">
+              <p class="text-xs font-semibold text-slate-700 leading-none truncate max-w-[140px]">{{ user?.name || 'ผู้ใช้' }}</p>
               <p class="text-[10px] text-slate-400 mt-0.5 leading-none">{{ roleLabel }}</p>
             </div>
-            <i class="fi fi-rr-angle-small-down text-slate-400 text-xs"></i>
+            <i class="fi fi-rr-angle-small-down text-slate-400 text-xs hidden sm:inline"></i>
           </button>
 
           <Menu ref="userMenu" :model="userMenuItems" :popup="true" :pt="{ root: { class: 'mt-2' } }" />
@@ -250,6 +266,14 @@ const { user, logout } = useAuth()
 const toast = useToast()
 
 const collapsed = ref(false)
+const mobileOpen = ref(false)
+
+// "collapsedDisplay" controls labels visibility — true on desktop+collapsed only.
+// On mobile-open, drawer is full width so labels should always show.
+const collapsedDisplay = computed(() => collapsed.value && !mobileOpen.value)
+
+// Close drawer when navigating
+watch(() => route.path, () => { mobileOpen.value = false })
 
 const navItems = [
   { to: '/app/dashboard', icon: 'fi fi-rr-dashboard', label: 'แดชบอร์ด' },
@@ -278,7 +302,6 @@ const navItems = [
 ]
 
 const openGroups = reactive({})
-// Auto-open the group whose prefix matches current route
 navItems.forEach((item, idx) => {
   if (item.children && item.matchPrefix && route.path.startsWith(item.matchPrefix)) {
     openGroups[idx] = true
@@ -291,6 +314,11 @@ function toggleGroup(idx) {
 
 function isGroupActive(item) {
   return item.matchPrefix ? route.path.startsWith(item.matchPrefix) : false
+}
+
+function goNav(to) {
+  router.push(to)
+  mobileOpen.value = false
 }
 
 const pageTitleMap = {
@@ -321,7 +349,6 @@ const initials = computed(() => {
 
 const roleLabel = computed(() => user.value?.role === 'superadmin' ? 'ผู้ดูแลระบบ' : 'เจ้าหน้าที่')
 
-// User dropdown menu
 const userMenu = ref(null)
 function toggleUserMenu(e) {
   userMenu.value?.toggle(e)
@@ -347,9 +374,7 @@ const userMenuItems = computed(() => {
     })
   }
 
-  items.push({
-    separator: true,
-  })
+  items.push({ separator: true })
   items.push({
     label: 'ออกจากระบบ',
     icon: 'fi fi-rr-sign-out-alt',
@@ -366,7 +391,7 @@ async function handleLogout() {
 
 // ===== Notification bell (superadmin only) =====
 const bellPanel = ref(null)
-const pendingCount = ref(0)   // unread total (for badge)
+const pendingCount = ref(0)
 const unreadTotal = ref(0)
 const notifs = ref([])
 const loadingNotifs = ref(false)
@@ -436,7 +461,6 @@ async function approveById(userId, notifId) {
   try {
     await api.post(`/admin/users/${userId}/approve`)
     toast.add({ severity: 'success', summary: 'อนุมัติแล้ว', life: 1800 })
-    // Mark this notif as read locally
     const n = notifs.value.find(x => x.id === notifId)
     if (n && !n.read_at) {
       n.read_at = new Date().toISOString()
@@ -492,7 +516,6 @@ watch(() => user.value?.role, (role) => {
 }, { immediate: true })
 
 onMounted(() => {
-  // Poll every 60s for new notifications
   pollTimer = setInterval(fetchCounts, 60_000)
 })
 onUnmounted(() => {

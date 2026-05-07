@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 max-w-3xl mx-auto space-y-5">
+  <div class="p-3 sm:p-6 max-w-3xl mx-auto space-y-4 sm:space-y-5">
     <!-- Header -->
     <div class="flex items-center gap-4">
       <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-violet-500/30">
