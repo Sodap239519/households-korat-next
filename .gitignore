@@ -1,3 +1,11 @@
+#
+# .gitignore สำหรับ branch production เท่านั้น
+# แตกต่างจาก .gitignore หลัก: อนุญาตให้ commit vendor/, public/build/, package-lock
+# เพราะ Plesk shared hosting ไม่มี composer/npm CLI
+#
+# วิธีใช้: bash deploy.sh จะ copy ไฟล์นี้เป็น .gitignore ชั่วคราวบน branch production
+#
+
 *.log
 .DS_Store
 .env
@@ -13,13 +21,12 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
 /public/hot
 /public/storage
 /storage/*.key
 /storage/pail
-/storage/backups
-/vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# NOTE: vendor/ และ public/build/ ไม่ถูก ignore ใน production branch
