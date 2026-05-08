@@ -1,0 +1,105 @@
+{
+  "_axios-XPwSF98y.js": {
+    "file": "assets/axios-XPwSF98y.js",
+    "name": "axios"
+  },
+  "node_modules/@flaticon/flaticon-uicons/css/uicons-regular-rounded-ESQGLQQ4.eot": {
+    "file": "assets/uicons-regular-rounded-ESQGLQQ4-oBMUkbc4.eot",
+    "src": "node_modules/@flaticon/flaticon-uicons/css/uicons-regular-rounded-ESQGLQQ4.eot"
+  },
+  "node_modules/@flaticon/flaticon-uicons/css/uicons-regular-rounded-J3WOUERV.woff2": {
+    "file": "assets/uicons-regular-rounded-J3WOUERV-0sU45oCT.woff2",
+    "src": "node_modules/@flaticon/flaticon-uicons/css/uicons-regular-rounded-J3WOUERV.woff2"
+  },
+  "node_modules/@flaticon/flaticon-uicons/css/uicons-regular-rounded-KDJ23353.woff": {
+    "file": "assets/uicons-regular-rounded-KDJ23353-YBToKgOV.woff",
+    "src": "node_modules/@flaticon/flaticon-uicons/css/uicons-regular-rounded-KDJ23353.woff"
+  },
+  "node_modules/@flaticon/flaticon-uicons/css/uicons-solid-rounded-IYSBBSWN.woff2": {
+    "file": "assets/uicons-solid-rounded-IYSBBSWN-CdPka4yL.woff2",
+    "src": "node_modules/@flaticon/flaticon-uicons/css/uicons-solid-rounded-IYSBBSWN.woff2"
+  },
+  "node_modules/@flaticon/flaticon-uicons/css/uicons-solid-rounded-N5CQNTC6.eot": {
+    "file": "assets/uicons-solid-rounded-N5CQNTC6-D6eJ0FUi.eot",
+    "src": "node_modules/@flaticon/flaticon-uicons/css/uicons-solid-rounded-N5CQNTC6.eot"
+  },
+  "node_modules/@flaticon/flaticon-uicons/css/uicons-solid-rounded-UWVI4CEC.woff": {
+    "file": "assets/uicons-solid-rounded-UWVI4CEC-BquqBmA0.woff",
+    "src": "node_modules/@flaticon/flaticon-uicons/css/uicons-solid-rounded-UWVI4CEC.woff"
+  },
+  "node_modules/primeicons/fonts/primeicons.eot": {
+    "file": "assets/primeicons-DMOk5skT.eot",
+    "src": "node_modules/primeicons/fonts/primeicons.eot"
+  },
+  "node_modules/primeicons/fonts/primeicons.svg": {
+    "file": "assets/primeicons-Dr5RGzOO.svg",
+    "src": "node_modules/primeicons/fonts/primeicons.svg"
+  },
+  "node_modules/primeicons/fonts/primeicons.ttf": {
+    "file": "assets/primeicons-MpK4pl85.ttf",
+    "src": "node_modules/primeicons/fonts/primeicons.ttf"
+  },
+  "node_modules/primeicons/fonts/primeicons.woff": {
+    "file": "assets/primeicons-WjwUDZjB.woff",
+    "src": "node_modules/primeicons/fonts/primeicons.woff"
+  },
+  "node_modules/primeicons/fonts/primeicons.woff2": {
+    "file": "assets/primeicons-C6QP2o4f.woff2",
+    "src": "node_modules/primeicons/fonts/primeicons.woff2"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-BNS2ZFKF.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-C2kDF7uB.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_axios-XPwSF98y.js"
+    ]
+  },
+  "resources/js/spa/main.js": {
+    "file": "assets/main-wPP1edpy.js",
+    "name": "main",
+    "src": "resources/js/spa/main.js",
+    "isEntry": true,
+    "imports": [
+      "_axios-XPwSF98y.js"
+    ],
+    "dynamicImports": [
+      "resources/js/spa/views/MainLayout.vue"
+    ],
+    "css": [
+      "assets/main-CUYWfyUP.css"
+    ],
+    "assets": [
+      "assets/primeicons-DMOk5skT.eot",
+      "assets/primeicons-C6QP2o4f.woff2",
+      "assets/primeicons-WjwUDZjB.woff",
+      "assets/primeicons-MpK4pl85.ttf",
+      "assets/primeicons-Dr5RGzOO.svg",
+      "assets/uicons-regular-rounded-J3WOUERV-0sU45oCT.woff2",
+      "assets/uicons-regular-rounded-KDJ23353-YBToKgOV.woff",
+      "assets/uicons-regular-rounded-ESQGLQQ4-oBMUkbc4.eot",
+      "assets/uicons-solid-rounded-IYSBBSWN-CdPka4yL.woff2",
+      "assets/uicons-solid-rounded-UWVI4CEC-BquqBmA0.woff",
+      "assets/uicons-solid-rounded-N5CQNTC6-D6eJ0FUi.eot"
+    ]
+  },
+  "resources/js/spa/views/MainLayout.vue": {
+    "file": "assets/MainLayout-Bk5WI6Dy.js",
+    "name": "MainLayout",
+    "src": "resources/js/spa/views/MainLayout.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/spa/main.js"
+    ]
+  }
+}
