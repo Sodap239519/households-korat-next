@@ -19,12 +19,22 @@ api.interceptors.request.use((config) => {
     return config
 })
 
-// Handle 401 – redirect to login
+// Pages where 401 is expected / harmless – do not auto-redirect
+const AUTH_FREE_PATHS = ['/app', '/app/public', '/app/login']
+// API URLs where 401 should be silent (auth check probes / login attempts)
+const SILENT_AUTH_URLS = ['/user', '/login']
+
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            window.location.href = '/app/login'
+            const url = error.config?.url || ''
+            const path = window.location.pathname
+            const isSilent = SILENT_AUTH_URLS.some(s => url.endsWith(s))
+            const onAuthFreePage = AUTH_FREE_PATHS.includes(path) || path.startsWith('/app/public')
+            if (!isSilent && !onAuthFreePage) {
+                window.location.href = '/app/login'
+            }
         }
         return Promise.reject(error)
     }

@@ -12,6 +12,9 @@ export default defineConfig({
         tailwindcss(),
         vue(),
     ],
+    optimizeDeps: {
+        include: ['apexcharts'],
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],

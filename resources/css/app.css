@@ -1,11 +1,49 @@
 @import 'tailwindcss';
+@plugin 'tailwindcss-primeui';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.vue';
+
+@layer theme, base, primevue, utilities;
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Prompt', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+html, body { height: 100%; }
+body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 50%, #ede9fe 100%);
+}
+
+/* Glassmorphism utility */
+.glass {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+}
+.glass-dark {
+    background: rgba(76, 29, 149, 0.85);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+}
+
+/* Card with clear border */
+.box-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1.5px solid rgb(196, 181, 253);
+    border-radius: 1rem;
+    transition: all 0.2s ease;
+}
+.box-card:hover {
+    border-color: rgb(167, 139, 250);
+    box-shadow: 0 10px 30px -10px rgba(124, 58, 237, 0.25);
 }

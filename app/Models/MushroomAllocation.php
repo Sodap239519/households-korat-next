@@ -14,6 +14,8 @@ class MushroomAllocation extends Model
     protected $fillable = [
         'quota_id',
         'household_id',
+        'group_code',
+        'group_label',
         'bags',
         'allocated_date',
         'status',

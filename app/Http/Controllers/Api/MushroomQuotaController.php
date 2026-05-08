@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MushroomQuotaDistrict;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,14 +14,14 @@ class MushroomQuotaController extends Controller
     {
         $query = MushroomQuotaDistrict::query();
 
-        if ($year = $request->input('year')) {
-            $query->where('year', $year);
-        }
-        if ($district = $request->input('district')) {
-            $query->where('district', $district);
-        }
-        if ($request->has('active')) {
-            $query->where('is_active', (bool) $request->input('active'));
+        if ($year     = $request->input('year'))     $query->where('year',     $year);
+        if ($round    = $request->input('round'))    $query->where('round',    $round);
+        if ($district = $request->input('district')) $query->where('district', $district);
+
+        // Accept both ?active= and ?is_active= for compatibility
+        $activeRaw = $request->input('is_active', $request->input('active'));
+        if ($activeRaw !== null && $activeRaw !== '') {
+            $query->where('is_active', (int) $activeRaw);
         }
 
         $quotas = $query->withCount('allocations')
@@ -35,6 +36,8 @@ class MushroomQuotaController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->canManageQuotas(), 403, 'ต้องเป็นผู้ดูแลระบบเท่านั้นที่สร้างโควต้าได้');
+
         $validated = $request->validate([
             'district'   => ['required', 'string', 'max:100'],
             'province'   => ['nullable', 'string', 'max:100'],
@@ -47,19 +50,25 @@ class MushroomQuotaController extends Controller
 
         $quota = MushroomQuotaDistrict::create($validated);
 
+        AdminNotificationService::quotaCreated($quota, $request->user());
+
         return response()->json($quota, 201);
     }
 
     public function show(MushroomQuotaDistrict $mushroomQuotaDistrict): JsonResponse
     {
-        $mushroomQuotaDistrict->loadCount('allocations');
-        $mushroomQuotaDistrict->loadSum('allocations', 'bags');
+        $quota = MushroomQuotaDistrict::query()
+            ->withCount('allocations')
+            ->withSum('allocations', 'bags')
+            ->findOrFail($mushroomQuotaDistrict->id);
 
-        return response()->json($mushroomQuotaDistrict);
+        return response()->json($quota);
     }
 
     public function update(Request $request, MushroomQuotaDistrict $mushroomQuotaDistrict): JsonResponse
     {
+        abort_unless($request->user()->canManageQuotas(), 403, 'ต้องเป็นผู้ดูแลระบบเท่านั้นที่แก้ไขโควต้าได้');
+
         $validated = $request->validate([
             'district'   => ['sometimes', 'string', 'max:100'],
             'province'   => ['nullable', 'string', 'max:100'],
@@ -75,8 +84,10 @@ class MushroomQuotaController extends Controller
         return response()->json($mushroomQuotaDistrict);
     }
 
-    public function destroy(MushroomQuotaDistrict $mushroomQuotaDistrict): JsonResponse
+    public function destroy(Request $request, MushroomQuotaDistrict $mushroomQuotaDistrict): JsonResponse
     {
+        abort_unless($request->user()->canManageQuotas(), 403, 'ต้องเป็นผู้ดูแลระบบเท่านั้นที่ลบโควต้าได้');
+
         if ($mushroomQuotaDistrict->allocations()->exists()) {
             return response()->json(['message' => 'ไม่สามารถลบได้ มีการจัดสรรแล้ว'], 422);
         }
