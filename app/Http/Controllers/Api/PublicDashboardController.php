@@ -18,16 +18,140 @@ class PublicDashboardController extends Controller
         $year = $request->input('year') ? (int) $request->input('year') : null;
 
         return response()->json([
-            'overview'    => $this->households(),
-            'mushroom'    => $this->mushroom($year),
-            'tracking'    => $this->tracking($year),
-            'marketing'   => $this->marketing($year),
-            'meta'        => [
+            'overview'         => $this->households(),
+            'mushroom'         => $this->mushroom($year),
+            'tracking'         => $this->tracking($year),
+            'marketing'        => $this->marketing($year),
+            'incomeComparison' => $this->incomeComparison($year),
+            'meta'             => [
                 'generated_at'  => now()->toIso8601String(),
                 'province'      => 'นครราชสีมา',
                 'selected_year' => $year,
             ],
         ]);
+    }
+
+    /**
+     * เปรียบเทียบ รายได้/เดือน ที่สำรวจไว้ vs รายได้รวมจากการขายเห็ด
+     * เป้าหมายระบบ: ทุกครัวเรือนต้องมีรายได้เพิ่มขึ้นอย่างน้อย 15%
+     * สูตร % เพิ่ม = (sales_revenue - survey_income) / survey_income * 100
+     */
+    private function incomeComparison(?int $year): array
+    {
+        $TARGET_PCT = 15.0;
+
+        // Sum revenue per household from mushroom followups (filtered by year if provided)
+        $followupBase = DB::table('mushroom_followups as mf')
+            ->join('mushroom_allocations as ma', 'mf.allocation_id', '=', 'ma.id');
+        if ($year) {
+            $followupBase->join('mushroom_quota_districts as mq', 'ma.quota_id', '=', 'mq.id')
+                         ->where('mq.year', $year);
+        }
+        $revenueByHousehold = (clone $followupBase)
+            ->select('ma.household_id', DB::raw('COALESCE(SUM(mf.revenue), 0) as sales_revenue'))
+            ->groupBy('ma.household_id')
+            ->get()
+            ->keyBy('household_id');
+
+        $households = DB::table('households')
+            ->whereNull('deleted_at')
+            ->select('id', 'household_code', 'prefix', 'first_name', 'last_name',
+                     'district', 'sub_district', 'income_month')
+            ->get();
+
+        $rows = $households->map(function ($h) use ($revenueByHousehold, $TARGET_PCT) {
+            $survey = (float) ($h->income_month ?? 0);
+            $sales  = (float) ($revenueByHousehold->get($h->id)->sales_revenue ?? 0);
+            $diff   = $sales - $survey;
+
+            // % เพิ่ม:
+            //   - มี survey > 0: สูตรปกติ (sales - survey) / survey * 100
+            //   - survey = 0 แต่ sales > 0: รายได้ใหม่ทั้งหมด ถือว่าผ่านเป้า (100%)
+            //   - ไม่มีทั้งคู่: คำนวณไม่ได้
+            $pct = null;
+            $isNewIncome = false;
+            if ($survey > 0) {
+                $pct = round($diff / $survey * 100, 2);
+            } elseif ($sales > 0) {
+                $pct = 100.0;
+                $isNewIncome = true;
+            }
+
+            return [
+                'household_id'        => $h->id,
+                'household_code'      => $h->household_code,
+                'name'                => trim(($h->prefix ?? '') . ' ' . $h->first_name . ' ' . $h->last_name),
+                'district'            => $h->district,
+                'sub_district'        => $h->sub_district,
+                'survey_income'       => $survey,
+                'sales_revenue'       => $sales,
+                'increase_amount'     => $diff,
+                'increase_pct'        => $pct,
+                'is_new_income'       => $isNewIncome,
+                'passed_target'       => $pct !== null && $pct >= $TARGET_PCT,
+                'has_sales'           => $sales > 0,
+            ];
+        });
+
+        // Aggregated by district
+        $byDistrict = $rows->groupBy('district')->map(function ($group, $district) use ($TARGET_PCT) {
+            $totalSurvey = (float) $group->sum('survey_income');
+            $totalSales  = (float) $group->sum('sales_revenue');
+            $diff = $totalSales - $totalSurvey;
+            $pct = null;
+            $isNewIncome = false;
+            if ($totalSurvey > 0) {
+                $pct = round($diff / $totalSurvey * 100, 2);
+            } elseif ($totalSales > 0) {
+                $pct = 100.0;
+                $isNewIncome = true;
+            }
+            return [
+                'district'             => $district,
+                'households_count'     => $group->count(),
+                'with_sales_count'     => $group->where('has_sales', true)->count(),
+                'passed_count'         => $group->where('passed_target', true)->count(),
+                'total_survey_income'  => $totalSurvey,
+                'total_sales_revenue'  => $totalSales,
+                'increase_amount'      => $diff,
+                'increase_pct'         => $pct,
+                'is_new_income'        => $isNewIncome,
+                'passed_target'        => $pct !== null && $pct >= $TARGET_PCT,
+            ];
+        })->values()->sortByDesc('increase_pct')->values();
+
+        // Per-household — only those with sales_revenue > 0 (otherwise the comparison is meaningless)
+        $perHousehold = $rows->where('has_sales', true)
+            ->sortByDesc('increase_pct')
+            ->values()
+            ->take(100);
+
+        // Summary
+        $totalSurvey = (float) $rows->sum('survey_income');
+        $totalSales  = (float) $rows->sum('sales_revenue');
+        $overallDiff = $totalSales - $totalSurvey;
+        $overallPct  = $totalSurvey > 0 ? round($overallDiff / $totalSurvey * 100, 2) : null;
+        $withSales   = $rows->where('has_sales', true);
+        $passed      = $rows->where('passed_target', true);
+
+        $summary = [
+            'target_pct'           => $TARGET_PCT,
+            'total_households'     => $rows->count(),
+            'with_sales'           => $withSales->count(),
+            'passed_target'        => $passed->count(),
+            'failed_target'        => $withSales->filter(fn ($r) => ! $r['passed_target'])->count(),
+            'total_survey_income'  => $totalSurvey,
+            'total_sales_revenue'  => $totalSales,
+            'increase_amount'      => $overallDiff,
+            'overall_increase_pct' => $overallPct,
+            'avg_household_pct'    => round((float) $withSales->avg('increase_pct'), 2),
+        ];
+
+        return [
+            'summary'      => $summary,
+            'byDistrict'   => $byDistrict,
+            'byHousehold'  => $perHousehold,
+        ];
     }
 
     public function years(): JsonResponse
@@ -113,9 +237,20 @@ class PublicDashboardController extends Controller
             'total_revenue'        => (float) (clone $followQ)->sum('mf.revenue'),
         ];
 
-        $quotaVsAllocated = DB::table('vw_mushroom_quota_vs_allocated');
+        // Aggregate per district (a single district may have several quota rounds — sum them
+        // so the chart shows ONE bar per district instead of one per round).
+        // The underlying view exposes columns: quota_bags, total_allocated, remaining.
+        // Alias them as allocated_bags / remaining_bags so the frontend doesn't have to know.
+        $quotaVsAllocated = DB::table('vw_mushroom_quota_vs_allocated')
+            ->select(
+                'district',
+                DB::raw('SUM(quota_bags)      as quota_bags'),
+                DB::raw('SUM(total_allocated) as allocated_bags'),
+                DB::raw('SUM(remaining)       as remaining_bags'),
+            )
+            ->whereNotNull('district');
         if ($year) $quotaVsAllocated->where('year', $year);
-        $quotaVsAllocated = $quotaVsAllocated->orderBy('district')->get();
+        $quotaVsAllocated = $quotaVsAllocated->groupBy('district')->orderBy('district')->get();
 
         $byDistrict = $year
             ? DB::table('mushroom_followups as mf')

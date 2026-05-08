@@ -28,8 +28,8 @@
           <i class="fi fi-rr-house-blank"></i>
         </div>
         <div v-if="!collapsedDisplay" class="overflow-hidden flex-1">
-          <h1 class="text-base font-bold leading-tight whitespace-nowrap">Households Korat</h1>
-          <p class="text-violet-200 text-[10px] mt-0.5 whitespace-nowrap">นครราชสีมา</p>
+          <h1 class="text-base font-bold leading-tight whitespace-nowrap">Households KORAT</h1>
+          <p class="text-violet-200 text-[10px] mt-0.5 whitespace-nowrap leading-tight">ระบบวิเคราะห์คุณสมบัติ<br/>ครัวเรือนเปราะบาง</p>
         </div>
         <button
           @click="mobileOpen = false"
@@ -124,7 +124,11 @@
           </button>
           <div class="min-w-0">
             <h2 class="text-sm sm:text-base font-semibold text-slate-800 truncate">{{ pageTitle }}</h2>
-            <p class="text-[10px] sm:text-xs text-slate-400 truncate hidden sm:block">{{ today }}</p>
+            <p class="text-[10px] sm:text-xs text-slate-400 truncate hidden sm:block">
+              <i class="fi fi-rr-time-past text-violet-500 mr-1"></i>
+              <span v-if="lastUpdatedText">{{ lastUpdatedText }}</span>
+              <span v-else>{{ today }}</span>
+            </p>
           </div>
         </div>
 
@@ -299,7 +303,7 @@ const allNavItems = [
     show: () => isAreaStaff.value,
     children: [
       { to: '/app/mushroom/quotas',      icon: 'fi fi-rr-clipboard-list', label: 'โควต้าอำเภอ' },
-      { to: '/app/mushroom/allocations', icon: 'fi fi-rr-seedling',       label: 'การจัดสรร' },
+      { to: '/app/mushroom/allocations', icon: 'fi fi-rr-mushroom',       label: 'การจัดสรร' },
       { to: '/app/mushroom/followups',   icon: 'fi fi-rr-list-check',     label: 'ติดตามผลผลิต' },
     ],
   },
@@ -343,10 +347,62 @@ const pageTitleMap = {
 }
 const pageTitle = computed(() => {
   const seg = route.path.split('/')[2] || 'dashboard'
-  return pageTitleMap[seg] || 'Households Korat'
+  return pageTitleMap[seg] || 'Households KORAT'
 })
 
 const today = computed(() => fmtThaiDateLong(new Date()))
+
+// "<หัวข้อ> อัพเดตล่าสุดวันที่ X เวลา Y" — scope ตามหน้าปัจจุบัน
+const lastUpdatedAt = ref(null)
+
+// Map route segment → scope + label
+// Route paths look like /app/<seg>[/<sub>]
+const SCOPE_MAP = {
+  households:    { scope: 'households',  label: 'รายการครัวเรือน' },
+  tracking:      { scope: 'followups',   label: 'การติดตาม' },
+  mushroom:      { scope: 'all',         label: 'ข้อมูล' },         // overridden by sub-page
+  marketing:     { scope: 'followups',   label: 'การตลาด' },
+  reports:       { scope: 'all',         label: 'รายงาน' },
+  admin:         { scope: 'users',       label: 'ผู้ใช้' },
+  'login-history': { scope: 'users',     label: 'ประวัติเข้าใช้งาน' },
+  profile:       { scope: 'users',       label: 'โปรไฟล์' },
+  dashboard:     { scope: 'all',         label: 'ภาพรวมระบบ' },
+}
+// Sub-pages under /app/mushroom/*
+const MUSHROOM_SUB = {
+  quotas:      { scope: 'quotas',      label: 'โควต้าเห็ด' },
+  allocations: { scope: 'allocations', label: 'การจัดสรร' },
+}
+
+const currentScope = computed(() => {
+  const parts = route.path.split('/').filter(Boolean)   // e.g. ['app','mushroom','quotas']
+  const seg = parts[1] || 'dashboard'
+  if (seg === 'mushroom' && parts[2] && MUSHROOM_SUB[parts[2]]) {
+    return MUSHROOM_SUB[parts[2]]
+  }
+  return SCOPE_MAP[seg] || { scope: 'all', label: 'ข้อมูล' }
+})
+
+const lastUpdatedText = computed(() => {
+  if (!lastUpdatedAt.value) return ''
+  const d = new Date(lastUpdatedAt.value)
+  if (isNaN(d.getTime())) return ''
+  const datePart = fmtThaiDateLong(d)            // "วันศุกร์ที่ 8 พฤษภาคม 2569"
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `อัพเดตล่าสุด ${datePart} เวลา ${hh}:${mm} น.`
+})
+
+async function fetchLastUpdated() {
+  try {
+    const { data } = await api.get('/system/last-updated', {
+      params: { scope: currentScope.value.scope },
+    })
+    lastUpdatedAt.value = data.iso || data.at || null
+  } catch {
+    lastUpdatedAt.value = null
+  }
+}
 
 const initials = computed(() => {
   const n = user.value?.name || ''
@@ -511,10 +567,18 @@ watch(() => user.value?.role, () => {
   if (isAdmin.value) fetchCounts()
 }, { immediate: true })
 
+let lastUpdatedTimer = null
 onMounted(() => {
   pollTimer = setInterval(fetchCounts, 60_000)
+  // Show "data last updated" timestamp in header — refresh every minute
+  fetchLastUpdated()
+  lastUpdatedTimer = setInterval(fetchLastUpdated, 60_000)
 })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
+  if (lastUpdatedTimer) clearInterval(lastUpdatedTimer)
 })
+
+// Re-fetch on every route change (any navigation may have edited data)
+watch(() => route.fullPath, () => fetchLastUpdated())
 </script>

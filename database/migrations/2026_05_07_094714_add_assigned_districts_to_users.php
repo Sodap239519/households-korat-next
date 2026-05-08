@@ -12,17 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            //
+            // JSON list of district names this user is responsible for.
+            // Only meaningful when role = 'area_staff'. Max 4 districts (enforced in app).
+            $table->json('assigned_districts')->nullable()->after('approved_by');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            //
+            $table->dropColumn('assigned_districts');
         });
     }
 };

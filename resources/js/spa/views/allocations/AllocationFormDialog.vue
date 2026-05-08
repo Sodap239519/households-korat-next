@@ -22,6 +22,34 @@
 
     <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
 
+    <!-- Mode switch: individual vs group (only when creating, not when editing) -->
+    <div v-if="!isEditMode" class="mb-4">
+      <SelectButton
+        v-model="mode"
+        :options="modeOptions"
+        optionLabel="label"
+        optionValue="value"
+        aria-labelledby="alloc-mode"
+        :allowEmpty="false"
+        class="w-full"
+        :pt="{
+          root: { class: 'grid grid-cols-2 gap-2' },
+        }"
+      >
+        <template #option="{ option }">
+          <span class="flex items-center justify-center gap-2 w-full px-3 py-1">
+            <i :class="option.icon"></i> {{ option.label }}
+          </span>
+        </template>
+      </SelectButton>
+      <p class="text-[11px] text-slate-500 mt-1.5">
+        <i class="fi fi-rr-info text-violet-500"></i>
+        {{ mode === 'group'
+            ? 'จัดสรรรวมเป็นกลุ่ม — ระบบจะหารเฉลี่ยจำนวนก้อนเท่า ๆ กันให้ทุกคน'
+            : 'จัดสรรแยกเป็นรายครัวเรือน (รูปแบบเดิม)' }}
+      </p>
+    </div>
+
     <form @submit.prevent="handleSubmit" class="space-y-5">
       <FormSection title="เลือกอำเภอ + ครัวเรือน + โควต้า" icon="fi fi-rr-users-medical" tone="fuchsia">
         <div class="space-y-3">
@@ -43,7 +71,8 @@
               <i class="fi fi-rr-info"></i> เลือกอำเภอก่อนเพื่อกรองครัวเรือนและโควต้า
             </p>
           </div>
-          <div>
+          <!-- Individual mode: single household picker -->
+          <div v-if="mode === 'individual' || isEditMode">
             <label class="text-sm font-medium text-slate-700 mb-1 block">
               ครัวเรือน <span class="text-rose-500">*</span>
               <span v-if="selectedDistrict && households.length" class="text-[11px] text-slate-400 ml-2">
@@ -63,6 +92,58 @@
               @change="onHouseholdChange"
             />
           </div>
+
+          <!-- Group mode: multi-select with "ทั้งอำเภอ" shortcut + group label -->
+          <template v-else>
+            <div>
+              <label class="text-sm font-medium text-slate-700 mb-1 block">
+                ชื่อกลุ่ม
+                <span class="text-[11px] text-slate-400 ml-2 font-normal">— เลือก/พิมพ์เพื่อแสดงในรายงาน</span>
+              </label>
+              <InputText v-model="groupLabel" placeholder="เช่น กลุ่มเพาะเห็ดบ้านนาดี" class="w-full" />
+            </div>
+            <div>
+              <label class="text-sm font-medium text-slate-700 mb-1 block">
+                ครัวเรือนในกลุ่ม <span class="text-rose-500">*</span>
+                <span v-if="selectedHouseholdIds.length" class="text-[11px] text-emerald-600 ml-2">
+                  เลือกแล้ว {{ selectedHouseholdIds.length }}/{{ households.length }} รายการ
+                </span>
+              </label>
+              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <Button
+                  type="button"
+                  size="small"
+                  severity="success"
+                  outlined
+                  icon="fi fi-rr-check"
+                  label="เลือกทั้งอำเภอ"
+                  :disabled="!selectedDistrict || !households.length"
+                  @click="selectAllHouseholds"
+                />
+                <Button
+                  type="button"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  icon="fi fi-rr-cross-small"
+                  label="ล้าง"
+                  :disabled="!selectedHouseholdIds.length"
+                  @click="selectedHouseholdIds = []"
+                />
+              </div>
+              <MultiSelect
+                v-model="selectedHouseholdIds"
+                :options="householdOptions"
+                optionLabel="label"
+                optionValue="value"
+                filter
+                display="chip"
+                :placeholder="selectedDistrict ? '-- เลือกหลายครัวเรือน --' : 'เลือกอำเภอก่อน'"
+                class="w-full"
+                :disabled="!selectedDistrict"
+              />
+            </div>
+          </template>
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1 block">
               โควต้าอำเภอ <span class="text-rose-500">*</span>
@@ -167,7 +248,8 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1 block">
-              จำนวนก้อน <span class="text-rose-500">*</span>
+              {{ mode === 'group' && !isEditMode ? 'จำนวนก้อนรวมทั้งกลุ่ม' : 'จำนวนก้อน' }}
+              <span class="text-rose-500">*</span>
             </label>
             <InputNumber v-model="form.bags" :min="1" :max="remainingBags || 9999" required fluid suffix=" ก้อน" />
           </div>
@@ -179,6 +261,25 @@
             <label class="text-sm font-medium text-slate-700 mb-1 block">สถานะ</label>
             <Select v-model="form.status" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full" />
           </div>
+        </div>
+
+        <!-- Group preview: average per household -->
+        <div
+          v-if="mode === 'group' && !isEditMode && groupPreview"
+          class="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-3"
+        >
+          <p class="text-xs font-semibold text-emerald-700 mb-1">
+            <i class="fi fi-rr-calculator"></i> หารเฉลี่ย
+          </p>
+          <p class="text-sm text-slate-700">
+            <span class="font-bold text-emerald-700">{{ groupPreview.totalBags }}</span> ก้อน
+            ÷ <span class="font-bold text-emerald-700">{{ groupPreview.n }}</span> ครัวเรือน
+            = ครัวเรือนละ
+            <span class="font-bold text-emerald-700">{{ groupPreview.base }}</span> ก้อน
+            <span v-if="groupPreview.extra > 0" class="text-amber-700">
+              (+1 ก้อนสำหรับ {{ groupPreview.extra }} ครัวเรือนแรก)
+            </span>
+          </p>
         </div>
       </FormSection>
 
@@ -211,8 +312,11 @@ const { isAdmin, assignedDistricts } = useAuth()
 
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
+import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
+import SelectButton from 'primevue/selectbutton'
+import MultiSelect from 'primevue/multiselect'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -263,6 +367,29 @@ const households = ref([])
 const history = ref([])
 const districtOptions = ref([])
 const selectedDistrict = ref(null)
+
+// --- Mode (individual | group) ---
+const mode = ref('individual')
+const modeOptions = [
+  { label: 'รายเดี่ยว',   value: 'individual', icon: 'fi fi-rr-user' },
+  { label: 'รายกลุ่ม',    value: 'group',      icon: 'fi fi-rr-users-alt' },
+]
+const groupLabel = ref('')
+const selectedHouseholdIds = ref([])
+
+function selectAllHouseholds() {
+  selectedHouseholdIds.value = households.value.map(h => h.id)
+}
+
+const groupPreview = computed(() => {
+  if (mode.value !== 'group') return null
+  const n = selectedHouseholdIds.value.length
+  const total = Number(form.value.bags || 0)
+  if (!n || !total) return null
+  const base = Math.floor(total / n)
+  const extra = total - (base * n)
+  return { n, totalBags: total, base, extra }
+})
 
 const quotaOptions = computed(() => quotas.value.map(q => ({
   label: `${q.district} ปี ${q.year} รอบ ${q.round} (คงเหลือ ${(q.quota_bags - (q.allocations_sum_bags || 0))} ก้อน)`,
@@ -324,6 +451,7 @@ async function onDistrictChange() {
   // Reset dependent selections
   form.value.household_id = null
   form.value.quota_id = null
+  selectedHouseholdIds.value = []
   history.value = []
   if (selectedDistrict.value) {
     await Promise.all([
@@ -397,6 +525,9 @@ watch(() => props.modelValue, async (open) => {
   if (!open) {
     editingHistoryId.value = null
     selectedDistrict.value = null
+    mode.value = 'individual'
+    selectedHouseholdIds.value = []
+    groupLabel.value = ''
     return
   }
   error.value = ''
@@ -432,15 +563,42 @@ watch(() => props.modelValue, async (open) => {
 })
 
 async function handleSubmit() {
+  // Group mode validation
+  if (mode.value === 'group' && !isEditMode.value) {
+    if (!selectedHouseholdIds.value.length) {
+      error.value = 'กรุณาเลือกครัวเรือนในกลุ่มอย่างน้อย 1 ครัวเรือน'
+      return
+    }
+    if (!form.value.bags || form.value.bags < selectedHouseholdIds.value.length) {
+      error.value = `จำนวนก้อนรวมต้องอย่างน้อย ${selectedHouseholdIds.value.length} ก้อน (1 ก้อน/ครัวเรือน)`
+      return
+    }
+  }
+
   saving.value = true
   error.value = ''
   try {
-    const payload = { ...form.value }
-    if (payload.allocated_date instanceof Date) payload.allocated_date = formatDate(payload.allocated_date)
-    if (effectiveId.value) {
-      await api.put(`/mushroom-allocations/${effectiveId.value}`, payload)
+    if (mode.value === 'group' && !isEditMode.value) {
+      // ----- Group submit -----
+      const payload = {
+        quota_id:       form.value.quota_id,
+        household_ids:  [...selectedHouseholdIds.value],
+        total_bags:     form.value.bags,
+        allocated_date: form.value.allocated_date instanceof Date ? formatDate(form.value.allocated_date) : form.value.allocated_date,
+        status:         form.value.status,
+        note:           form.value.note,
+        group_label:    groupLabel.value || null,
+      }
+      await api.post('/mushroom-allocations/group', payload)
     } else {
-      await api.post('/mushroom-allocations', payload)
+      // ----- Individual submit (existing path) -----
+      const payload = { ...form.value }
+      if (payload.allocated_date instanceof Date) payload.allocated_date = formatDate(payload.allocated_date)
+      if (effectiveId.value) {
+        await api.put(`/mushroom-allocations/${effectiveId.value}`, payload)
+      } else {
+        await api.post('/mushroom-allocations', payload)
+      }
     }
     emit('saved')
     close()

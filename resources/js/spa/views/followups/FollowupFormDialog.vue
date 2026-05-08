@@ -22,8 +22,33 @@
 
     <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
 
+    <!-- Mode switch (only when creating) -->
+    <div v-if="!isEditMode" class="mb-4">
+      <SelectButton
+        v-model="mode"
+        :options="modeOptions"
+        optionLabel="label"
+        optionValue="value"
+        :allowEmpty="false"
+        class="w-full"
+        :pt="{ root: { class: 'grid grid-cols-2 gap-2' } }"
+      >
+        <template #option="{ option }">
+          <span class="flex items-center justify-center gap-2 w-full px-3 py-1">
+            <i :class="option.icon"></i> {{ option.label }}
+          </span>
+        </template>
+      </SelectButton>
+      <p class="text-[11px] text-slate-500 mt-1.5">
+        <i class="fi fi-rr-info text-fuchsia-500"></i>
+        {{ mode === 'group'
+            ? 'บันทึกผลผลิต/ขาย/รายได้รวมของกลุ่ม — ระบบจะหารเฉลี่ยให้สมาชิกแต่ละคน'
+            : 'บันทึกผลผลิตเป็นรายครัวเรือน (รูปแบบเดิม)' }}
+      </p>
+    </div>
+
     <form @submit.prevent="handleSubmit" class="space-y-5">
-      <FormSection title="เลือกอำเภอ + ครัวเรือน" icon="fi fi-rr-house-blank" tone="violet">
+      <FormSection :title="mode === 'group' ? 'เลือกอำเภอ + กลุ่ม' : 'เลือกอำเภอ + ครัวเรือน'" icon="fi fi-rr-house-blank" tone="violet">
         <div class="space-y-3">
           <div>
             <label class="text-sm font-medium text-slate-700 mb-1 block">
@@ -43,7 +68,8 @@
               <i class="fi fi-rr-info"></i> เลือกอำเภอก่อนเพื่อกรองรายชื่อครัวเรือน
             </p>
           </div>
-          <div>
+          <!-- Individual: pick a household -->
+          <div v-if="mode === 'individual' || isEditMode">
             <label class="text-sm font-medium text-slate-700 mb-1 block">
               ครัวเรือน <span class="text-rose-500">*</span>
               <span v-if="combinedHouseholds.length" class="text-[11px] text-slate-400 ml-2">
@@ -68,12 +94,38 @@
               <span v-if="selectedHousehold.count > 1">จาก {{ selectedHousehold.count }} ครั้ง</span>
             </p>
           </div>
+
+          <!-- Group: pick a group from district's group allocations -->
+          <div v-else>
+            <label class="text-sm font-medium text-slate-700 mb-1 block">
+              กลุ่ม <span class="text-rose-500">*</span>
+              <span v-if="groupsInDistrict.length" class="text-[11px] text-slate-400 ml-2">
+                ({{ groupsInDistrict.length }} กลุ่มในอำเภอ)
+              </span>
+            </label>
+            <Select
+              v-model="selectedGroupCode"
+              :options="groupOptions"
+              optionLabel="label"
+              optionValue="value"
+              filter
+              :placeholder="selectedDistrict ? (groupsInDistrict.length ? '-- เลือกกลุ่ม --' : 'อำเภอนี้ไม่มีกลุ่มที่จัดสรรไว้') : 'เลือกอำเภอก่อน'"
+              required
+              class="w-full"
+              :disabled="!selectedDistrict || !groupsInDistrict.length"
+            />
+            <p v-if="selectedGroup" class="text-xs text-emerald-700 mt-1">
+              <i class="fi fi-rr-users-alt"></i>
+              สมาชิก <span class="font-semibold">{{ selectedGroup.members }}</span> ครัวเรือน · รวม
+              <span class="font-semibold">{{ selectedGroup.totalBags }}</span> ก้อน
+            </p>
+          </div>
         </div>
       </FormSection>
 
-      <!-- History across all the household's allocations -->
+      <!-- History across all the household's allocations (individual mode only) -->
       <FormSection
-        v-if="!isEditMode && selectedHouseholdId && history.length"
+        v-if="mode === 'individual' && !isEditMode && selectedHouseholdId && history.length"
         :title="`ประวัติการติดตามของครัวเรือนนี้ (${history.length} รอบ)`"
         icon="fi fi-rr-time-past"
         tone="fuchsia"
@@ -154,7 +206,7 @@
         </div>
       </FormSection>
 
-      <FormSection title="ผลผลิตและการขาย" icon="fi fi-rr-mushroom" tone="emerald">
+      <FormSection :title="mode === 'group' && !isEditMode ? 'ผลผลิตและการขายรวมของกลุ่ม' : 'ผลผลิตและการขาย'" icon="fi fi-rr-mushroom" tone="emerald">
         <!-- Single shared unit toggle controls both ผลผลิต and ขายได้ -->
         <div class="flex items-center justify-between mb-3 px-3 py-2 rounded-lg bg-emerald-50/50 border border-emerald-200">
           <span class="text-xs text-slate-600 font-medium flex items-center gap-1.5">
@@ -213,6 +265,28 @@
             <InputNumber v-model="form.revenue" :min="0" :minFractionDigits="0" :maxFractionDigits="2" fluid suffix=" บาท" />
             <p class="text-[11px] text-slate-400 mt-1">คำนวณอัตโนมัติจาก (ขาย กก.) × (ราคา/กก.) — แก้ไขได้</p>
           </div>
+
+          <!-- Group preview: per-member breakdown -->
+          <div v-if="mode === 'group' && !isEditMode && groupSplitPreview"
+               class="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-3">
+            <p class="text-xs font-semibold text-emerald-700 mb-1">
+              <i class="fi fi-rr-calculator"></i> หารเฉลี่ยให้สมาชิก {{ selectedGroup?.members }} คน
+            </p>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <p class="text-slate-500">ผลผลิต/คน</p>
+                <p class="font-bold text-slate-700">{{ groupSplitPreview.harvest }} กก.</p>
+              </div>
+              <div>
+                <p class="text-slate-500">ขาย/คน</p>
+                <p class="font-bold text-slate-700">{{ groupSplitPreview.sold }} กก.</p>
+              </div>
+              <div>
+                <p class="text-slate-500">รายได้/คน</p>
+                <p class="font-bold text-emerald-700">{{ groupSplitPreview.revenue }} บาท</p>
+              </div>
+            </div>
+          </div>
         </div>
       </FormSection>
 
@@ -223,8 +297,21 @@
             <Select v-model="form.sale_channel" :options="channelOptions" optionLabel="label" optionValue="value" placeholder="-- เลือก --" showClear class="w-full" />
           </div>
           <div>
-            <label class="text-sm font-medium text-slate-700 mb-1 block">ชื่อตลาด/ร้าน/แพลตฟอร์ม</label>
-            <InputText v-model="form.sale_place" class="w-full" />
+            <label class="text-sm font-medium text-slate-700 mb-1 block">
+              ชื่อตลาด/ร้าน/แพลตฟอร์ม
+            </label>
+            <AutoComplete
+              v-model="form.sale_place"
+              :suggestions="salePlaceFiltered"
+              @complete="searchSalePlaces"
+              :dropdown="salePlaceOptions.length > 0"
+              forceSelection="false"
+              completeOnFocus
+              placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
+              class="w-full"
+              fluid
+              :pt="{ pcInput: { root: { class: 'w-full' } } }"
+            />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
@@ -233,8 +320,21 @@
             <label for="ent_member" class="text-sm text-slate-700">สมาชิกวิสาหกิจชุมชน</label>
           </div>
           <div v-if="form.enterprise_member">
-            <label class="text-sm font-medium text-slate-700 mb-1 block">ชื่อวิสาหกิจ</label>
-            <InputText v-model="form.enterprise_name" class="w-full" />
+            <label class="text-sm font-medium text-slate-700 mb-1 block">
+              ชื่อวิสาหกิจ
+            </label>
+            <AutoComplete
+              v-model="form.enterprise_name"
+              :suggestions="enterpriseFiltered"
+              @complete="searchEnterprises"
+              :dropdown="enterpriseOptions.length > 0"
+              forceSelection="false"
+              completeOnFocus
+              placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
+              class="w-full"
+              fluid
+              :pt="{ pcInput: { root: { class: 'w-full' } } }"
+            />
           </div>
         </div>
       </FormSection>
@@ -269,8 +369,10 @@ const { isAdmin, assignedDistricts } = useAuth()
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
+import AutoComplete from 'primevue/autocomplete'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
+import SelectButton from 'primevue/selectbutton'
 import ToggleSwitch from 'primevue/toggleswitch'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
@@ -345,6 +447,86 @@ const selectedDistrict = ref(null)
 const allocations = ref([])
 const selectedHouseholdId = ref(null)
 const history = ref([])
+
+// Autocomplete suggestions (loaded once when dialog opens)
+const salePlaceOptions = ref([])
+const enterpriseOptions = ref([])
+const salePlaceFiltered = ref([])
+const enterpriseFiltered = ref([])
+
+function searchSalePlaces(event) {
+  const q = (event.query || '').trim().toLowerCase()
+  salePlaceFiltered.value = q
+    ? salePlaceOptions.value.filter(s => String(s).toLowerCase().includes(q))
+    : [...salePlaceOptions.value]
+}
+function searchEnterprises(event) {
+  const q = (event.query || '').trim().toLowerCase()
+  enterpriseFiltered.value = q
+    ? enterpriseOptions.value.filter(s => String(s).toLowerCase().includes(q))
+    : [...enterpriseOptions.value]
+}
+
+async function loadSuggestions() {
+  try {
+    const { data } = await api.get('/mushroom-followups/suggestions')
+    salePlaceOptions.value  = data.sale_places || []
+    enterpriseOptions.value = data.enterprises || []
+  } catch {
+    salePlaceOptions.value = []
+    enterpriseOptions.value = []
+  }
+}
+
+// --- Mode (individual | group) ---
+const mode = ref('individual')
+const modeOptions = [
+  { label: 'รายเดี่ยว', value: 'individual', icon: 'fi fi-rr-user' },
+  { label: 'รายกลุ่ม',  value: 'group',      icon: 'fi fi-rr-users-alt' },
+]
+const selectedGroupCode = ref(null)
+
+// Build group list from district allocations (group_code + label + members)
+const groupsInDistrict = computed(() => {
+  const map = new Map()
+  for (const a of allocations.value) {
+    if (!a.group_code) continue
+    if (!map.has(a.group_code)) {
+      map.set(a.group_code, {
+        code:      a.group_code,
+        label:     a.group_label || 'ไม่ระบุชื่อกลุ่ม',
+        quotaId:   a.quota_id,
+        members:   0,
+        totalBags: 0,
+      })
+    }
+    const g = map.get(a.group_code)
+    g.members  += 1
+    g.totalBags += Number(a.bags || 0)
+  }
+  return Array.from(map.values())
+})
+
+const groupOptions = computed(() => groupsInDistrict.value.map(g => ({
+  label: `${g.label} — ${g.members} คน · รวม ${g.totalBags} ก้อน`,
+  value: g.code,
+})))
+
+const selectedGroup = computed(() =>
+  groupsInDistrict.value.find(g => g.code === selectedGroupCode.value)
+)
+
+const groupSplitPreview = computed(() => {
+  if (mode.value !== 'group' || !selectedGroup.value) return null
+  const n = selectedGroup.value.members
+  if (!n) return null
+  const fmt = (v, d=2) => Number(v || 0).toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d })
+  return {
+    harvest: fmt((Number(form.value.harvest_kg) || 0) / n),
+    sold:    fmt((Number(form.value.sold_kg)    || 0) / n),
+    revenue: fmt((Number(form.value.revenue)    || 0) / n),
+  }
+})
 
 // Group allocations by household_id, summing bags
 const combinedHouseholds = computed(() => {
@@ -430,6 +612,7 @@ async function loadHistoryByHousehold(householdId) {
 
 async function onDistrictChange() {
   selectedHouseholdId.value = null
+  selectedGroupCode.value = null
   history.value = []
   form.value.allocation_id = null
   if (selectedDistrict.value) {
@@ -503,10 +686,12 @@ watch(() => props.modelValue, async (open) => {
     editingHistoryId.value = null
     selectedDistrict.value = null
     selectedHouseholdId.value = null
+    selectedGroupCode.value = null
+    mode.value = 'individual'
     return
   }
   error.value = ''
-  await loadDistricts()
+  await Promise.all([loadDistricts(), loadSuggestions()])
   if (props.followupId) {
     try {
       const { data } = await api.get(`/mushroom-followups/${props.followupId}`)
@@ -541,15 +726,41 @@ watch(() => props.modelValue, async (open) => {
 })
 
 async function handleSubmit() {
+  // Group-mode validation
+  if (mode.value === 'group' && !isEditMode.value) {
+    if (!selectedGroupCode.value) {
+      error.value = 'กรุณาเลือกกลุ่ม'
+      return
+    }
+  }
+
   saving.value = true
   error.value = ''
   try {
-    const payload = { ...form.value }
-    if (payload.followup_date instanceof Date) payload.followup_date = formatDate(payload.followup_date)
-    if (effectiveId.value) {
-      await api.put(`/mushroom-followups/${effectiveId.value}`, payload)
+    if (mode.value === 'group' && !isEditMode.value) {
+      const payload = {
+        group_code:        selectedGroupCode.value,
+        followup_round:    form.value.followup_round,
+        followup_date:     form.value.followup_date instanceof Date ? formatDate(form.value.followup_date) : form.value.followup_date,
+        total_harvest_kg:  form.value.harvest_kg,
+        total_sold_kg:     form.value.sold_kg,
+        price_per_kg:      form.value.price_per_kg,
+        total_revenue:     form.value.revenue,
+        sale_channel:      form.value.sale_channel,
+        sale_place:        form.value.sale_place,
+        enterprise_member: !!form.value.enterprise_member,
+        enterprise_name:   form.value.enterprise_name,
+        note:              form.value.note,
+      }
+      await api.post('/mushroom-followups/group', payload)
     } else {
-      await api.post('/mushroom-followups', payload)
+      const payload = { ...form.value }
+      if (payload.followup_date instanceof Date) payload.followup_date = formatDate(payload.followup_date)
+      if (effectiveId.value) {
+        await api.put(`/mushroom-followups/${effectiveId.value}`, payload)
+      } else {
+        await api.post('/mushroom-followups', payload)
+      }
     }
     emit('saved')
     close()

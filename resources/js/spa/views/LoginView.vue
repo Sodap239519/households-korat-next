@@ -21,9 +21,9 @@
             <i class="fi fi-rr-house-blank"></i>
           </div>
           <h1 class="text-2xl font-bold bg-gradient-to-r from-violet-700 via-purple-700 to-fuchsia-700 bg-clip-text text-transparent tracking-tight">
-            Households Korat
+            Households KORAT
           </h1>
-          <p class="text-slate-500 text-sm mt-1">ระบบจัดการครัวเรือนเปราะบาง · จังหวัดนครราชสีมา</p>
+          <p class="text-slate-500 text-sm mt-1">ระบบวิเคราะห์คุณสมบัติครัวเรือนเปราะบาง · จังหวัดนครราชสีมา</p>
         </div>
 
         <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
@@ -79,7 +79,7 @@
           <router-link to="/app" class="text-violet-600 hover:underline font-medium">กลับหน้าแรก</router-link>
         </div>
         <p class="text-center text-[10px] text-slate-300 mt-3">
-          © {{ new Date().getFullYear() }} Households Korat
+          © {{ new Date().getFullYear() }} Households KORAT
         </p>
       </div>
     </div>

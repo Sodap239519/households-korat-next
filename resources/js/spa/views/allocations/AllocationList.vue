@@ -58,8 +58,16 @@
         </Column>
         <Column header="ครัวเรือน" :style="{ minWidth: '220px' }">
           <template #body="{ data }">
-            <div class="font-medium text-slate-700">
-              {{ data.household?.prefix }} {{ data.household?.first_name }} {{ data.household?.last_name }}
+            <div class="font-medium text-slate-700 flex items-center gap-2 flex-wrap">
+              <span>{{ data.household?.prefix }} {{ data.household?.first_name }} {{ data.household?.last_name }}</span>
+              <span
+                v-if="data.group_code"
+                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-fuchsia-100 text-fuchsia-700 text-[10px] font-medium border border-fuchsia-200"
+                v-tooltip.top="data.group_label || 'การจัดสรรแบบกลุ่ม'"
+              >
+                <i class="fi fi-rr-users-alt text-[10px]"></i>
+                {{ data.group_label || 'กลุ่ม' }}
+              </span>
             </div>
             <div class="font-mono text-xs text-violet-600">{{ data.household?.household_code }}</div>
           </template>

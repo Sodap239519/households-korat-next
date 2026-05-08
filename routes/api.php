@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicDashboardController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UsersAdminController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,7 @@ Route::get('/locations/provinces',     [LocationController::class, 'provinces'])
 
 // ===== Protected =====
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/system/last-updated', [SystemController::class, 'lastUpdated']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
 
@@ -67,7 +69,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // wouldn't match the variable. Override the parameter name explicitly.
     Route::apiResource('mushroom-quotas', MushroomQuotaController::class)
         ->parameters(['mushroom-quotas' => 'mushroomQuotaDistrict']);
+    // Group allocation: split bags evenly across many households (must be declared
+    // BEFORE the apiResource so /group is not mistaken for {mushroomAllocation}).
+    Route::post('mushroom-allocations/group', [MushroomAllocationController::class, 'storeGroup']);
     Route::apiResource('mushroom-allocations', MushroomAllocationController::class);
+    // Group followup: split production / revenue evenly across all members
+    Route::post('mushroom-followups/group', [MushroomFollowupController::class, 'storeGroup']);
+    // Autocomplete suggestions for free-text fields (must come before resource)
+    Route::get('mushroom-followups/suggestions', [MushroomFollowupController::class, 'suggestions']);
     Route::apiResource('mushroom-followups', MushroomFollowupController::class);
 
     // Reports
@@ -78,6 +87,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/quota-vs-allocated', [ReportController::class, 'quotaVsAllocated'])->name('quota-vs-allocated');
         Route::get('/household-revenue',  [ReportController::class, 'householdRevenue'])->name('household-revenue');
         Route::get('/by-enterprise',      [ReportController::class, 'byEnterprise'])->name('by-enterprise');
+        Route::get('/by-group',           [ReportController::class, 'byGroup'])->name('by-group');
+        Route::get('/income-comparison',  [ReportController::class, 'incomeComparison'])->name('income-comparison');
         Route::get('/years',              [ReportController::class, 'years'])->name('years');
         Route::get('/districts',          [ReportController::class, 'districts'])->name('districts');
     });

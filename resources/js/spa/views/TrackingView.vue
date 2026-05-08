@@ -151,14 +151,24 @@
                 </p>
               </div>
             </div>
+            <!-- Status tags — one per matched condition (mirrors the filter pills above) -->
             <div class="flex items-center gap-1.5 mt-2 flex-wrap">
-              <span v-if="Number(h.allocation_count) > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
-                จัดสรร {{ h.allocation_count }} ครั้ง
+              <span v-if="Number(h.total_bags_received) > 0"
+                    class="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200 inline-flex items-center gap-1">
+                <i class="fi fi-rr-check"></i> ได้รับโควต้าแล้ว
+                <span class="text-[9px] text-violet-600">· {{ h.allocation_count }} ครั้ง</span>
               </span>
-              <span v-if="Number(h.followup_count) > 0" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                ติดตาม {{ h.followup_count }} รอบ
+              <span v-if="Number(h.total_harvest_kg) > 0"
+                    class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                <i class="fi fi-rr-check"></i> ได้รับผลผลิตแล้ว
+                <span class="text-[9px] text-emerald-600">· {{ h.followup_count }} รอบ</span>
               </span>
-              <span v-if="Number(h.total_bags_received) === 0" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+              <span v-if="Number(h.total_revenue) > 0"
+                    class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+                <i class="fi fi-rr-check"></i> มีรายได้แล้ว
+              </span>
+              <span v-if="Number(h.total_bags_received) === 0"
+                    class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                 ยังไม่ได้รับโควต้า
               </span>
             </div>

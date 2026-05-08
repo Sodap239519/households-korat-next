@@ -116,6 +116,86 @@ class MushroomAllocationController extends Controller
         return response()->json($mushroomAllocation);
     }
 
+    /**
+     * Group allocation: split a single bag total evenly across many households,
+     * tagging each child allocation with the same group_code so they remain
+     * linked. Production / revenue can later be split via the matching group
+     * followup endpoint.
+     */
+    public function storeGroup(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->canCreateAllocation(), 403, 'ไม่มีสิทธิ์จัดสรรโควต้า');
+
+        $validated = $request->validate([
+            'quota_id'        => ['required', 'exists:mushroom_quota_districts,id'],
+            'household_ids'   => ['required', 'array', 'min:1'],
+            'household_ids.*' => ['integer', 'exists:households,id'],
+            'total_bags'      => ['required', 'integer', 'min:1'],
+            'allocated_date'  => ['nullable', 'date'],
+            'status'          => ['nullable', 'in:pending,active,completed'],
+            'note'            => ['nullable', 'string'],
+            'group_label'     => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $quota = \App\Models\MushroomQuotaDistrict::lockForUpdate()->findOrFail($validated['quota_id']);
+
+        abort_unless(
+            $request->user()->canActInDistrict($quota->district),
+            403,
+            "ไม่มีสิทธิ์จัดสรรในอำเภอ {$quota->district} (เกินเขตพื้นที่ที่คุณดูแล)",
+        );
+
+        $allocated = $quota->allocations()->sum('bags');
+        $remaining = $quota->quota_bags - $allocated;
+        if ($validated['total_bags'] > $remaining) {
+            return response()->json([
+                'message' => "โควต้าไม่เพียงพอ (คงเหลือ: {$remaining} ก้อน)",
+            ], 422);
+        }
+
+        // Even split — integer per household, leftover added to the first N
+        $ids = array_values(array_unique($validated['household_ids']));
+        $n = count($ids);
+        $base = intdiv($validated['total_bags'], $n);
+        $extra = $validated['total_bags'] - ($base * $n); // 0..n-1 households get +1
+
+        if ($base < 1) {
+            return response()->json([
+                'message' => "จำนวนก้อนรวมน้อยกว่าจำนวนครัวเรือน — ต้องอย่างน้อย {$n} ก้อน",
+            ], 422);
+        }
+
+        $code = (string) \Illuminate\Support\Str::uuid();
+        $rows = [];
+        foreach ($ids as $i => $hid) {
+            $bags = $base + ($i < $extra ? 1 : 0);
+            $rows[] = MushroomAllocation::create([
+                'quota_id'       => $validated['quota_id'],
+                'household_id'   => $hid,
+                'group_code'     => $code,
+                'group_label'    => $validated['group_label'] ?? null,
+                'bags'           => $bags,
+                'allocated_date' => $validated['allocated_date'] ?? null,
+                'status'         => $validated['status'] ?? 'pending',
+                'note'           => $validated['note'] ?? null,
+            ]);
+        }
+
+        // Notify admins once for the whole group (use the first row as a representative)
+        if (!empty($rows)) {
+            $rep = $rows[0]->load(['quota', 'household']);
+            AdminNotificationService::allocationCreated($rep, $request->user());
+        }
+
+        return response()->json([
+            'message'      => "บันทึกการจัดสรรแบบกลุ่มสำเร็จ ({$n} ครัวเรือน, {$validated['total_bags']} ก้อน)",
+            'group_code'   => $code,
+            'group_label'  => $validated['group_label'] ?? null,
+            'count'        => $n,
+            'allocations'  => collect($rows)->map(fn ($r) => $r->only(['id','household_id','bags']))->all(),
+        ], 201);
+    }
+
     public function destroy(Request $request, MushroomAllocation $mushroomAllocation): JsonResponse
     {
         abort_unless($request->user()->canCreateAllocation(), 403, 'ไม่มีสิทธิ์ลบการจัดสรร');
