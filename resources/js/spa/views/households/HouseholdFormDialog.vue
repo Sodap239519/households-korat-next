@@ -37,14 +37,49 @@
             <Select v-model="form.province" :options="locations.provinces" placeholder="-- เลือก --" showClear editable filter class="w-full" />
           </Field>
           <Field label="อำเภอ">
-            <Select v-model="form.district" :options="locations.districts" placeholder="-- เลือก --" showClear editable filter class="w-full" @change="onDistrictChange" />
+            <AutoComplete
+              v-model="form.district"
+              :suggestions="filtered.districts"
+              @complete="searchDistricts"
+              @change="onDistrictChange"
+              :dropdown="locations.districts.length > 0"
+              completeOnFocus
+              forceSelection="false"
+              placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
+              class="w-full"
+              fluid
+              :pt="{ pcInput: { root: { class: 'w-full' } } }"
+            />
           </Field>
           <Field label="ตำบล">
-            <Select v-model="form.sub_district" :options="locations.subDistricts" placeholder="-- เลือก --" showClear editable filter class="w-full" @change="onSubDistrictChange" />
+            <AutoComplete
+              v-model="form.sub_district"
+              :suggestions="filtered.subDistricts"
+              @complete="searchSubDistricts"
+              @change="onSubDistrictChange"
+              :dropdown="locations.subDistricts.length > 0"
+              completeOnFocus
+              forceSelection="false"
+              placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
+              class="w-full"
+              fluid
+              :pt="{ pcInput: { root: { class: 'w-full' } } }"
+            />
           </Field>
           <Field label="หมู่ที่"><InputText v-model="form.moo_number" class="w-full" /></Field>
           <Field label="หมู่บ้าน">
-            <Select v-model="form.village" :options="locations.villages" placeholder="-- เลือก --" showClear editable filter class="w-full" />
+            <AutoComplete
+              v-model="form.village"
+              :suggestions="filtered.villages"
+              @complete="searchVillages"
+              :dropdown="locations.villages.length > 0"
+              completeOnFocus
+              forceSelection="false"
+              placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
+              class="w-full"
+              fluid
+              :pt="{ pcInput: { root: { class: 'w-full' } } }"
+            />
           </Field>
           <Field label="บ้านเลขที่"><InputText v-model="form.house_number" class="w-full" /></Field>
           <Field label="รหัสไปรษณีย์"><InputText v-model="form.postal_code" class="w-full" /></Field>
@@ -71,9 +106,11 @@
           <Field label="นามสกุล" required>
             <InputText v-model="form.last_name" required class="w-full" />
           </Field>
+          <!-- ปิดช่องบัตรประชาชนตามคำขอ — เก็บไว้ใน form แต่ไม่ render UI
           <Field label="บัตรประชาชน">
             <InputText v-model="form.id_card" maxlength="13" class="w-full" placeholder="13 หลัก" />
           </Field>
+          -->
           <Field label="เพศ">
             <Select v-model="form.gender" :options="OPT.gender" placeholder="-- เลือก --" showClear class="w-full" />
           </Field>
@@ -222,6 +259,7 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
+import AutoComplete from 'primevue/autocomplete'
 import DatePicker from 'primevue/datepicker'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
@@ -265,6 +303,18 @@ const OPT = {
 
 // Location data loaded from API (cached on first dialog open)
 const locations = ref({ provinces: [], districts: [], subDistricts: [], villages: [] })
+
+// AutoComplete filtered options (computed from locations on-the-fly)
+const filtered = ref({ districts: [], subDistricts: [], villages: [] })
+
+function filterList(list, query) {
+  const q = (query || '').trim().toLowerCase()
+  if (!q) return [...list]
+  return list.filter(s => String(s).toLowerCase().includes(q))
+}
+function searchDistricts(event)    { filtered.value.districts    = filterList(locations.value.districts,    event.query) }
+function searchSubDistricts(event) { filtered.value.subDistricts = filterList(locations.value.subDistricts, event.query) }
+function searchVillages(event)     { filtered.value.villages     = filterList(locations.value.villages,     event.query) }
 
 function defaultForm() {
   return {
