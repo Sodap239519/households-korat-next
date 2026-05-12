@@ -44,7 +44,7 @@
               @change="onDistrictChange"
               dropdown
               completeOnFocus
-              forceSelection="false"
+              :forceSelection="false"
               placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
               class="w-full"
               fluid
@@ -59,7 +59,7 @@
               @change="onSubDistrictChange"
               dropdown
               completeOnFocus
-              forceSelection="false"
+              :forceSelection="false"
               placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
               class="w-full"
               fluid
@@ -74,7 +74,7 @@
               @complete="searchVillages"
               dropdown
               completeOnFocus
-              forceSelection="false"
+              :forceSelection="false"
               placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
               class="w-full"
               fluid
