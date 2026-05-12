@@ -48,7 +48,7 @@
     "src": "node_modules/primeicons/fonts/primeicons.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-BNS2ZFKF.css",
+    "file": "assets/app-wlIzbCjk.css",
     "name": "app",
     "names": [
       "app.css"
@@ -66,7 +66,7 @@
     ]
   },
   "resources/js/spa/main.js": {
-    "file": "assets/main-wPP1edpy.js",
+    "file": "assets/main-DvlO9_R2.js",
     "name": "main",
     "src": "resources/js/spa/main.js",
     "isEntry": true,
@@ -94,7 +94,7 @@
     ]
   },
   "resources/js/spa/views/MainLayout.vue": {
-    "file": "assets/MainLayout-Bk5WI6Dy.js",
+    "file": "assets/MainLayout-gGZrzqWL.js",
     "name": "MainLayout",
     "src": "resources/js/spa/views/MainLayout.vue",
     "isDynamicEntry": true,
