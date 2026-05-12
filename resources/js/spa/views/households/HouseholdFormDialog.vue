@@ -42,7 +42,7 @@
               :suggestions="filtered.districts"
               @complete="searchDistricts"
               @change="onDistrictChange"
-              :dropdown="locations.districts.length > 0"
+              dropdown
               completeOnFocus
               forceSelection="false"
               placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
@@ -57,7 +57,7 @@
               :suggestions="filtered.subDistricts"
               @complete="searchSubDistricts"
               @change="onSubDistrictChange"
-              :dropdown="locations.subDistricts.length > 0"
+              dropdown
               completeOnFocus
               forceSelection="false"
               placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
@@ -72,7 +72,7 @@
               v-model="form.village"
               :suggestions="filtered.villages"
               @complete="searchVillages"
-              :dropdown="locations.villages.length > 0"
+              dropdown
               completeOnFocus
               forceSelection="false"
               placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
@@ -250,7 +250,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, h } from 'vue'
+import { ref, computed, watch, onMounted, h } from 'vue'
 import api from '../../api/index.js'
 import FormSection from '../../components/FormSection.vue'
 
@@ -410,7 +410,15 @@ async function loadLocations() {
       api.get('/locations/villages'),
     ])
     locations.value = { provinces: p.data, districts: d.data, subDistricts: s.data, villages: v.data }
-  } catch {}
+    // Populate filtered ทันทีเพื่อให้ dropdown แสดงข้อมูลได้เลย ไม่ต้องรอ user พิมพ์
+    filtered.value = {
+      districts:    [...locations.value.districts],
+      subDistricts: [...locations.value.subDistricts],
+      villages:     [...locations.value.villages],
+    }
+  } catch (err) {
+    console.error('[HouseholdForm] loadLocations failed:', err)
+  }
 }
 
 async function onDistrictChange() {
@@ -431,10 +439,15 @@ async function onSubDistrictChange() {
   } catch {}
 }
 
+// Load locations ทันทีตั้งแต่ component mount — ไม่ต้องรอ user เปิด dialog
+// ป้องกัน race condition: user คลิก dropdown ก่อน API ตอบ
+onMounted(() => { loadLocations() })
+
 watch(() => props.modelValue, async (open) => {
   if (!open) return
   error.value = ''
-  if (!locations.value.districts.length) loadLocations()
+  // Reload ถ้ายังไม่มีข้อมูล (เช่น API ล้มเหลวก่อนหน้า)
+  if (!locations.value.districts.length) await loadLocations()
   if (isEdit.value) {
     try {
       const { data } = await api.get(`/households/${props.householdId}`)
