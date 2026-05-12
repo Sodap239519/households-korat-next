@@ -305,7 +305,7 @@
               :suggestions="salePlaceFiltered"
               @complete="searchSalePlaces"
               :dropdown="salePlaceOptions.length > 0"
-              forceSelection="false"
+              :forceSelection="false"
               completeOnFocus
               placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
               class="w-full"
@@ -328,7 +328,7 @@
               :suggestions="enterpriseFiltered"
               @complete="searchEnterprises"
               :dropdown="enterpriseOptions.length > 0"
-              forceSelection="false"
+              :forceSelection="false"
               completeOnFocus
               placeholder="คลิกเพื่อเลือก หรือพิมพ์ชื่อใหม่"
               class="w-full"
