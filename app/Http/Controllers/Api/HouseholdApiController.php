@@ -51,6 +51,7 @@ class HouseholdApiController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $this->validatePayload($request);
+        $validated = $this->normalizeDefaults($validated);
         $validated['recorded_by'] = $request->user()->id;
         $household = Household::create($validated);
 
@@ -105,8 +106,54 @@ class HouseholdApiController extends Controller
     public function update(Request $request, Household $household): JsonResponse
     {
         $validated = $this->validatePayload($request, $household->id);
+        $validated = $this->normalizeDefaults($validated);
         $household->update($validated);
         return response()->json($household->fresh());
+    }
+
+    /**
+     * แปลง null → ค่า default สำหรับคอลัมน์ที่ DB กำหนด NOT NULL
+     * - score fields (NOT NULL DEFAULT 0.00) → 0
+     * - members_count (NOT NULL DEFAULT 1) → 1
+     * - boolean fields (NOT NULL DEFAULT 0) → false
+     * - auto-calculate total_score + priority + passed จาก score ย่อย
+     */
+    private function normalizeDefaults(array $v): array
+    {
+        // Score fields — null → 0
+        $scoreFields = ['poverty_score','motivation_score','experience_score','grouping_score',
+                        'potential_score','area_score','market_score'];
+        foreach ($scoreFields as $f) {
+            if (!isset($v[$f]) || $v[$f] === null) $v[$f] = 0;
+        }
+        if (!isset($v['total_score']) || $v['total_score'] === null) $v['total_score'] = 0;
+        if (!isset($v['members_count']) || $v['members_count'] === null) $v['members_count'] = 1;
+
+        // Booleans — null/missing → false
+        $boolFields = ['has_mushroom_area','has_electricity','ever_agriculture','ever_mushroom',
+                       'social_media_use','group_member','passed','completed','is_active'];
+        foreach ($boolFields as $f) {
+            $v[$f] = (bool) ($v[$f] ?? false);
+        }
+
+        // Auto-calculate total_score (ค่าเฉลี่ย 7 ส่วน) ถ้ายังไม่ได้กรอก
+        if ((float) $v['total_score'] === 0.0) {
+            $sum = 0;
+            foreach ($scoreFields as $f) $sum += (float) $v[$f];
+            $v['total_score'] = round($sum / count($scoreFields), 2);
+        }
+
+        // Auto-assign priority + passed จาก total_score (ถ้ายังไม่ได้ตั้ง)
+        if (empty($v['priority'])) {
+            $t = (float) $v['total_score'];
+            $v['priority'] = $t >= 80 ? 'A' : ($t >= 65 ? 'B' : ($t >= 50 ? 'C' : 'D'));
+        }
+        // passed: ผ่านเกณฑ์เมื่อ priority A หรือ B (>= 65)
+        if (!isset($v['passed']) || $v['passed'] === false) {
+            $v['passed'] = in_array($v['priority'] ?? '', ['A', 'B'], true);
+        }
+
+        return $v;
     }
 
     public function destroy(Household $household): JsonResponse
