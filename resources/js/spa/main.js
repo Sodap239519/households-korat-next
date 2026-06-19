@@ -6,6 +6,7 @@ import ConfirmationService from 'primevue/confirmationservice'
 import App from './App.vue'
 import router from './router/index.js'
 import { HouseholdPreset } from './theme.js'
+import { reveal } from './directives/reveal.js'
 
 import 'primeicons/primeicons.css'
 import '@flaticon/flaticon-uicons/css/regular/rounded.css'
@@ -32,5 +33,13 @@ app.use(PrimeVue, {
 })
 app.use(ToastService)
 app.use(ConfirmationService)
+app.directive('reveal', reveal)
 
 app.mount('#app')
+
+// ลงทะเบียน service worker (PWA) — เฉพาะ origin ที่รองรับ
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
+  })
+}

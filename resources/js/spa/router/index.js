@@ -11,7 +11,6 @@ import TrackingView from '../views/TrackingView.vue'
 import QuotaList from '../views/quotas/QuotaList.vue'
 import AllocationList from '../views/allocations/AllocationList.vue'
 import FollowupList from '../views/followups/FollowupList.vue'
-import MarketingHome from '../views/marketing/MarketingHome.vue'
 import ReportView from '../views/reports/ReportView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import LoginHistoryView from '../views/LoginHistoryView.vue'
@@ -50,8 +49,19 @@ const routes = [
             { path: 'allocations', redirect: '/app/mushroom/allocations' },
             { path: 'followups',   redirect: '/app/mushroom/followups' },
 
-            // Marketing & Reports
-            { path: 'marketing', component: MarketingHome },
+            // Marketplace backoffice
+            { path: 'marketing', redirect: '/app/market' },
+            { path: 'market',                component: () => import('../views/market/MarketDashboard.vue') },
+            { path: 'market/products',       component: () => import('../views/market/ProductManagement.vue') },
+            { path: 'market/categories',     component: () => import('../views/market/CategoryManagement.vue') },
+            { path: 'market/orders',         component: () => import('../views/market/OrderManagement.vue') },
+            { path: 'market/payments',       component: () => import('../views/market/PaymentConfirmation.vue') },
+            { path: 'market/returns',        component: () => import('../views/market/ReturnManagement.vue') },
+            { path: 'market/reviews',        component: () => import('../views/market/ReviewManagement.vue') },
+            { path: 'market/comments',       component: () => import('../views/market/CommentManagement.vue') },
+            { path: 'market/seller-groups',  component: () => import('../views/market/SellerGroupManagement.vue') },
+
+            // Reports
             { path: 'reports',   component: ReportView },
 
             // User account
@@ -62,6 +72,24 @@ const routes = [
             { path: 'admin/users', component: UserManagementView },
         ],
     },
+    // ===== Storefront (public shop at /shop) =====
+    {
+        path: '/shop',
+        component: () => import('../views/shop/StorefrontLayout.vue'),
+        meta: { public: true },
+        children: [
+            { path: '',                       component: () => import('../views/shop/ShopHome.vue') },
+            { path: 'products',               component: () => import('../views/shop/ProductCatalog.vue') },
+            { path: 'products/:slug',         component: () => import('../views/shop/ProductDetail.vue') },
+            { path: 'cart',                   component: () => import('../views/shop/CartView.vue') },
+            { path: 'login',                  component: () => import('../views/shop/CustomerLogin.vue'), meta: { guestShop: true } },
+            { path: 'register',               component: () => import('../views/shop/CustomerRegister.vue'), meta: { guestShop: true } },
+            { path: 'checkout',               component: () => import('../views/shop/CheckoutView.vue'), meta: { customerAuth: true } },
+            { path: 'account/orders',         component: () => import('../views/shop/AccountOrders.vue'), meta: { customerAuth: true } },
+            { path: 'account/orders/:orderNo', component: () => import('../views/shop/OrderDetail.vue'), meta: { customerAuth: true } },
+        ],
+    },
+
     { path: '/:pathMatch(.*)*', redirect: '/app' },
 ]
 
@@ -73,11 +101,17 @@ const router = createRouter({
 router.beforeEach(async (to) => {
     const { user, fetchUser } = useAuth()
 
-    if (user.value === null && (to.meta.requiresAuth || to.meta.guest)) {
+    if (user.value === null && (to.meta.requiresAuth || to.meta.guest || to.meta.customerAuth || to.meta.guestShop)) {
         await fetchUser()
     }
     if (to.meta.requiresAuth && !user.value) return '/app/login'
     if (to.meta.guest && user.value) return '/app/dashboard'
+
+    // Storefront customer guards
+    if (to.meta.customerAuth && !user.value) {
+        return { path: '/shop/login', query: { redirect: to.fullPath } }
+    }
+    if (to.meta.guestShop && user.value) return '/shop'
 })
 
 export default router

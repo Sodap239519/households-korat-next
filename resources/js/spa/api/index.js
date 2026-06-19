@@ -31,9 +31,20 @@ api.interceptors.response.use(
             const url = error.config?.url || ''
             const path = window.location.pathname
             const isSilent = SILENT_AUTH_URLS.some(s => url.endsWith(s))
+            // หน้าร้าน (/shop) ส่วนใหญ่เป็น public — 401 ไม่ควรเด้ง ยกเว้นหน้าที่ต้อง login
+            const onStorefront = path.startsWith('/shop')
             const onAuthFreePage = AUTH_FREE_PATHS.includes(path) || path.startsWith('/app/public')
             if (!isSilent && !onAuthFreePage) {
-                window.location.href = '/app/login'
+                if (onStorefront) {
+                    // เด้งไปหน้า login ของลูกค้า เฉพาะหน้าที่ต้องยืนยันตัวตน
+                    const needsAuth = /^\/shop\/(checkout|account|orders)/.test(path)
+                    if (needsAuth) {
+                        const redirect = encodeURIComponent(path + window.location.search)
+                        window.location.href = `/shop/login?redirect=${redirect}`
+                    }
+                } else {
+                    window.location.href = '/app/login'
+                }
             }
         }
         return Promise.reject(error)

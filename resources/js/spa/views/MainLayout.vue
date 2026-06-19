@@ -267,7 +267,7 @@ const vTooltip = Tooltip
 
 const route = useRoute()
 const router = useRouter()
-const { user, logout, isAdmin, isAreaStaff, canManageUsers, roleLabel: roleLabelFn } = useAuth()
+const { user, logout, isAdmin, isAreaStaff, isMarketStaff, canManageUsers, roleLabel: roleLabelFn } = useAuth()
 const toast = useToast()
 
 const collapsed = ref(false)
@@ -308,7 +308,25 @@ const allNavItems = [
     ],
   },
 
-  { to: '/app/marketing', icon: 'fi fi-rr-shop',      label: 'การตลาด', show: () => isAreaStaff.value },
+  // ระบบตลาด — เจ้าหน้าที่ที่สังกัดกลุ่ม และ admin
+  {
+    label: 'ระบบตลาด',
+    icon: 'fi fi-rr-shop',
+    matchPrefix: '/app/market',
+    show: () => isMarketStaff.value,
+    children: [
+      { to: '/app/market',              icon: 'fi fi-rr-chart-histogram', label: 'แดชบอร์ดตลาด' },
+      { to: '/app/market/products',     icon: 'fi fi-rr-box-open',        label: 'สินค้า' },
+      { to: '/app/market/categories',   icon: 'fi fi-rr-apps',            label: 'หมวดหมู่' },
+      { to: '/app/market/orders',       icon: 'fi fi-rr-shopping-bag',    label: 'คำสั่งซื้อ' },
+      { to: '/app/market/payments',     icon: 'fi fi-rr-receipt',         label: 'ยืนยันชำระเงิน' },
+      { to: '/app/market/returns',      icon: 'fi fi-rr-undo',            label: 'คืน/เคลม' },
+      { to: '/app/market/reviews',      icon: 'fi fi-rr-star',            label: 'รีวิว' },
+      { to: '/app/market/comments',     icon: 'fi fi-rr-comment',         label: 'คอมเมนต์' },
+      { to: '/app/market/seller-groups', icon: 'fi fi-rr-users-alt',      label: 'กลุ่มผู้ขาย' },
+    ],
+  },
+
   { to: '/app/reports',   icon: 'fi fi-rr-chart-pie', label: 'รายงาน',   show: () => isAreaStaff.value },
 ]
 
@@ -362,6 +380,7 @@ const SCOPE_MAP = {
   tracking:      { scope: 'followups',   label: 'การติดตาม' },
   mushroom:      { scope: 'all',         label: 'ข้อมูล' },         // overridden by sub-page
   marketing:     { scope: 'followups',   label: 'การตลาด' },
+  market:        { scope: 'all',         label: 'ระบบตลาด' },
   reports:       { scope: 'all',         label: 'รายงาน' },
   admin:         { scope: 'users',       label: 'ผู้ใช้' },
   'login-history': { scope: 'users',     label: 'ประวัติเข้าใช้งาน' },

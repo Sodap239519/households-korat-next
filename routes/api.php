@@ -13,6 +13,21 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicDashboardController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\Market\CategoryController as MarketCategoryController;
+use App\Http\Controllers\Api\Market\CommentController as MarketCommentController;
+use App\Http\Controllers\Api\Market\DashboardController as MarketDashboardController;
+use App\Http\Controllers\Api\Market\OrderController as MarketOrderController;
+use App\Http\Controllers\Api\Market\PaymentController as MarketPaymentController;
+use App\Http\Controllers\Api\Market\ProductController as MarketProductController;
+use App\Http\Controllers\Api\Market\ReturnController as MarketReturnController;
+use App\Http\Controllers\Api\Market\ReviewController as MarketReviewController;
+use App\Http\Controllers\Api\Market\SellerGroupController as MarketSellerGroupController;
+use App\Http\Controllers\Api\Shop\CatalogController as ShopCatalogController;
+use App\Http\Controllers\Api\Shop\CheckoutController as ShopCheckoutController;
+use App\Http\Controllers\Api\Shop\CustomerAuthController as ShopCustomerAuthController;
+use App\Http\Controllers\Api\Shop\FeedbackController as ShopFeedbackController;
+use App\Http\Controllers\Api\Shop\OrderController as ShopOrderController;
+use App\Http\Controllers\Api\LineWebhookController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UsersAdminController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +41,19 @@ Route::get('/locations/districts',     [LocationController::class, 'districts'])
 Route::get('/locations/sub-districts', [LocationController::class, 'subDistricts']);
 Route::get('/locations/villages',      [LocationController::class, 'villages']);
 Route::get('/locations/provinces',     [LocationController::class, 'provinces']);
+
+// ===== LINE Webhook (public — ต้องไม่มี auth middleware) =====
+Route::post('/line/webhook',       [LineWebhookController::class, 'handle']);
+Route::middleware('auth:sanctum')->get('/line/targets', [LineWebhookController::class, 'recentTargets']);
+
+// ===== Storefront (public, no auth) =====
+Route::get('/shop/groups',            [ShopCatalogController::class, 'groups']);
+Route::get('/shop/categories',        [ShopCatalogController::class, 'categories']);
+Route::get('/shop/products',          [ShopCatalogController::class, 'products']);
+Route::get('/shop/products/{slug}',   [ShopCatalogController::class, 'product']);
+Route::post('/customer/register',     [ShopCustomerAuthController::class, 'register']);
+Route::get('/shop/products/{slug}/reviews',  [ShopCatalogController::class, 'productReviews']);
+Route::get('/shop/products/{slug}/comments', [ShopCatalogController::class, 'productComments']);
 
 // ===== Protected =====
 Route::middleware('auth:sanctum')->group(function () {
@@ -78,6 +106,63 @@ Route::middleware('auth:sanctum')->group(function () {
     // Autocomplete suggestions for free-text fields (must come before resource)
     Route::get('mushroom-followups/suggestions', [MushroomFollowupController::class, 'suggestions']);
     Route::apiResource('mushroom-followups', MushroomFollowupController::class);
+
+    // ===== Storefront (customer, ต้อง login) =====
+    Route::post('/shop/checkout',                  [ShopCheckoutController::class, 'store']);
+    Route::get('/shop/my/orders',                  [ShopOrderController::class, 'index']);
+    Route::get('/shop/my/orders/{orderNo}',        [ShopOrderController::class, 'show']);
+    Route::post('/shop/orders/{orderNo}/payment',  [ShopOrderController::class, 'submitPayment']);
+    Route::post('/shop/orders/{orderNo}/receive',  [ShopOrderController::class, 'receive']);
+    Route::post('/shop/orders/{orderNo}/returns',  [ShopOrderController::class, 'requestReturn']);
+
+    // Feedback (รีวิว + คอมเมนต์ — ต้อง login)
+    Route::get('/shop/products/{slug}/eligibility', [ShopFeedbackController::class, 'eligibility']);
+    Route::post('/shop/products/{slug}/reviews',    [ShopFeedbackController::class, 'storeReview']);
+    Route::post('/shop/products/{slug}/comments',   [ShopFeedbackController::class, 'storeComment']);
+
+    // ===== Marketplace backoffice (/market) =====
+    Route::prefix('market')->group(function () {
+        // Payments (ยืนยันการชำระเงิน)
+        Route::get('payments',                    [MarketPaymentController::class, 'index']);
+        Route::post('payments/{payment}/confirm', [MarketPaymentController::class, 'confirm']);
+        Route::post('payments/{payment}/reject',  [MarketPaymentController::class, 'reject']);
+
+        // Orders (จัดการคำสั่งซื้อ + จัดส่ง)
+        Route::get('orders',                  [MarketOrderController::class, 'index']);
+        Route::get('orders/{order}',          [MarketOrderController::class, 'show']);
+        Route::post('orders/{order}/ship',    [MarketOrderController::class, 'ship']);
+        Route::post('orders/{order}/status',  [MarketOrderController::class, 'setStatus']);
+
+        // Returns (คืน/เคลม)
+        Route::get('returns',                          [MarketReturnController::class, 'index']);
+        Route::post('returns/{returnRequest}/resolve', [MarketReturnController::class, 'resolve']);
+
+        // Dashboard (KPI + กราฟ)
+        Route::get('dashboard', [MarketDashboardController::class, 'index']);
+
+        // Reviews (ตอบกลับ/ซ่อน)
+        Route::get('reviews',                        [MarketReviewController::class, 'index']);
+        Route::post('reviews/{review}/reply',        [MarketReviewController::class, 'reply']);
+        Route::post('reviews/{review}/status',       [MarketReviewController::class, 'setStatus']);
+
+        // Comments (ตอบกลับ/ซ่อน)
+        Route::get('comments',                       [MarketCommentController::class, 'index']);
+        Route::post('comments/{comment}/reply',      [MarketCommentController::class, 'reply']);
+        Route::post('comments/{comment}/status',     [MarketCommentController::class, 'setStatus']);
+
+        // Seller groups (admin จัดการเต็ม / เจ้าหน้าที่กลุ่มแก้ข้อมูลติดต่อ+LINE ของตัวเอง)
+        Route::post('seller-groups/{sellerGroup}/members', [MarketSellerGroupController::class, 'setMembers']);
+        Route::apiResource('seller-groups', MarketSellerGroupController::class)
+            ->parameters(['seller-groups' => 'sellerGroup']);
+
+        // Categories
+        Route::apiResource('categories', MarketCategoryController::class)->except(['show']);
+
+        // Products (+ image upload)
+        Route::post('products/{product}/images',                [MarketProductController::class, 'uploadImages']);
+        Route::delete('products/{product}/images/{image}',      [MarketProductController::class, 'deleteImage']);
+        Route::apiResource('products', MarketProductController::class);
+    });
 
     // Reports
     Route::prefix('reports')->name('reports.')->group(function () {

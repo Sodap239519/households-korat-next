@@ -19,6 +19,19 @@ const canCreateAllocation = isAreaStaff
 const canCreateFollowup   = isAreaStaff
 const canEditHouseholds   = isStaff
 
+// ===== Marketplace flags =====
+const isCustomer  = computed(() => role.value === 'customer')
+const sellerGroupId = computed(() => user.value?.seller_group_id ?? null)
+// เจ้าหน้าที่ที่ทำงานหลังบ้านตลาด: admin หรือ staff ที่สังกัดกลุ่ม
+const isMarketStaff = computed(() => isAdmin.value || (isStaff.value && !isCustomer.value && !!sellerGroupId.value))
+const canManageSellerGroups = isAdmin
+
+function canActInGroup(groupId) {
+  if (isAdmin.value) return true
+  if (!isMarketStaff.value) return false
+  return Number(sellerGroupId.value) === Number(groupId)
+}
+
 const assignedDistricts = computed(() => user.value?.assigned_districts || [])
 
 function canActInDistrict(district) {
@@ -80,6 +93,12 @@ export function useAuth() {
         canCreateAllocation,
         canCreateFollowup,
         canEditHouseholds,
+        // marketplace
+        isCustomer,
+        isMarketStaff,
+        sellerGroupId,
+        canManageSellerGroups,
+        canActInGroup,
         // districts
         assignedDistricts,
         canActInDistrict,

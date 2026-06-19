@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    // LINE Messaging API — Official Account กลาง 1 ตัว (LINE Notify ถูกปิดบริการแล้ว)
+    // แต่ละ seller_group เก็บปลายทาง (line_target_id) ของตัวเอง
+    'line' => [
+        'channel_access_token' => env('LINE_CHANNEL_ACCESS_TOKEN'),
+        'channel_secret'       => env('LINE_CHANNEL_SECRET'),
+        'push_url'             => env('LINE_PUSH_URL', 'https://api.line.me/v2/bot/message/push'),
+    ],
+
+    // บริการตรวจสลิปโอนเงินอัตโนมัติ (เช่น SlipOK / Slip2Go) — เว้นว่าง = ตรวจด้วยมือ
+    'slip' => [
+        'provider' => env('SLIP_VERIFY_PROVIDER'),       // เช่น 'slipok'
+        'token'    => env('SLIP_VERIFY_TOKEN'),
+        'url'      => env('SLIP_VERIFY_URL'),
+    ],
+
 ];

@@ -18,8 +18,25 @@ html, body { height: 100%; }
 body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 50%, #ede9fe 100%);
+    /* โทนม่วง-ขาว-ส้ม พาสเทล ไล่เกรเดียน */
+    background: linear-gradient(135deg, #f6f1ff 0%, #ffffff 48%, #fff3e8 100%);
+    background-attachment: fixed;
 }
+
+/* แบรนด์เกรเดียน (ม่วง → ส้ม) ใช้กับโลโก้/ไอคอน */
+.brand-gradient { background: linear-gradient(120deg, #7c3aed 0%, #a855f7 45%, #fb923c 100%); }
+.brand-text-gradient {
+    background: linear-gradient(120deg, #7c3aed 0%, #c026d3 45%, #f97316 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* ปุ่มหลัก (CTA) สีส้ม — โทนเดียวกับแพลตฟอร์มแก้จนโคราช */
+.btn-orange {
+    background: linear-gradient(120deg, #f97316 0%, #fb923c 100%);
+    color: #fff;
+    box-shadow: 0 10px 24px -10px rgba(249, 115, 22, .6);
+}
+.btn-orange:hover { box-shadow: 0 14px 30px -10px rgba(249, 115, 22, .7); }
 
 /* Glassmorphism utility */
 .glass {
@@ -46,4 +63,148 @@ body {
 .box-card:hover {
     border-color: rgb(167, 139, 250);
     box-shadow: 0 10px 30px -10px rgba(124, 58, 237, 0.25);
+}
+
+/* Form field label */
+.form-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgb(51, 65, 85); /* slate-700 */
+}
+
+/* ============================================================
+   Motion & micro-interactions
+   ============================================================ */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(.96); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes floatBlob {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%      { transform: translate(20px, -28px) scale(1.06); }
+    66%      { transform: translate(-18px, 14px) scale(.96); }
+}
+@keyframes shimmer {
+    0%   { background-position: -468px 0; }
+    100% { background-position: 468px 0; }
+}
+@keyframes floatY {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+}
+
+/* Scroll reveal (driven by v-reveal directive) */
+.reveal { opacity: 0; will-change: opacity, transform; }
+.reveal.is-visible { animation: fadeInUp .7s cubic-bezier(.22,.61,.36,1) forwards; }
+
+/* Entrance helpers */
+.anim-fade-in    { animation: fadeIn .5s ease forwards; }
+.anim-fade-up    { animation: fadeInUp .6s cubic-bezier(.22,.61,.36,1) forwards; }
+.anim-scale-in   { animation: scaleIn .45s cubic-bezier(.22,.61,.36,1) forwards; }
+.anim-float      { animation: floatY 4s ease-in-out infinite; }
+
+/* Hover lift for cards / tiles */
+.hover-lift { transition: transform .28s cubic-bezier(.22,.61,.36,1), box-shadow .28s ease; }
+.hover-lift:hover { transform: translateY(-6px); box-shadow: 0 18px 40px -16px rgba(124,58,237,.35); }
+
+/* Animated gradient button sheen */
+.btn-sheen { position: relative; overflow: hidden; }
+.btn-sheen::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%);
+    transform: translateX(-100%); transition: transform .6s ease;
+}
+.btn-sheen:hover::after { transform: translateX(100%); }
+
+/* Decorative floating blobs (for hero backgrounds) */
+.blob { position: absolute; border-radius: 9999px; filter: blur(48px); opacity: .55; animation: floatBlob 14s ease-in-out infinite; pointer-events: none; }
+
+/* Skeleton shimmer */
+.skeleton {
+    background: linear-gradient(90deg, #ede9fe 25%, #f5f3ff 37%, #ede9fe 63%);
+    background-size: 936px 100%;
+    animation: shimmer 1.6s linear infinite;
+}
+
+/* Route / list transitions */
+.fade-slide-enter-active { transition: opacity .35s ease, transform .35s cubic-bezier(.22,.61,.36,1); }
+.fade-slide-leave-active { transition: opacity .2s ease; }
+.fade-slide-enter-from   { opacity: 0; transform: translateY(12px); }
+.fade-slide-leave-to     { opacity: 0; }
+
+.list-stagger-enter-active { transition: opacity .45s ease, transform .45s cubic-bezier(.22,.61,.36,1); }
+.list-stagger-enter-from   { opacity: 0; transform: translateY(16px); }
+
+/* Smooth default for interactive primitives */
+a, button { transition: color .2s ease, background-color .2s ease, border-color .2s ease; }
+
+/* ============================================================
+   โหมดมืด (shop-dark) — สลับผ่าน useDisplaySettings (สว่าง/มืด)
+   ============================================================ */
+html.shop-dark body {
+    background: linear-gradient(135deg, #1b1733 0%, #0f172a 55%, #2a1a16 100%);
+    color: #e2e8f0;
+}
+html.shop-dark .blob { opacity: .3; }
+
+/* การ์ด/พื้นผิว */
+html.shop-dark .box-card,
+html.shop-dark .glass {
+    background: rgba(30, 27, 58, 0.72);
+    backdrop-filter: blur(12px);
+    border-color: #4c1d95;
+    color: #e2e8f0;
+}
+html.shop-dark .box-card:hover { border-color: #7c3aed; box-shadow: 0 10px 30px -10px rgba(0,0,0,.6); }
+
+/* พื้นขาว/อ่อน → เข้ม */
+html.shop-dark .bg-white { background-color: #1e1b3a !important; }
+html.shop-dark .bg-slate-50,
+html.shop-dark .bg-slate-100 { background-color: #0f172a !important; }
+html.shop-dark .bg-violet-50,
+html.shop-dark .bg-violet-50\/40,
+html.shop-dark .bg-violet-50\/60 { background-color: rgba(76,29,149,.25) !important; }
+
+/* ตัวอักษร */
+html.shop-dark .text-slate-800,
+html.shop-dark .text-slate-700 { color: #e2e8f0 !important; }
+html.shop-dark .text-slate-600 { color: #cbd5e1 !important; }
+html.shop-dark .text-slate-500,
+html.shop-dark .text-slate-400 { color: #94a3b8 !important; }
+
+/* header / footer / bottom-nav */
+html.shop-dark header.bg-white\/90 { background: rgba(15,23,42,.92) !important; border-color: #312e81 !important; }
+html.shop-dark nav.fixed { background: rgba(15,23,42,.95) !important; border-color: #312e81 !important; }
+
+/* อินพุต */
+html.shop-dark input,
+html.shop-dark textarea,
+html.shop-dark select,
+html.shop-dark .inp {
+    background-color: #1e1b3a !important;
+    color: #e2e8f0 !important;
+    border-color: #475569 !important;
+}
+
+/* hero โทนมืด */
+html.shop-dark .hero-banner { background: linear-gradient(to bottom right, #2e1065, #1e1b3a, #3a1e12) !important; }
+html.shop-dark .hero-banner .text-slate-600 { color: #cbd5e1 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, .reveal, .reveal.is-visible, .anim-fade-in, .anim-fade-up, .anim-scale-in, .anim-float, .blob, .skeleton {
+        animation: none !important;
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }
