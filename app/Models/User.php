@@ -20,6 +20,9 @@ class User extends Authenticatable
     public const ROLE_SUPERADMIN  = 'superadmin';
     public const ROLES_ALL        = [self::ROLE_STAFF, self::ROLE_AREA_STAFF, self::ROLE_ADMIN, self::ROLE_SUPERADMIN];
 
+    /** Customer role — ลูกค้าหน้าร้าน (แยกจากเจ้าหน้าที่ ไม่อยู่ใน ROLES_ALL) */
+    public const ROLE_CUSTOMER    = 'customer';
+
     /** Maximum number of districts an area_staff user can be assigned. */
     public const MAX_ASSIGNED_DISTRICTS = 4;
 
@@ -29,6 +32,7 @@ class User extends Authenticatable
         'password',
         'role',
         'assigned_districts',
+        'seller_group_id',
         'is_approved',
         'approved_at',
         'approved_by',
@@ -100,6 +104,43 @@ class User extends Authenticatable
     public function canCreateAllocation(): bool { return $this->isAreaStaff(); }
     public function canCreateFollowup(): bool   { return $this->isAreaStaff(); }
     public function canEditHouseholds(): bool   { return $this->isStaff(); }
+
+    // ===== Marketplace helpers =====
+
+    public function isCustomer(): bool
+    {
+        return $this->role === self::ROLE_CUSTOMER;
+    }
+
+    /** สมาชิกเจ้าหน้าที่ที่ทำงานหลังบ้านตลาด (สังกัดกลุ่ม หรือเป็น admin) */
+    public function isMarketStaff(): bool
+    {
+        return $this->isAdmin() || ($this->isStaff() && !is_null($this->seller_group_id));
+    }
+
+    /** กลุ่มผู้ขายที่ผู้ใช้สังกัด */
+    public function sellerGroup()
+    {
+        return $this->belongsTo(SellerGroup::class, 'seller_group_id');
+    }
+
+    /** กลุ่มที่ผู้ใช้จัดการได้ (admin = null คือไม่จำกัด, เจ้าหน้าที่ = กลุ่มตัวเอง) */
+    public function sellerGroupScope(): ?int
+    {
+        if ($this->isAdmin()) return null;        // null = ไม่จำกัด เห็นทุกกลุ่ม
+        return $this->seller_group_id;            // จำกัดเฉพาะกลุ่มตัวเอง
+    }
+
+    /** ผู้ใช้จัดการข้อมูลตลาดของกลุ่มนี้ได้หรือไม่ */
+    public function canActInGroup(?int $groupId): bool
+    {
+        if ($this->isAdmin()) return true;
+        if (!$this->isMarketStaff()) return false;
+        if (!$groupId) return false;
+        return (int) $this->seller_group_id === (int) $groupId;
+    }
+
+    public function canManageSellerGroups(): bool { return $this->isAdmin(); }
 
     public function approver()
     {
