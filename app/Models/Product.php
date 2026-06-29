@@ -39,7 +39,7 @@ class Product extends Model
         'stock_qty'    => 'integer',
         'is_featured'  => 'boolean',
         'view_count'   => 'integer',
-        'rating_avg'   => 'decimal:2',
+        'rating_avg'   => 'float',
         'rating_count' => 'integer',
     ];
 

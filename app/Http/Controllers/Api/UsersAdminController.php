@@ -73,11 +73,16 @@ class UsersAdminController extends Controller
             'role'                => ['required', Rule::in($assignable)],
             'assigned_districts'  => ['nullable', 'array', 'max:' . User::MAX_ASSIGNED_DISTRICTS],
             'assigned_districts.*'=> ['string', 'max:100'],
+            'seller_group_id'     => ['nullable', 'integer', 'exists:seller_groups,id'],
         ]);
 
         // Districts only meaningful for area_staff
         if (($validated['role'] ?? null) !== User::ROLE_AREA_STAFF) {
             $validated['assigned_districts'] = null;
+        }
+        // superadmin ไม่ผูกกับกลุ่มผู้ขาย
+        if (($validated['role'] ?? null) === User::ROLE_SUPERADMIN) {
+            $validated['seller_group_id'] = null;
         }
 
         $user->update($validated);
@@ -116,11 +121,15 @@ class UsersAdminController extends Controller
             'role'                => ['required', Rule::in($assignable)],
             'assigned_districts'  => ['nullable', 'array', 'max:' . User::MAX_ASSIGNED_DISTRICTS],
             'assigned_districts.*'=> ['string', 'max:100'],
+            'seller_group_id'     => ['nullable', 'integer', 'exists:seller_groups,id'],
             'password'            => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         if ($validated['role'] !== User::ROLE_AREA_STAFF) {
             $validated['assigned_districts'] = null;
+        }
+        if ($validated['role'] === User::ROLE_SUPERADMIN) {
+            $validated['seller_group_id'] = null;
         }
 
         $validated['password']    = Hash::make($validated['password']);

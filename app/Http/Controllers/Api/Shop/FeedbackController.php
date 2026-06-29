@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductComment;
 use App\Models\ProductReview;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -59,6 +60,7 @@ class FeedbackController extends Controller
         ]);
 
         $product->recalculateRating();
+        AdminNotificationService::newReview($review->fresh());
 
         return response()->json(['message' => 'ขอบคุณสำหรับรีวิว', 'review' => $review->load('user:id,name')], 201);
     }
@@ -78,6 +80,8 @@ class FeedbackController extends Controller
             'body'      => $data['body'],
             'status'    => ProductComment::STATUS_PUBLISHED,
         ]);
+
+        AdminNotificationService::newComment($comment->fresh());
 
         return response()->json(['message' => 'ส่งความคิดเห็นแล้ว', 'comment' => $comment->load('user:id,name')], 201);
     }

@@ -20,7 +20,13 @@
 
           <div>
             <label class="form-label">รหัสสินค้า (SKU)</label>
-            <InputText v-model="form.sku" class="w-full" />
+            <div class="flex gap-2">
+              <InputText v-model="form.sku" class="flex-1" placeholder="ว่างไว้ = Gen อัตโนมัติ" />
+              <button type="button" @click="form.sku = genSku()"
+                class="shrink-0 px-3 h-10 rounded-lg border border-violet-300 text-violet-600 text-sm font-medium hover:bg-violet-50 transition flex items-center gap-1.5">
+                <i class="fi fi-rr-refresh"></i> Gen
+              </button>
+            </div>
           </div>
           <div>
             <label class="form-label">หน่วยนับ</label>
@@ -135,6 +141,12 @@ const errorMsg = ref('')
 const saving = ref(false)
 const uploading = ref(false)
 const fileInput = ref(null)
+
+function genSku() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const rand = (n) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  return `PRD-${rand(3)}-${rand(4)}`
+}
 
 const publishedToggle = computed({
   get: () => form.status === 'published',

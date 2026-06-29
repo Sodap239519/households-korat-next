@@ -99,6 +99,26 @@
               <Select v-model="form.role" :options="roleOptions" optionLabel="label" optionValue="value" class="w-full" />
               <p v-if="form.role" class="text-[11px] text-slate-500 mt-1">{{ ROLE_HELP[form.role] }}</p>
             </div>
+            <!-- กลุ่มผู้ขาย (สำหรับทุก role ยกเว้น superadmin) -->
+            <div v-if="form.role && form.role !== 'superadmin'" class="rounded-xl border-2 border-fuchsia-100 bg-fuchsia-50/30 p-3">
+              <label class="text-sm font-medium text-slate-700 mb-1 block">
+                <i class="fi fi-rr-shop text-fuchsia-500 mr-1"></i> กลุ่มผู้ขาย (ตลาดชุมชน)
+                <span class="text-[11px] text-slate-400 ml-1">— ไม่บังคับ</span>
+              </label>
+              <Select
+                v-model="form.seller_group_id"
+                :options="sellerGroupOptions"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="ไม่สังกัดกลุ่ม"
+                showClear
+                class="w-full"
+              />
+              <p class="text-[11px] text-slate-500 mt-1">
+                <i class="fi fi-rr-info"></i> เมื่อกำหนดแล้ว ผู้ใช้จะจัดการสินค้า/ออเดอร์ได้เฉพาะกลุ่มนี้
+              </p>
+            </div>
+
             <div v-if="form.role === 'area_staff'" class="rounded-xl border-2 border-violet-200 bg-violet-50/40 p-3">
               <label class="text-sm font-medium text-slate-700 mb-1 block">
                 อำเภอที่ดูแล (เลือกได้สูงสุด 4)
@@ -236,11 +256,12 @@ const roleOptions = computed(() => {
   return base
 })
 
-const districtOptions = ref([])
+const districtOptions    = ref([])
+const sellerGroupOptions = ref([])
 
 const dialogOpen = ref(false)
 const editId = ref(null)
-const form = ref({ name: '', email: '', role: 'staff', assigned_districts: [], password: '' })
+const form = ref({ name: '', email: '', role: 'staff', assigned_districts: [], seller_group_id: null, password: '' })
 const saving = ref(false)
 const error = ref('')
 
@@ -276,7 +297,7 @@ function onPage(p) { currentPage = p; fetchData() }
 
 function openCreate() {
   editId.value = null
-  form.value = { name: '', email: '', role: 'staff', assigned_districts: [], password: '', password_confirmation: '' }
+  form.value = { name: '', email: '', role: 'staff', assigned_districts: [], seller_group_id: null, password: '', password_confirmation: '' }
   error.value = ''
   dialogOpen.value = true
 }
@@ -287,6 +308,7 @@ function openEdit(u) {
     email: u.email,
     role: u.role,
     assigned_districts: u.assigned_districts || [],
+    seller_group_id: u.seller_group_id || null,
     password: '',
     password_confirmation: '',
   }
@@ -315,6 +337,7 @@ async function save() {
       email: form.value.email,
       role: form.value.role,
       assigned_districts: form.value.role === 'area_staff' ? (form.value.assigned_districts || []) : null,
+      seller_group_id: form.value.role !== 'superadmin' ? (form.value.seller_group_id || null) : null,
     }
     if (editId.value) {
       await api.put(`/admin/users/${editId.value}`, payload)
@@ -340,6 +363,13 @@ async function fetchDistricts() {
   try {
     const { data } = await api.get('/locations/districts')
     districtOptions.value = data
+  } catch {}
+}
+
+async function fetchSellerGroups() {
+  try {
+    const { data } = await api.get('/shop/groups')
+    sellerGroupOptions.value = data
   } catch {}
 }
 
@@ -388,5 +418,6 @@ function confirmDelete(u) {
 onMounted(() => {
   fetchData()
   fetchDistricts()
+  fetchSellerGroups()
 })
 </script>

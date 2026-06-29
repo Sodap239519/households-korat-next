@@ -22,17 +22,24 @@ use App\Http\Controllers\Api\Market\ProductController as MarketProductController
 use App\Http\Controllers\Api\Market\ReturnController as MarketReturnController;
 use App\Http\Controllers\Api\Market\ReviewController as MarketReviewController;
 use App\Http\Controllers\Api\Market\SellerGroupController as MarketSellerGroupController;
+use App\Http\Controllers\Api\Shop\CustomerAddressController as ShopAddressController;
 use App\Http\Controllers\Api\Shop\CatalogController as ShopCatalogController;
 use App\Http\Controllers\Api\Shop\CheckoutController as ShopCheckoutController;
 use App\Http\Controllers\Api\Shop\CustomerAuthController as ShopCustomerAuthController;
 use App\Http\Controllers\Api\Shop\FeedbackController as ShopFeedbackController;
 use App\Http\Controllers\Api\Shop\OrderController as ShopOrderController;
+use App\Http\Controllers\Api\Shop\WishlistController as ShopWishlistController;
 use App\Http\Controllers\Api\LineWebhookController;
+use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\Market\ChatController as MarketChatController;
+use App\Http\Controllers\Api\Market\ShopBannerController;
+use App\Http\Controllers\Api\Shop\ChatController as ShopChatController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UsersAdminController;
 use Illuminate\Support\Facades\Route;
 
 // ===== Public (no auth) =====
+Route::get('/address/search', [AddressController::class, 'search']);
 Route::post('/login',    [AuthController::class, 'login']);
 Route::post('/register', [RegisterController::class, 'store']);
 Route::get('/public/dashboard', [PublicDashboardController::class, 'index']);
@@ -47,11 +54,14 @@ Route::post('/line/webhook',       [LineWebhookController::class, 'handle']);
 Route::middleware('auth:sanctum')->get('/line/targets', [LineWebhookController::class, 'recentTargets']);
 
 // ===== Storefront (public, no auth) =====
+Route::get('/shop/sellers/{slug}',    [ShopCatalogController::class, 'seller']);
 Route::get('/shop/groups',            [ShopCatalogController::class, 'groups']);
 Route::get('/shop/categories',        [ShopCatalogController::class, 'categories']);
+Route::get('/shop/banners',           [ShopBannerController::class, 'public']);
 Route::get('/shop/products',          [ShopCatalogController::class, 'products']);
 Route::get('/shop/products/{slug}',   [ShopCatalogController::class, 'product']);
-Route::post('/customer/register',     [ShopCustomerAuthController::class, 'register']);
+Route::post('/customer/register',        [ShopCustomerAuthController::class, 'register']);
+Route::post('/customer/forgot-password', [ShopCustomerAuthController::class, 'forgotPassword']);
 Route::get('/shop/products/{slug}/reviews',  [ShopCatalogController::class, 'productReviews']);
 Route::get('/shop/products/{slug}/comments', [ShopCatalogController::class, 'productComments']);
 
@@ -64,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile (own)
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::put('/profile/password', [ProfileController::class, 'changePassword']);
+    Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
 
     // Login history (own)
     Route::get('/login-history', [LoginHistoryController::class, 'mine']);
@@ -108,12 +119,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('mushroom-followups', MushroomFollowupController::class);
 
     // ===== Storefront (customer, ต้อง login) =====
+    // รายการโปรด
+    Route::get('/shop/my/wishlist-ids',                [ShopWishlistController::class, 'ids']);
+    Route::get('/shop/my/wishlist',                    [ShopWishlistController::class, 'index']);
+    Route::post('/shop/wishlist/{productId}/toggle',   [ShopWishlistController::class, 'toggle']);
+
     Route::post('/shop/checkout',                  [ShopCheckoutController::class, 'store']);
+    Route::get('/shop/my/notifications',            [ShopOrderController::class, 'notificationCount']);
     Route::get('/shop/my/orders',                  [ShopOrderController::class, 'index']);
     Route::get('/shop/my/orders/{orderNo}',        [ShopOrderController::class, 'show']);
     Route::post('/shop/orders/{orderNo}/payment',  [ShopOrderController::class, 'submitPayment']);
     Route::post('/shop/orders/{orderNo}/receive',  [ShopOrderController::class, 'receive']);
     Route::post('/shop/orders/{orderNo}/returns',  [ShopOrderController::class, 'requestReturn']);
+
+    // ที่อยู่จัดส่งของลูกค้า
+    Route::get('/shop/my/addresses',                             [ShopAddressController::class, 'index']);
+    Route::post('/shop/my/addresses',                            [ShopAddressController::class, 'store']);
+    Route::put('/shop/my/addresses/{customerAddress}',           [ShopAddressController::class, 'update']);
+    Route::delete('/shop/my/addresses/{customerAddress}',        [ShopAddressController::class, 'destroy']);
+    Route::post('/shop/my/addresses/{customerAddress}/default',  [ShopAddressController::class, 'setDefault']);
+
+    // Chat (ลูกค้า ↔ ผู้ขาย)
+    Route::get('/shop/chat/unread',                                [ShopChatController::class, 'unread']);
+    Route::get('/shop/chat/conversations',                         [ShopChatController::class, 'index']);
+    Route::post('/shop/chat/start/{slug}',                         [ShopChatController::class, 'start']);
+    Route::get('/shop/chat/conversations/{id}/messages',           [ShopChatController::class, 'messages']);
+    Route::post('/shop/chat/conversations/{id}/messages',          [ShopChatController::class, 'send']);
 
     // Feedback (รีวิว + คอมเมนต์ — ต้อง login)
     Route::get('/shop/products/{slug}/eligibility', [ShopFeedbackController::class, 'eligibility']);
@@ -150,10 +181,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('comments/{comment}/reply',      [MarketCommentController::class, 'reply']);
         Route::post('comments/{comment}/status',     [MarketCommentController::class, 'setStatus']);
 
+        // Chat backoffice (ผู้ขายตอบลูกค้า)
+        Route::get('chat/unread',                          [MarketChatController::class, 'unread']);
+        Route::get('chat/conversations',                   [MarketChatController::class, 'index']);
+        Route::get('chat/conversations/{id}/messages',     [MarketChatController::class, 'messages']);
+        Route::post('chat/conversations/{id}/messages',    [MarketChatController::class, 'send']);
+
         // Seller groups (admin จัดการเต็ม / เจ้าหน้าที่กลุ่มแก้ข้อมูลติดต่อ+LINE ของตัวเอง)
         Route::post('seller-groups/{sellerGroup}/members', [MarketSellerGroupController::class, 'setMembers']);
         Route::apiResource('seller-groups', MarketSellerGroupController::class)
             ->parameters(['seller-groups' => 'sellerGroup']);
+
+        // Banner management (superadmin/admin)
+        Route::patch('banners/{shopBanner}/toggle', [ShopBannerController::class, 'toggle']);
+        Route::apiResource('banners', ShopBannerController::class)
+            ->except(['show'])
+            ->parameters(['banners' => 'shopBanner']);
 
         // Categories
         Route::apiResource('categories', MarketCategoryController::class)->except(['show']);

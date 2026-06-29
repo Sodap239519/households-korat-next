@@ -1,50 +1,71 @@
 <template>
-  <div class="p-3 sm:p-6 space-y-4 sm:space-y-5">
-    <div class="flex items-center justify-between flex-wrap gap-3">
+  <div class="p-3 sm:p-5 space-y-4">
+    <div class="flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
           <i class="fi fi-rr-apps text-violet-600"></i> หมวดหมู่สินค้า
         </h2>
-        <p class="text-sm text-slate-500 mt-0.5">หมวดกลางใช้ร่วมทุกกลุ่ม (เฉพาะแอดมิน) หรือหมวดเฉพาะกลุ่ม</p>
+        <p class="text-xs text-slate-400 mt-0.5">หมวดกลางใช้ร่วมทุกกลุ่ม (เฉพาะแอดมิน) / หมวดเฉพาะกลุ่ม</p>
       </div>
-      <Button label="เพิ่มหมวดหมู่" icon="fi fi-rr-plus" size="large" @click="openCreate" />
+      <button @click="openCreate"
+        class="shrink-0 h-10 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold flex items-center gap-2 shadow-md shadow-violet-500/25 transition">
+        <i class="fi fi-rr-plus"></i> เพิ่ม
+      </button>
     </div>
 
-    <div class="box-card overflow-hidden">
-      <DataTable :value="rows" :loading="loading" stripedRows>
-        <template #empty><div class="text-center py-10 text-slate-400">ยังไม่มีหมวดหมู่</div></template>
-        <Column field="name" header="ชื่อหมวด">
-          <template #body="{ data }"><span class="font-medium text-slate-700">{{ data.name }}</span></template>
-        </Column>
-        <Column header="ขอบเขต">
-          <template #body="{ data }">
-            <span v-if="!data.seller_group_id" class="px-2 py-0.5 rounded-full text-xs bg-violet-50 text-violet-700 border border-violet-200">กลาง</span>
-            <span v-else class="text-sm text-slate-600">{{ data.seller_group?.name }}</span>
+    <!-- Card list -->
+    <div class="box-card overflow-hidden divide-y divide-slate-100">
+      <template v-if="loading">
+        <div v-for="n in 5" :key="n" class="p-4 skeleton h-14"></div>
+      </template>
+      <div v-else-if="!rows.length" class="py-14 text-center text-slate-400">
+        <i class="fi fi-rr-apps text-4xl"></i>
+        <p class="mt-2 text-sm">ยังไม่มีหมวดหมู่</p>
+      </div>
+      <div v-else v-for="row in rows" :key="row.id"
+        class="flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50/30 transition">
+        <!-- Icon -->
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          :class="row.is_active ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-400'">
+          <i class="fi fi-rr-apps text-sm"></i>
+        </div>
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-slate-800 text-sm">{{ row.name }}</p>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span v-if="!row.seller_group_id" class="text-[11px] px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100 font-medium">กลาง</span>
+            <span v-else class="text-[11px] text-slate-400">{{ row.seller_group?.name }}</span>
+            <span class="text-[11px] text-slate-400">{{ row.products_count || 0 }} สินค้า</span>
+          </div>
+        </div>
+        <!-- Status + actions -->
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="px-2 py-0.5 rounded-full text-[11px] border"
+            :class="row.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'">
+            {{ row.is_active ? 'ใช้งาน' : 'ปิด' }}
+          </span>
+          <template v-if="canEdit(row)">
+            <button class="w-8 h-8 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-600 flex items-center justify-center transition"
+              @click="openEdit(row)">
+              <i class="fi fi-rr-edit text-sm"></i>
+            </button>
+            <button class="w-8 h-8 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-500 flex items-center justify-center transition"
+              @click="confirmDelete(row)">
+              <i class="fi fi-rr-trash text-sm"></i>
+            </button>
           </template>
-        </Column>
-        <Column field="products_count" header="จำนวนสินค้า"><template #body="{ data }">{{ data.products_count }}</template></Column>
-        <Column header="สถานะ">
-          <template #body="{ data }">
-            <span class="px-2 py-0.5 rounded-full text-xs border" :class="data.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-slate-100 text-slate-500 border-slate-300'">{{ data.is_active ? 'ใช้งาน' : 'ปิด' }}</span>
-          </template>
-        </Column>
-        <Column header="" style="width:96px">
-          <template #body="{ data }">
-            <div class="flex gap-1" v-if="canEdit(data)">
-              <Button icon="fi fi-rr-edit" text rounded size="small" @click="openEdit(data)" />
-              <Button icon="fi fi-rr-trash" text rounded severity="danger" size="small" @click="confirmDelete(data)" />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
+        </div>
+      </div>
     </div>
 
-    <Dialog v-model:visible="dialogOpen" modal :header="form.id ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่'" :style="{ width: '28rem' }">
+    <!-- Form dialog -->
+    <Dialog v-model:visible="dialogOpen" modal :header="form.id ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่'"
+      :style="{ width: '95vw', maxWidth: '28rem' }">
       <div class="space-y-3">
         <div>
           <label class="form-label">ชื่อหมวดหมู่ *</label>
           <InputText v-model="form.name" class="w-full" :invalid="!!err.name" />
-          <small v-if="err.name" class="text-rose-500">{{ err.name }}</small>
+          <small v-if="err.name" class="text-rose-500 text-xs">{{ err.name }}</small>
         </div>
         <div class="flex items-center gap-2">
           <ToggleSwitch v-model="form.is_active" inputId="catact" />
@@ -72,8 +93,6 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import api from '../../api/index.js'
 import { useAuth } from '../../composables/useAuth.js'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -115,8 +134,7 @@ async function save() {
     if (form.id) await api.put(`/market/categories/${form.id}`, { name: form.name, is_active: form.is_active })
     else await api.post('/market/categories', { name: form.name, is_active: form.is_active, is_global: form.is_global })
     toast.add({ severity: 'success', summary: 'บันทึกแล้ว', life: 2000 })
-    dialogOpen.value = false
-    reload()
+    dialogOpen.value = false; reload()
   } catch (e) {
     if (e.response?.status === 422) { Object.entries(e.response.data.errors || {}).forEach(([k, v]) => err[k] = v[0]); errorMsg.value = 'ตรวจสอบข้อมูล' }
     else errorMsg.value = e.response?.data?.message || 'เกิดข้อผิดพลาด'

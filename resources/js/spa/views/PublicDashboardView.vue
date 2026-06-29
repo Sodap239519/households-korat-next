@@ -99,6 +99,9 @@
             <Tab value="2"><span class="flex items-center gap-2"><i class="fi fi-rr-search"></i> การติดตาม</span></Tab>
             <Tab value="3"><span class="flex items-center gap-2"><i class="fi fi-rr-shop"></i> การตลาด</span></Tab>
             <Tab value="4"><span class="flex items-center gap-2"><i class="fi fi-rr-chart-mixed-up-circle-dollar"></i> เปรียบเทียบรายได้</span></Tab>
+            <RouterLink to="/shop" class="flex items-center gap-2 px-4 py-2 ml-auto rounded-full bg-gradient-to-r from-orange-400 to-fuchsia-500 text-white text-sm font-semibold shadow-sm hover:shadow-md hover:brightness-105 transition self-center shrink-0">
+              <i class="fi fi-rr-bag-shopping-filled"></i> เว็บไซต์ขายของ
+            </RouterLink>
           </TabList>
 
           <TabPanels>

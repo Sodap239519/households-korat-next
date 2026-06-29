@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ReturnRequest;
+use App\Services\AdminNotificationService;
 use App\Services\LineNotifier;
 use App\Services\SlipVerifier;
 use Illuminate\Http\JsonResponse;
@@ -90,9 +91,11 @@ class OrderController extends Controller
 
         $order->changeStatus(Order::STATUS_AWAITING_CONFIRM, $request->user()->id, 'ลูกค้าแจ้งชำระเงิน');
 
-        // ตรวจสลิปอัตโนมัติ (ถ้าตั้งค่าบริการไว้) + แจ้ง LINE กลุ่มผู้ขาย
+        // ตรวจสลิปอัตโนมัติ (ถ้าตั้งค่าบริการไว้) + แจ้ง LINE + admin notification
         SlipVerifier::verify($payment);
-        LineNotifier::paymentSubmitted($payment->fresh());
+        $freshPayment = $payment->fresh();
+        LineNotifier::paymentSubmitted($freshPayment);
+        AdminNotificationService::paymentSubmitted($freshPayment);
 
         return response()->json([
             'message' => 'แจ้งชำระเงินเรียบร้อย รอผู้ขายยืนยัน',
@@ -157,8 +160,25 @@ class OrderController extends Controller
 
         $order->changeStatus(Order::STATUS_REFUND_REQUESTED, $request->user()->id, "คำขอ{$data['type']}: {$data['reason']}");
 
-        LineNotifier::returnRequested($return->fresh());
+        $freshReturn = $return->fresh();
+        LineNotifier::returnRequested($freshReturn);
+        AdminNotificationService::returnRequested($freshReturn);
 
         return response()->json(['message' => 'ส่งคำขอแล้ว รอผู้ขายตรวจสอบ', 'order' => $order->fresh()], 201);
+    }
+
+    /** นับการแจ้งเตือนสำหรับลูกค้า (สลิปยืนยันแล้ว + จัดส่งแล้ว) */
+    public function notificationCount(Request $request): JsonResponse
+    {
+        $count = Order::where('user_id', $request->user()->id)
+            ->whereIn('status', [
+                Order::STATUS_CONFIRMED,
+                Order::STATUS_PROCESSING,
+                Order::STATUS_SHIPPED,
+                Order::STATUS_DELIVERED,
+            ])
+            ->count();
+
+        return response()->json(['count' => $count]);
     }
 }

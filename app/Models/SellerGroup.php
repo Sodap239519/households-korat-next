@@ -24,6 +24,9 @@ class SellerGroup extends Model
         'line_notify_enabled',
         'districts',
         'is_active',
+        'lat',
+        'lng',
+        'map_label',
     ];
 
     protected $casts = [

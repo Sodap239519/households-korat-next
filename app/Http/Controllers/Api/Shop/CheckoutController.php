@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Shop;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\AdminNotificationService;
 use App\Services\LineNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -105,9 +106,10 @@ class CheckoutController extends Controller
             return $orders;
         });
 
-        // แจ้งเตือน LINE ให้กลุ่มผู้ขาย (นอก transaction)
+        // แจ้งเตือน LINE + admin notification ให้กลุ่มผู้ขาย (นอก transaction)
         foreach ($created as $order) {
             LineNotifier::orderPlaced($order);
+            AdminNotificationService::orderPlaced($order);
         }
 
         return response()->json([

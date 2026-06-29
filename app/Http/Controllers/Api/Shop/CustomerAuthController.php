@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 
 /**
  * สมัคร/จัดการบัญชีลูกค้าหน้าร้าน (role = customer, อนุมัติอัตโนมัติ)
@@ -41,5 +42,16 @@ class CustomerAuthController extends Controller
         $request->session()->regenerate();
 
         return response()->json(['user' => Auth::user()], 201);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'email']]);
+
+        // ส่งลิงก์รีเซ็ตผ่าน Laravel built-in password broker
+        $status = Password::sendResetLink(['email' => $request->email]);
+
+        // ตอบ success เสมอ (ไม่เปิดเผยว่าอีเมลมีหรือไม่)
+        return response()->json(['message' => 'ถ้าอีเมลนี้มีในระบบ เราจะส่งลิงก์รีเซ็ตให้']);
     }
 }

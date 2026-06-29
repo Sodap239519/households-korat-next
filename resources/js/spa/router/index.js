@@ -55,11 +55,14 @@ const routes = [
             { path: 'market/products',       component: () => import('../views/market/ProductManagement.vue') },
             { path: 'market/categories',     component: () => import('../views/market/CategoryManagement.vue') },
             { path: 'market/orders',         component: () => import('../views/market/OrderManagement.vue') },
+            { path: 'market/shipments',      component: () => import('../views/market/ShipmentManagement.vue') },
+            { path: 'market/chat',           component: () => import('../views/market/SellerChatView.vue') },
             { path: 'market/payments',       component: () => import('../views/market/PaymentConfirmation.vue') },
             { path: 'market/returns',        component: () => import('../views/market/ReturnManagement.vue') },
             { path: 'market/reviews',        component: () => import('../views/market/ReviewManagement.vue') },
             { path: 'market/comments',       component: () => import('../views/market/CommentManagement.vue') },
             { path: 'market/seller-groups',  component: () => import('../views/market/SellerGroupManagement.vue') },
+            { path: 'market/banners',        component: () => import('../views/market/BannerManagement.vue') },
 
             // Reports
             { path: 'reports',   component: ReportView },
@@ -87,6 +90,13 @@ const routes = [
             { path: 'checkout',               component: () => import('../views/shop/CheckoutView.vue'), meta: { customerAuth: true } },
             { path: 'account/orders',         component: () => import('../views/shop/AccountOrders.vue'), meta: { customerAuth: true } },
             { path: 'account/orders/:orderNo', component: () => import('../views/shop/OrderDetail.vue'), meta: { customerAuth: true } },
+            { path: 'account/addresses',      component: () => import('../views/shop/AccountAddresses.vue'), meta: { customerAuth: true } },
+            { path: 'account/profile',        component: () => import('../views/shop/AccountProfile.vue'), meta: { customerAuth: true } },
+            { path: 'chat',                   component: () => import('../views/shop/ChatView.vue'), meta: { customerAuth: true } },
+            { path: 'wishlist',               component: () => import('../views/shop/WishlistView.vue'), meta: { customerAuth: true } },
+            { path: 'account',                component: () => import('../views/shop/AccountHome.vue') },
+            { path: 'sellers/:slug',          component: () => import('../views/shop/SellerStorefront.vue') },
+            { path: 'map',                    component: () => import('../views/shop/SellerMap.vue') },
         ],
     },
 
@@ -96,6 +106,10 @@ const routes = [
 const router = createRouter({
     history: createWebHistory(),
     routes,
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) return savedPosition
+        return { top: 0, behavior: 'smooth' }
+    },
 })
 
 router.beforeEach(async (to) => {

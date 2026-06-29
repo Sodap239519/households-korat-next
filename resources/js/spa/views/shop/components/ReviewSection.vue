@@ -42,25 +42,56 @@
     </div>
 
     <!-- รายการรีวิว -->
-    <div v-if="reviews.length" class="space-y-3">
-      <div v-for="r in reviews" :key="r.id" class="box-card p-4">
+    <div v-if="reviews.length" class="space-y-4">
+      <div v-for="r in reviews" :key="r.id" class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+        <!-- Header: avatar + name + helpful + date -->
         <div class="flex items-start justify-between gap-2">
-          <div>
-            <p class="text-sm font-semibold text-slate-700">{{ r.user?.name || 'ไม่ระบุชื่อ' }}</p>
-            <StarRating :value="r.rating" size="xs" class="mt-0.5" />
+          <div class="flex items-center gap-2.5">
+            <!-- Avatar circle -->
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+              {{ (r.user?.name || '?').charAt(0).toUpperCase() }}
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-slate-700">{{ r.user?.name || 'ไม่ระบุชื่อ' }}</p>
+              <StarRating :value="r.rating" size="xs" class="mt-0.5" />
+            </div>
           </div>
-          <span class="text-xs text-slate-400 shrink-0">{{ fmtDate(r.created_at) }}</span>
+          <div class="flex flex-col items-end gap-1.5 shrink-0">
+            <button class="text-[11px] text-slate-400 hover:text-violet-500 flex items-center gap-1 transition">
+              <i class="fi fi-rr-thumbs-up"></i> มีประโยชน์
+            </button>
+            <span class="text-[11px] text-slate-300">{{ fmtDate(r.created_at) }}</span>
+          </div>
         </div>
-        <p v-if="r.title" class="text-sm font-medium text-slate-700 mt-2">{{ r.title }}</p>
-        <p v-if="r.comment" class="text-sm text-slate-600 mt-1">{{ r.comment }}</p>
-        <!-- ตอบกลับจากผู้ขาย -->
-        <div v-if="r.reply" class="mt-2 pl-3 border-l-2 border-violet-300 bg-violet-50 rounded-r-lg p-2">
-          <p class="text-xs text-violet-600 font-medium mb-0.5"><i class="fi fi-rr-shop"></i> ตอบโดยผู้ขาย</p>
-          <p class="text-xs text-slate-600">{{ r.reply }}</p>
+
+        <!-- Review title -->
+        <p v-if="r.title" class="text-sm font-semibold text-slate-700 mt-2.5">{{ r.title }}</p>
+
+        <!-- Review body -->
+        <p v-if="r.comment" class="text-sm text-slate-600 mt-1.5 leading-relaxed">{{ r.comment }}</p>
+
+        <!-- Review images -->
+        <div v-if="r.images?.length" class="mt-2.5 grid grid-cols-3 gap-1.5">
+          <img v-for="(img, idx) in r.images.slice(0, 6)" :key="idx"
+            :src="`/storage/${img}`"
+            class="aspect-square rounded-xl object-cover border border-slate-100 cursor-pointer hover:opacity-90 transition"
+          />
+          <div v-if="r.images.length > 6"
+            class="aspect-square rounded-xl bg-slate-100 flex items-center justify-center text-xs text-slate-500 font-medium">
+            +{{ r.images.length - 6 }}
+          </div>
+        </div>
+
+        <!-- Seller reply -->
+        <div v-if="r.reply" class="mt-3 bg-violet-50 rounded-xl p-3 border-l-4 border-violet-400">
+          <p class="text-xs text-violet-600 font-semibold mb-1 flex items-center gap-1">
+            <i class="fi fi-rr-shop"></i> ตอบโดยผู้ขาย
+          </p>
+          <p class="text-xs text-slate-600 leading-relaxed">{{ r.reply }}</p>
         </div>
       </div>
     </div>
-    <p v-else-if="!loading" class="text-sm text-slate-400 text-center py-4">ยังไม่มีรีวิว</p>
+    <p v-else-if="!loading" class="text-sm text-slate-400 text-center py-8">ยังไม่มีรีวิว</p>
 
     <button v-if="hasMore" class="w-full py-2 text-sm text-violet-600 hover:underline" @click="loadMore">
       {{ loading ? 'กำลังโหลด...' : 'ดูรีวิวเพิ่มเติม' }}
@@ -71,13 +102,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../../../api/index.js'
+import { useAuth } from '../../../composables/useAuth.js'
 import StarRating from './StarRating.vue'
+
+const { user } = useAuth()
 
 const props = defineProps({
   slug: { type: String, required: true },
   initialReviews: { type: Array, default: () => [] },
-  ratingAvg: { type: Number, default: 0 },
-  ratingCount: { type: Number, default: 0 },
+  ratingAvg: { type: [Number, String], default: 0 },
+  ratingCount: { type: [Number, String], default: 0 },
 })
 
 const reviews = ref([...props.initialReviews])
@@ -90,8 +124,8 @@ const page = ref(1)
 const hasMore = ref(false)
 const form = ref({ rating: 5, title: '', comment: '' })
 
-const avgRating = computed(() => props.ratingAvg || 0)
-const totalReviews = computed(() => props.ratingCount || reviews.value.length)
+const avgRating = computed(() => Number(props.ratingAvg) || 0)
+const totalReviews = computed(() => Number(props.ratingCount) || reviews.value.length)
 
 const ratingDist = computed(() => {
   const d = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
@@ -105,10 +139,11 @@ function barPct(s) {
 function fmtDate(d) { return d ? new Date(d).toLocaleDateString('th-TH') : '' }
 
 async function checkEligibility() {
+  if (!user.value) return
   try {
     const { data } = await api.get(`/shop/products/${props.slug}/eligibility`)
     canReview.value = data.can_review
-  } catch { /* ไม่ login หรือ error → ซ่อนฟอร์ม */ }
+  } catch { /* error → ซ่อนฟอร์ม */ }
 }
 
 async function submit() {

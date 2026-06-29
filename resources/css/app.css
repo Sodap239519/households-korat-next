@@ -145,6 +145,24 @@ body {
 .list-stagger-enter-active { transition: opacity .45s ease, transform .45s cubic-bezier(.22,.61,.36,1); }
 .list-stagger-enter-from   { opacity: 0; transform: translateY(16px); }
 
+/* Floating elements fade-up (e.g. chat button, toast) */
+.fade-up-enter-active { transition: opacity .3s ease, transform .3s cubic-bezier(.22,.61,.36,1); }
+.fade-up-leave-active { transition: opacity .2s ease, transform .2s ease; }
+.fade-up-enter-from   { opacity: 0; transform: translateY(12px); }
+.fade-up-leave-to     { opacity: 0; transform: translateY(8px); }
+
+/* Account sheet slide-up */
+.acct-sheet-enter-active, .acct-sheet-leave-active { transition: opacity .25s ease; }
+.acct-sheet-enter-from, .acct-sheet-leave-to       { opacity: 0; }
+.acct-sheet-enter-active .relative, .acct-sheet-leave-active .relative { transition: transform .3s cubic-bezier(.32,0,.67,0); }
+.acct-sheet-enter-from .relative, .acct-sheet-leave-to .relative       { transform: translateY(100%); }
+
+/* Slide-down panel (e.g. districts accordion) */
+.slide-down-enter-active { transition: opacity .25s ease, max-height .3s cubic-bezier(.22,.61,.36,1); max-height: 200px; }
+.slide-down-leave-active { transition: opacity .2s ease, max-height .25s ease; max-height: 200px; }
+.slide-down-enter-from   { opacity: 0; max-height: 0; }
+.slide-down-leave-to     { opacity: 0; max-height: 0; }
+
 /* Smooth default for interactive primitives */
 a, button { transition: color .2s ease, background-color .2s ease, border-color .2s ease; }
 
@@ -208,3 +226,9 @@ html.shop-dark .hero-banner .text-slate-600 { color: #cbd5e1 !important; }
         transform: none !important;
     }
 }
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }

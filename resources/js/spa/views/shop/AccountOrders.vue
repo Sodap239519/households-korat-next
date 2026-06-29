@@ -27,7 +27,15 @@
       <div v-for="o in orders" :key="o.id" class="box-card overflow-hidden">
         <!-- shop header -->
         <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
-          <span class="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+          <RouterLink
+            v-if="o.seller_group?.slug"
+            :to="`/shop/sellers/${o.seller_group.slug}`"
+            class="flex items-center gap-1.5 text-sm font-semibold text-slate-700 hover:text-violet-600 transition"
+            @click.stop
+          >
+            <i class="fi fi-rr-shop text-violet-600"></i> {{ o.seller_group?.name }}
+          </RouterLink>
+          <span v-else class="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
             <i class="fi fi-rr-shop text-violet-600"></i> {{ o.seller_group?.name }}
           </span>
           <OrderStatusChip :status="o.status" />

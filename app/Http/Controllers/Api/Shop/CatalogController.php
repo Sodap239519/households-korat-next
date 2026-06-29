@@ -21,7 +21,7 @@ class CatalogController extends Controller
         $groups = SellerGroup::where('is_active', true)
             ->withCount(['products' => fn ($q) => $q->where('status', Product::STATUS_PUBLISHED)])
             ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'description', 'logo_path', 'districts', 'contact_phone', 'contact_address']);
+            ->get(['id', 'name', 'slug', 'description', 'logo_path', 'districts', 'contact_phone', 'contact_address', 'lat', 'lng', 'map_label']);
 
         return response()->json($groups);
     }
@@ -110,6 +110,14 @@ class CatalogController extends Controller
         // นับยอดเข้าชม (ไม่กระทบ updated_at)
         $product->increment('view_count');
 
+        // ความสนใจ: จำนวนคนที่กดรายการโปรด
+        $product->wishlist_count = \App\Models\WishlistItem::where('product_id', $product->id)->count();
+
+        // ยอดขายสะสม (จากออเดอร์ที่จัดส่ง/เสร็จแล้ว)
+        $product->total_sold = (int) \App\Models\OrderItem::where('product_id', $product->id)
+            ->whereHas('order', fn ($q) => $q->whereIn('status', ['shipped', 'delivered', 'completed']))
+            ->sum('qty');
+
         $reviews = $product->reviews()
             ->where('status', 'published')
             ->with('user:id,name')
@@ -130,14 +138,65 @@ class CatalogController extends Controller
             ->where('id', '!=', $product->id)
             ->where('category_id', $product->category_id)
             ->with('images')
-            ->limit(4)
+            ->inRandomOrder()
+            ->limit(8)
+            ->get();
+
+        // สินค้าจากร้านเดียวกัน
+        $fromStore = Product::where('status', Product::STATUS_PUBLISHED)
+            ->where('id', '!=', $product->id)
+            ->where('seller_group_id', $product->seller_group_id)
+            ->with('images')
+            ->inRandomOrder()
+            ->limit(10)
+            ->get();
+
+        // สินค้าที่คุณอาจชอบ (ยอดนิยม/ใหม่ จากทั้งร้าน ไม่ซ้ำกับ related/fromStore)
+        $excludeIds = $related->pluck('id')
+            ->merge($fromStore->pluck('id'))
+            ->push($product->id)
+            ->unique()->values();
+
+        $alsoLike = Product::where('status', Product::STATUS_PUBLISHED)
+            ->whereNotIn('id', $excludeIds)
+            ->with('images')
+            ->orderByDesc('view_count')
+            ->limit(8)
             ->get();
 
         return response()->json([
-            'product'  => $product,
-            'reviews'  => $reviews,
-            'comments' => $comments,
-            'related'  => $related,
+            'product'    => $product,
+            'reviews'    => $reviews,
+            'comments'   => $comments,
+            'related'    => $related,
+            'from_store' => $fromStore,
+            'also_like'  => $alsoLike,
+        ]);
+    }
+
+    /** หน้าร้านผู้ขาย — ข้อมูลกลุ่ม + สินค้า */
+    public function seller(Request $request, string $slug): JsonResponse
+    {
+        $group = SellerGroup::where('slug', $slug)->where('is_active', true)->firstOrFail();
+
+        $products = Product::where('seller_group_id', $group->id)
+            ->where('status', Product::STATUS_PUBLISHED)
+            ->with(['images', 'category:id,name,slug'])
+            ->orderByDesc('is_featured')
+            ->orderByDesc('created_at')
+            ->paginate(12);
+
+        $stats = Product::where('seller_group_id', $group->id)
+            ->where('status', Product::STATUS_PUBLISHED)
+            ->selectRaw('AVG(rating_avg) as avg_rating, SUM(rating_count) as total_reviews')
+            ->first();
+
+        return response()->json([
+            'group'    => array_merge($group->toArray(), [
+                'avg_rating'    => round($stats->avg_rating ?? 0, 1),
+                'total_reviews' => (int) ($stats->total_reviews ?? 0),
+            ]),
+            'products' => $products,
         ]);
     }
 

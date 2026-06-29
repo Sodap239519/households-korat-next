@@ -28,17 +28,17 @@
         <!-- Toolbar -->
         <div class="box-card p-3 flex items-center justify-between flex-wrap gap-3">
           <p class="text-sm text-slate-500">
-            พบ <span class="font-semibold text-slate-700">{{ meta.total || 0 }}</span> รายการ
-            <span v-if="filters.q" class="text-violet-600">สำหรับ "{{ filters.q }}"</span>
+            {{ t('พบ') }} <span class="font-semibold text-slate-700">{{ meta.total || 0 }}</span> {{ t('รายการ') }}
+            <span v-if="filters.q" class="text-violet-600">{{ t('สำหรับ') }} "{{ filters.q }}"</span>
           </p>
           <div class="flex items-center gap-2">
-            <span class="text-sm text-slate-500">เรียงโดย</span>
+            <span class="text-sm text-slate-500">{{ t('เรียงโดย') }}</span>
             <select v-model="filters.sort" class="h-9 px-2 rounded-lg border border-slate-200 text-sm" @change="applyAndReload">
-              <option value="newest">ใหม่ล่าสุด</option>
-              <option value="price_asc">ราคา: ต่ำ→สูง</option>
-              <option value="price_desc">ราคา: สูง→ต่ำ</option>
-              <option value="popular">ยอดนิยม</option>
-              <option value="rating">คะแนนรีวิว</option>
+              <option value="newest">{{ t('ใหม่ล่าสุด') }}</option>
+              <option value="price_asc">{{ t('ราคา: ต่ำ→สูง') }}</option>
+              <option value="price_desc">{{ t('ราคา: สูง→ต่ำ') }}</option>
+              <option value="popular">{{ t('ยอดนิยม') }}</option>
+              <option value="rating">{{ t('คะแนนรีวิว') }}</option>
             </select>
           </div>
         </div>
@@ -51,7 +51,7 @@
         </div>
         <div v-else class="box-card p-12 text-center text-slate-400">
           <i class="fi fi-rr-search text-4xl"></i>
-          <p class="mt-3">ไม่พบสินค้าที่ตรงกับเงื่อนไข</p>
+          <p class="mt-3">{{ t('ไม่พบสินค้าที่ตรงกับเงื่อนไข') }}</p>
         </div>
 
         <Pagination :meta="meta" @change="goPage" />
@@ -69,6 +69,9 @@ import Breadcrumb from './components/Breadcrumb.vue'
 import CatalogFilters from './components/CatalogFilters.vue'
 import Pagination from '../components/Pagination.vue'
 import Drawer from 'primevue/drawer'
+import { useLocale } from '../../composables/useLocale.js'
+
+const { t } = useLocale()
 
 const route = useRoute()
 const router = useRouter()
@@ -93,7 +96,7 @@ const filters = reactive({
 async function loadProducts() {
   loading.value = true
   try {
-    const params = { per_page: 12, page: filters.page }
+    const params = { per_page: 20, page: filters.page }
     for (const k of ['q', 'category', 'group', 'min_price', 'max_price', 'sort']) {
       if (filters[k]) params[k] = filters[k]
     }

@@ -73,7 +73,7 @@
             </button>
             <div v-if="!collapsedDisplay && openGroups[idx]" class="mt-1 ml-3 pl-4 border-l border-white/15 space-y-0.5">
               <router-link
-                v-for="child in item.children"
+                v-for="child in item.children.filter(c => !c.show || c.show())"
                 :key="child.to"
                 :to="child.to"
                 v-slot="{ isActive }"
@@ -319,11 +319,14 @@ const allNavItems = [
       { to: '/app/market/products',     icon: 'fi fi-rr-box-open',        label: 'สินค้า' },
       { to: '/app/market/categories',   icon: 'fi fi-rr-apps',            label: 'หมวดหมู่' },
       { to: '/app/market/orders',       icon: 'fi fi-rr-shopping-bag',    label: 'คำสั่งซื้อ' },
+      { to: '/app/market/shipments',    icon: 'fi fi-rr-truck-side',      label: 'การจัดส่ง' },
       { to: '/app/market/payments',     icon: 'fi fi-rr-receipt',         label: 'ยืนยันชำระเงิน' },
+      { to: '/app/market/chat',         icon: 'fi fi-rr-comment-alt',     label: 'ข้อความลูกค้า' },
       { to: '/app/market/returns',      icon: 'fi fi-rr-undo',            label: 'คืน/เคลม' },
       { to: '/app/market/reviews',      icon: 'fi fi-rr-star',            label: 'รีวิว' },
       { to: '/app/market/comments',     icon: 'fi fi-rr-comment',         label: 'คอมเมนต์' },
       { to: '/app/market/seller-groups', icon: 'fi fi-rr-users-alt',      label: 'กลุ่มผู้ขาย' },
+      { to: '/app/market/banners',       icon: 'fi fi-rr-picture',         label: 'แบนเนอร์ Hero',  show: () => isAdmin.value },
     ],
   },
 
@@ -468,7 +471,7 @@ const userMenuItems = computed(() => {
 
 async function handleLogout() {
   await logout()
-  router.push('/app')
+  router.push('/login')
 }
 
 // ===== Notification bell (superadmin only) =====
@@ -486,6 +489,12 @@ const TYPE_STYLES = {
   quota_created:      { bg: 'bg-fuchsia-500', icon: 'fi fi-rr-clipboard-list' },
   allocation_created: { bg: 'bg-emerald-500', icon: 'fi fi-rr-seedling' },
   followup_created:   { bg: 'bg-orange-500',  icon: 'fi fi-rr-list-check' },
+  // ตลาด
+  order_placed:       { bg: 'bg-blue-500',    icon: 'fi fi-rr-shopping-bag' },
+  payment_submitted:  { bg: 'bg-amber-500',   icon: 'fi fi-rr-receipt' },
+  return_requested:   { bg: 'bg-rose-500',    icon: 'fi fi-rr-undo' },
+  new_review:         { bg: 'bg-yellow-500',  icon: 'fi fi-rr-star' },
+  new_comment:        { bg: 'bg-sky-500',     icon: 'fi fi-rr-comment-dots' },
 }
 function typeStyle(t) { return TYPE_STYLES[t] || { bg: 'bg-slate-500', icon: 'fi fi-rr-bell' } }
 
