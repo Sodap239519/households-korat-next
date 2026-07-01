@@ -71,6 +71,53 @@
               <label for="feat" class="text-sm text-slate-600">สินค้าแนะนำ</label>
             </div>
           </div>
+
+          <!-- บริการจัดส่งที่รองรับ -->
+          <div class="sm:col-span-2">
+            <label class="form-label flex items-center gap-1.5">
+              <i class="fi fi-rr-truck-side text-violet-500 text-xs"></i>
+              วิธีการจัดส่ง <span class="text-rose-500">*</span>
+            </label>
+
+            <!-- โหลด -->
+            <div v-if="loadingShipping" class="text-xs text-slate-400 py-2">
+              <i class="fi fi-rr-spinner animate-spin mr-1"></i> กำลังโหลด...
+            </div>
+            <!-- ยังไม่มีบริการ -->
+            <div v-else-if="!shippingOptions.length" class="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              <i class="fi fi-rr-triangle-warning"></i>
+              ยังไม่มีบริการจัดส่งในระบบ —
+              <RouterLink to="/app/market/shipping" class="underline font-medium">ตั้งค่าบริการจัดส่ง</RouterLink>
+            </div>
+
+            <!-- มีบริการ → แสดง chips -->
+            <template v-else>
+              <p class="text-[11px] text-slate-400 mb-2">เลือกบริการจัดส่งที่สินค้านี้รองรับ (เลือกได้หลายรายการ)</p>
+              <div class="flex flex-wrap gap-2">
+                <button v-for="opt in shippingOptions" :key="opt.id" type="button"
+                  @click="toggleShipping(opt.id)"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-all"
+                  :class="form.shipping_option_ids.includes(opt.id)
+                    ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300 hover:text-violet-700'">
+                  <i class="fi fi-rr-truck-side text-xs"></i>
+                  {{ opt.name }}
+                  <span v-if="opt.carrier" class="text-[10px] opacity-60">({{ opt.carrier }})</span>
+                  <span v-if="opt.fee == 0" class="text-[10px] opacity-75 ml-0.5">ฟรี</span>
+                  <span v-else class="text-[10px] opacity-75 ml-0.5">฿{{ opt.fee }}</span>
+                  <span v-if="(opt.allowed_payment_methods || []).includes('cod')"
+                    class="text-[9px] font-bold px-1 py-0.5 rounded ml-0.5"
+                    :class="form.shipping_option_ids.includes(opt.id) ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'">
+                    COD
+                  </span>
+                </button>
+              </div>
+              <p v-if="form.shipping_option_ids.length" class="text-[11px] text-violet-600 mt-1.5">
+                เลือก {{ form.shipping_option_ids.length }} บริการ
+              </p>
+              <small v-if="errors.shipping_option_ids" class="text-rose-500 block mt-1">{{ errors.shipping_option_ids }}</small>
+            </template>
+          </div>
         </div>
       </FormSection>
 
@@ -103,7 +150,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, watchEffect } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import api from '../../api/index.js'
 import { useAuth } from '../../composables/useAuth.js'
@@ -129,10 +177,14 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const toast = useToast()
 const { isAdmin, sellerGroupId } = useAuth()
 
+const shippingOptions = ref([])
+const loadingShipping = ref(false)
+
 const blank = () => ({
   id: null, name: '', seller_group_id: sellerGroupId.value, category_id: null,
   sku: '', unit: 'ชิ้น', price: null, sale_price: null, stock_qty: 0,
   district: null, short_description: '', description: '', status: 'draft', is_featured: false,
+  shipping_option_ids: [],
 })
 const form = reactive(blank())
 const images = ref([])
@@ -162,6 +214,23 @@ watch(() => props.modelValue, async (open) => {
   if (props.productId) await loadProduct(props.productId)
 })
 
+// โหลด global shipping options เมื่อ dialog เปิด
+watchEffect(async () => {
+  if (!props.modelValue) { shippingOptions.value = []; return }
+  loadingShipping.value = true
+  try {
+    const { data } = await api.get('/market/shipping')
+    shippingOptions.value = (data || []).filter(o => o.is_active)
+  } catch { shippingOptions.value = [] }
+  finally { loadingShipping.value = false }
+})
+
+function toggleShipping(id) {
+  const idx = form.shipping_option_ids.indexOf(id)
+  if (idx === -1) form.shipping_option_ids.push(id)
+  else form.shipping_option_ids.splice(idx, 1)
+}
+
 async function loadProduct(id) {
   const { data } = await api.get(`/market/products/${id}`)
   Object.assign(form, {
@@ -169,6 +238,7 @@ async function loadProduct(id) {
     sku: data.sku, unit: data.unit, price: Number(data.price), sale_price: data.sale_price != null ? Number(data.sale_price) : null,
     stock_qty: data.stock_qty, district: data.district, short_description: data.short_description,
     description: data.description, status: data.status, is_featured: !!data.is_featured,
+    shipping_option_ids: data.shipping_option_ids || [],
   })
   images.value = data.images || []
 }
@@ -177,6 +247,15 @@ async function save() {
   saving.value = true
   errorMsg.value = ''
   Object.keys(errors).forEach(k => delete errors[k])
+
+  // ตรวจ client-side: ต้องเลือกบริการจัดส่งอย่างน้อย 1
+  if (shippingOptions.value.length > 0 && form.shipping_option_ids.length === 0) {
+    errors.shipping_option_ids = 'กรุณาเลือกบริการจัดส่งอย่างน้อย 1 รายการ'
+    errorMsg.value = 'กรุณาเลือกบริการจัดส่งอย่างน้อย 1 รายการ'
+    saving.value = false
+    return
+  }
+
   try {
     const payload = { ...form }
     let res

@@ -78,17 +78,51 @@
     <Pagination :meta="meta" @change="goPage" />
 
     <!-- Ship dialog -->
-    <Dialog v-model:visible="shipOpen" modal header="บันทึกการจัดส่ง" :style="{ width: '95vw', maxWidth: '28rem' }">
-      <div class="space-y-3 text-sm">
-        <div v-if="shipTarget" class="rounded-xl p-3 bg-slate-50 border border-slate-200 text-xs">
-          <p class="font-semibold text-slate-700">{{ shipTarget.order_no }}</p>
-          <p class="text-slate-500 mt-0.5">{{ shipTarget.shipping_name }} · {{ shipTarget.shipping_phone }}</p>
-          <p class="text-slate-400 mt-0.5 truncate">{{ [shipTarget.shipping_address, shipTarget.shipping_district, shipTarget.shipping_province].filter(Boolean).join(' ') }}</p>
+    <Dialog v-model:visible="shipOpen" modal :style="{ width: '95vw', maxWidth: '28rem' }">
+      <template #header>
+        <div>
+          <p class="font-semibold text-slate-800 text-sm">บันทึกการจัดส่ง</p>
+          <p v-if="shipTarget" class="text-xs text-violet-600 font-mono mt-0.5">{{ shipTarget.order_no }}</p>
         </div>
-        <div><label class="form-label">ขนส่ง</label>
-          <InputText v-model="ship.carrier" class="w-full" placeholder="ไปรษณีย์ไทย / Flash / Kerry / J&T" /></div>
-        <div><label class="form-label">เลขพัสดุ *</label>
-          <InputText v-model="ship.tracking_no" class="w-full" placeholder="TH123456789" /></div>
+      </template>
+      <div class="space-y-3 text-sm">
+        <!-- ข้อมูลผู้รับ -->
+        <div v-if="shipTarget" class="rounded-xl p-3 bg-slate-50 border border-slate-200 text-xs space-y-0.5">
+          <p class="text-slate-500">{{ shipTarget.shipping_name }} · {{ shipTarget.shipping_phone }}</p>
+          <p class="text-slate-400 truncate">{{ [shipTarget.shipping_address, shipTarget.shipping_district, shipTarget.shipping_province].filter(Boolean).join(' ') }}</p>
+          <p v-if="ship.method" class="text-violet-600 flex items-center gap-1 pt-0.5">
+            <i class="fi fi-rr-truck-side text-[11px]"></i>
+            ลูกค้าเลือก: <strong>{{ ship.method }}</strong>
+            <span v-if="ship.self" class="ml-1 text-[10px] bg-slate-200 text-slate-500 rounded px-1 py-0.5">จัดส่งเอง</span>
+          </p>
+        </div>
+        <!-- แจ้งเตือนดึงข้อมูลเดิม -->
+        <div v-if="ship.prefilled" class="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+          <i class="fi fi-rr-info text-[11px]"></i>
+          ดึงข้อมูลจัดส่งเดิมมาให้แล้ว — แก้ไขหรือยืนยันต่อได้เลย
+        </div>
+        <!-- บริษัทขนส่ง -->
+        <div>
+          <label class="form-label">บริษัทขนส่ง</label>
+          <Select v-if="carrierDropdownOptions.length"
+            v-model="ship.carrier"
+            :options="carrierDropdownOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="เลือกบริษัทขนส่ง"
+            class="w-full"
+            @change="onCarrierChange" />
+          <InputText v-else v-model="ship.carrier" class="w-full" placeholder="ไปรษณีย์ไทย / Flash / Kerry / J&T" />
+        </div>
+        <!-- เลขพัสดุ — ซ่อนถ้าจัดส่งเอง -->
+        <div v-if="!ship.self">
+          <label class="form-label">เลขพัสดุ <span class="text-rose-400">*</span></label>
+          <InputText v-model="ship.tracking_no" class="w-full" placeholder="TH123456789" />
+        </div>
+        <div v-else class="text-xs text-slate-500 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2.5 flex items-center gap-2">
+          <i class="fi fi-rr-check-circle text-emerald-500"></i>
+          ไม่ต้องกรอกเลขพัสดุ — จัดส่งโดยผู้ขายโดยตรง
+        </div>
         <div><label class="form-label">หมายเหตุ (ไม่บังคับ)</label>
           <Textarea v-model="ship.note" rows="2" class="w-full" /></div>
       </div>
@@ -138,7 +172,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import api from '../../api/index.js'
 import OrderStatusChip from '../shop/components/OrderStatusChip.vue'
@@ -146,6 +180,7 @@ import Pagination from '../components/Pagination.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Toast from 'primevue/toast'
 
@@ -163,10 +198,35 @@ const tabs = [
 
 const shipOpen = ref(false)
 const shipTarget = ref(null)
-const ship = reactive({ id: null, carrier: '', tracking_no: '', note: '' })
+const ship = reactive({ id: null, carrier: '', tracking_no: '', note: '', self: false, method: '', prefilled: false })
 const busy = ref(false)
 const detailOpen = ref(false)
 const detail = ref(null)
+const shipOptions = ref([])
+
+const carrierDropdownOptions = computed(() => {
+  const seen = new Set()
+  const opts = []
+  let hasSelf = false
+  for (const opt of shipOptions.value) {
+    if (!opt.carrier) {
+      if (!hasSelf) { hasSelf = true; opts.push({ label: opt.name, value: '__self__' }) }
+    } else if (!seen.has(opt.carrier)) {
+      seen.add(opt.carrier)
+      opts.push({ label: `${opt.carrier}  ·  ${opt.name}`, value: opt.carrier })
+    }
+  }
+  // fallback เฉพาะกรณีที่ API ไม่มีตัวเลือก self-delivery เลย
+  if (!hasSelf && !shipOptions.value.length) {
+    opts.push({ label: 'จัดส่งโดยผู้ขาย (ไม่มีเลขพัสดุ)', value: '__self__' })
+  }
+  return opts
+})
+
+function onCarrierChange(e) {
+  const val = typeof e === 'object' && e !== null ? e.value : e
+  ship.self = val === '__self__'
+}
 
 function fmt(v) { return Number(v).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
 function fmtDate(d) { return d ? new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '' }
@@ -182,17 +242,56 @@ async function load() {
 function setTab(k) { tab.value = k; page.value = 1; load() }
 function goPage(p) { page.value = p; load() }
 
-function openShip(o) {
+async function openShip(o) {
   shipTarget.value = o
-  Object.assign(ship, { id: o.id, carrier: o.shipment?.carrier || '', tracking_no: o.shipment?.tracking_no || '', note: o.shipment?.note || '' })
+  shipOptions.value = []
+
+  // ลูกค้าเลือกจัดส่งเองถ้า shipping_carrier เป็น null/empty
+  const customerCarrier = o.shipping_carrier || null
+  const isSelf = !customerCarrier
+
+  Object.assign(ship, {
+    id:          o.id,
+    carrier:     o.shipment?.carrier ? o.shipment.carrier : (isSelf ? '__self__' : (customerCarrier || '')),
+    tracking_no: o.shipment?.tracking_no || '',
+    note:        o.shipment?.note || '',
+    self:        isSelf || !!(o.shipment && !o.shipment.carrier),
+    method:      o.shipping_method || '',
+    prefilled:   !!(o.shipment?.carrier || o.shipment?.tracking_no),
+  })
+
   shipOpen.value = true
+
+  if (o.seller_group_id) {
+    try {
+      const { data } = await api.get(`/shop/shipping/by-groups?groups[]=${o.seller_group_id}`)
+      const opts = (data[String(o.seller_group_id)] || []).filter(opt => opt.is_active !== false)
+      shipOptions.value = opts
+
+      // auto-select: ถ้ายังไม่มีข้อมูลจัดส่งเดิม ให้ match จาก shipping_option_id หรือ carrier
+      if (!o.shipment) {
+        const matched = opts.find(op =>
+          (o.shipping_option_id && op.id === o.shipping_option_id) ||
+          (customerCarrier && op.carrier === customerCarrier)
+        )
+        if (matched) {
+          ship.carrier = matched.carrier || '__self__'
+          ship.self = !matched.carrier
+        }
+      }
+    } catch { /* ignore */ }
+  }
 }
 
 async function doShip() {
-  if (!ship.tracking_no.trim()) { toast.add({ severity: 'warn', summary: 'กรุณากรอกเลขพัสดุ', life: 2500 }); return }
+  if (!ship.self && !ship.tracking_no.trim()) {
+    toast.add({ severity: 'warn', summary: 'กรุณากรอกเลขพัสดุ', life: 2500 }); return
+  }
   busy.value = true
   try {
-    await api.post(`/market/orders/${ship.id}/ship`, { carrier: ship.carrier, tracking_no: ship.tracking_no, note: ship.note })
+    const carrier = ship.carrier === '__self__' ? null : ship.carrier || null
+    const tracking_no = ship.self ? null : ship.tracking_no || null
+    await api.post(`/market/orders/${ship.id}/ship`, { carrier, tracking_no, note: ship.note || null })
     toast.add({ severity: 'success', summary: 'บันทึกการจัดส่งแล้ว', life: 2000 })
     shipOpen.value = false; load()
   } catch (e) { toast.add({ severity: 'error', summary: 'ไม่สำเร็จ', detail: e.response?.data?.message || '', life: 3000 }) }

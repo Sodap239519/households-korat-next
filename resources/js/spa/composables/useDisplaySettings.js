@@ -8,7 +8,7 @@ const FONT_STEPS = [100, 112, 125, 140] // %  (ปกติ → ใหญ่ส�
 const MODES = ['light', 'dark']
 
 const fontIndex = ref(0)
-const mode = ref('light')
+const mode = ref('dark')
 let initialized = false
 
 function persist() {
@@ -19,8 +19,8 @@ function apply() {
     const html = document.documentElement
     html.style.fontSize = FONT_STEPS[fontIndex.value] + '%'
     html.classList.toggle('shop-dark', mode.value === 'dark')
-    // PrimeVue dark theme ใช้ .app-dark — เปิดพร้อมกันให้ component หลังบ้านมืดด้วย
-    html.classList.toggle('app-dark', mode.value === 'dark')
+    // Soft Purple mode มีพื้นหลังอ่อน — คง PrimeVue ไว้ในโหมด light ตลอด
+    html.classList.remove('app-dark')
 }
 
 function load() {

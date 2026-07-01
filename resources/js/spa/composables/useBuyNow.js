@@ -23,6 +23,7 @@ export function useBuyNow() {
         return [{
             group_id:   d.group_id,
             group_name: d.group_name,
+            group_slug: d.group_slug ?? '',
             items:      [d],
             subtotal:   d.price * d.qty,
         }]

@@ -72,26 +72,31 @@
               <i v-if="!collapsedDisplay" :class="['text-xs transition-transform', openGroups[idx] ? 'fi fi-rr-angle-small-down' : 'fi fi-rr-angle-small-right']"></i>
             </button>
             <div v-if="!collapsedDisplay && openGroups[idx]" class="mt-1 ml-3 pl-4 border-l border-white/15 space-y-0.5">
-              <router-link
-                v-for="child in item.children.filter(c => !c.show || c.show())"
-                :key="child.to"
-                :to="child.to"
-                v-slot="{ isActive }"
-                custom
+              <template
+                v-for="(child, ci) in item.children.filter(c => !c.show || c.show())"
+                :key="child.to || `divider-${ci}`"
               >
-                <a
-                  @click.prevent="goNav(child.to)"
-                  :class="[
-                    'flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer transition',
-                    isActive
-                      ? 'bg-white text-violet-700 font-semibold'
-                      : 'text-violet-200 hover:bg-white/10 hover:text-white',
-                  ]"
-                >
-                  <i :class="[child.icon, 'text-sm flex-shrink-0']"></i>
-                  <span class="whitespace-nowrap">{{ child.label }}</span>
-                </a>
-              </router-link>
+                <!-- เส้นขีดแบ่งกลุ่ม -->
+                <div v-if="child.divider" class="my-1 border-t border-white/15"></div>
+                <router-link v-else :to="child.to" v-slot="{ isActive }" custom>
+                  <a
+                    @click.prevent="goNav(child.to)"
+                    :class="[
+                      'flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer transition',
+                      isActive
+                        ? 'bg-white text-violet-700 font-semibold'
+                        : 'text-violet-200 hover:bg-white/10 hover:text-white',
+                    ]"
+                  >
+                    <i :class="[child.icon, 'text-sm flex-shrink-0']"></i>
+                    <span class="flex-1 whitespace-nowrap">{{ child.label }}</span>
+                    <span
+                      v-if="child.badgeKey && marketBadges[child.badgeKey]"
+                      class="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm"
+                    >{{ marketBadges[child.badgeKey] > 99 ? '99+' : marketBadges[child.badgeKey] }}</span>
+                  </a>
+                </router-link>
+              </template>
             </div>
           </div>
         </template>
@@ -241,9 +246,17 @@
       </header>
 
       <!-- Page content -->
-      <main class="flex-1 overflow-auto">
+      <main ref="mainContent" class="flex-1 overflow-auto" @scroll.passive="handleMainScroll">
         <router-view />
       </main>
+
+      <!-- Scroll-to-top (admin) -->
+      <Transition name="fade-up">
+        <button v-if="showScrollTop" @click="scrollToTop"
+          class="fixed bottom-6 right-4 z-30 w-10 h-10 rounded-full bg-white/70 hover:bg-white/95 active:scale-95 text-violet-600 border border-violet-200/80 shadow-lg backdrop-blur-sm flex items-center justify-center transition">
+          <i class="fi fi-rr-arrow-up text-sm"></i>
+        </button>
+      </Transition>
     </div>
 
     <Toast position="top-right" />
@@ -270,8 +283,18 @@ const router = useRouter()
 const { user, logout, isAdmin, isAreaStaff, isMarketStaff, canManageUsers, roleLabel: roleLabelFn } = useAuth()
 const toast = useToast()
 
-const collapsed = ref(false)
-const mobileOpen = ref(false)
+const collapsed    = ref(false)
+const mobileOpen   = ref(false)
+const mainContent  = ref(null)
+const showScrollTop = ref(false)
+const marketBadges = reactive({})
+
+function handleMainScroll() {
+  showScrollTop.value = (mainContent.value?.scrollTop ?? 0) > 300
+}
+function scrollToTop() {
+  mainContent.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 // "collapsedDisplay" controls labels visibility — true on desktop+collapsed only.
 // On mobile-open, drawer is full width so labels should always show.
@@ -315,18 +338,30 @@ const allNavItems = [
     matchPrefix: '/app/market',
     show: () => isMarketStaff.value,
     children: [
-      { to: '/app/market',              icon: 'fi fi-rr-chart-histogram', label: 'แดชบอร์ดตลาด' },
-      { to: '/app/market/products',     icon: 'fi fi-rr-box-open',        label: 'สินค้า' },
-      { to: '/app/market/categories',   icon: 'fi fi-rr-apps',            label: 'หมวดหมู่' },
-      { to: '/app/market/orders',       icon: 'fi fi-rr-shopping-bag',    label: 'คำสั่งซื้อ' },
-      { to: '/app/market/shipments',    icon: 'fi fi-rr-truck-side',      label: 'การจัดส่ง' },
-      { to: '/app/market/payments',     icon: 'fi fi-rr-receipt',         label: 'ยืนยันชำระเงิน' },
-      { to: '/app/market/chat',         icon: 'fi fi-rr-comment-alt',     label: 'ข้อความลูกค้า' },
-      { to: '/app/market/returns',      icon: 'fi fi-rr-undo',            label: 'คืน/เคลม' },
-      { to: '/app/market/reviews',      icon: 'fi fi-rr-star',            label: 'รีวิว' },
-      { to: '/app/market/comments',     icon: 'fi fi-rr-comment',         label: 'คอมเมนต์' },
-      { to: '/app/market/seller-groups', icon: 'fi fi-rr-users-alt',      label: 'กลุ่มผู้ขาย' },
-      { to: '/app/market/banners',       icon: 'fi fi-rr-picture',         label: 'แบนเนอร์ Hero',  show: () => isAdmin.value },
+      // — คำสั่งซื้อ & การจัดส่ง —
+      { to: '/app/market',           icon: 'fi fi-rr-chart-histogram',  label: 'แดชบอร์ดตลาด' },
+      { to: '/app/market/orders',    icon: 'fi fi-rr-shopping-bag',     label: 'คำสั่งซื้อ',      badgeKey: 'orders' },
+      { to: '/app/market/payments',  icon: 'fi fi-rr-receipt',          label: 'ยืนยันชำระเงิน',  badgeKey: 'payments' },
+      { to: '/app/market/shipments', icon: 'fi fi-rr-truck-side',       label: 'การจัดส่ง',       badgeKey: 'shipments' },
+      { to: '/app/market/returns',   icon: 'fi fi-rr-undo',             label: 'คืน/เคลม',        badgeKey: 'returns' },
+      { divider: true },
+      // — ลูกค้าสัมพันธ์ —
+      { to: '/app/market/chat',      icon: 'fi fi-rr-comment-alt',      label: 'ข้อความลูกค้า',   badgeKey: 'chat' },
+      { to: '/app/market/reviews',   icon: 'fi fi-rr-star',             label: 'รีวิว',            badgeKey: 'reviews' },
+      { to: '/app/market/comments',  icon: 'fi fi-rr-comment',          label: 'คอมเมนต์',        badgeKey: 'comments' },
+      { divider: true },
+      // — สินค้า & คลัง —
+      { to: '/app/market/flash-sale',  icon: 'fi fi-rr-bolt',           label: 'Flash Sale' },
+      { to: '/app/market/products',    icon: 'fi fi-rr-box-open',       label: 'สินค้า' },
+      { to: '/app/market/categories',  icon: 'fi fi-rr-apps',           label: 'หมวดหมู่' },
+      { to: '/app/market/shipping',    icon: 'fi fi-rr-settings-sliders', label: 'บริการจัดส่ง' },
+      { divider: true },
+      // — ผู้ขาย —
+      { to: '/app/market/seller-groups',       icon: 'fi fi-rr-users-alt',  label: 'กลุ่มผู้ขาย' },
+      { to: '/app/market/seller-applications', icon: 'fi fi-rr-user-check', label: 'คำขอสมัครขาย', badgeKey: 'seller_apps' },
+      { divider: true },
+      // — การตลาด —
+      { to: '/app/market/banners', icon: 'fi fi-rr-picture', label: 'แบนเนอร์ Hero', show: () => isAdmin.value },
     ],
   },
 
@@ -471,7 +506,7 @@ const userMenuItems = computed(() => {
 
 async function handleLogout() {
   await logout()
-  router.push('/login')
+  router.push('/shop')
 }
 
 // ===== Notification bell (superadmin only) =====
@@ -504,6 +539,14 @@ async function fetchCounts() {
     const { data } = await api.get('/admin/notifications/counts')
     pendingCount.value = data.unread_total
     unreadTotal.value = data.unread_total
+  } catch {}
+}
+
+async function fetchMarketBadges() {
+  if (!isMarketStaff.value) return
+  try {
+    const { data } = await api.get('/market/dashboard/badges')
+    Object.assign(marketBadges, data)
   } catch {}
 }
 
@@ -593,18 +636,24 @@ const relativeTime = relTimeUtil
 
 watch(() => user.value?.role, () => {
   if (isAdmin.value) fetchCounts()
+  if (isMarketStaff.value) fetchMarketBadges()
 }, { immediate: true })
 
 let lastUpdatedTimer = null
+let marketBadgeTimer = null
 onMounted(() => {
   pollTimer = setInterval(fetchCounts, 60_000)
   // Show "data last updated" timestamp in header — refresh every minute
   fetchLastUpdated()
   lastUpdatedTimer = setInterval(fetchLastUpdated, 60_000)
+  // Market badges — poll every 30s for market staff
+  fetchMarketBadges()
+  marketBadgeTimer = setInterval(fetchMarketBadges, 30_000)
 })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
   if (lastUpdatedTimer) clearInterval(lastUpdatedTimer)
+  if (marketBadgeTimer) clearInterval(marketBadgeTimer)
 })
 
 // Re-fetch on every route change (any navigation may have edited data)

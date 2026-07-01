@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Market;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Services\CustomerNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -24,9 +25,10 @@ class ProductController extends Controller
             ->withCount('reviews');
 
         // scope กลุ่ม
-        if ($scope = $user->sellerGroupScope()) {
+        if (($scope = $user->sellerGroupScope()) !== null) {
             $query->where('seller_group_id', $scope);
-        } elseif ($user->isAdmin() && $request->filled('group_id')) {
+        } elseif ($request->filled('group_id')) {
+            // superadmin กรองตาม group_id ที่เลือก
             $query->where('seller_group_id', $request->input('group_id'));
         }
 
@@ -69,6 +71,9 @@ class ProductController extends Controller
     {
         $this->authorizeProduct($request, $product);
 
+        // บันทึกราคาเดิมก่อน fill เพื่อตรวจว่าลดราคาหรือไม่
+        $oldPrice = (float) $product->effective_price;
+
         $validated = $this->validateData($request, $product);
         $product->fill($validated);
 
@@ -77,6 +82,12 @@ class ProductController extends Controller
             $product->seller_group_id = (int) $request->input('seller_group_id');
         }
         $product->save();
+
+        // แจ้งเตือนโปรโมชั่นเมื่อราคาลด
+        $newPrice = (float) $product->fresh()->effective_price;
+        if ($newPrice < $oldPrice) {
+            CustomerNotificationService::promotion($product, $oldPrice, $newPrice);
+        }
 
         return response()->json($product->load('images'));
     }
@@ -133,6 +144,50 @@ class ProductController extends Controller
         return response()->json($product->load('images'));
     }
 
+    public function flashSaleList(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $q = Product::whereNotNull('sale_price')
+            ->with(['images' => fn($q) => $q->where('is_primary', true)])
+            ->orderBy('flash_sale_end');
+
+        if (!$user->isAdmin()) {
+            $q->where('seller_group_id', $user->seller_group_id);
+        }
+
+        return response()->json($q->get(['id', 'name', 'sku', 'price', 'sale_price', 'stock_qty', 'flash_sale_start', 'flash_sale_end', 'status', 'seller_group_id']));
+    }
+
+    public function flashSaleBatch(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'action'            => ['required', 'in:set,remove'],
+            'product_ids'       => ['required', 'array', 'min:1'],
+            'product_ids.*'     => ['integer', 'exists:products,id'],
+            'sale_price'        => ['required_if:action,set', 'nullable', 'numeric', 'min:0'],
+            'flash_sale_start'  => ['nullable', 'date'],
+            'flash_sale_end'    => ['nullable', 'date'],
+        ]);
+
+        $q = Product::whereIn('id', $data['product_ids']);
+        if (!$user->isAdmin()) {
+            $q->where('seller_group_id', $user->seller_group_id);
+        }
+
+        if ($data['action'] === 'remove') {
+            $q->update(['sale_price' => null, 'flash_sale_start' => null, 'flash_sale_end' => null]);
+        } else {
+            $q->update([
+                'sale_price'       => $data['sale_price'],
+                'flash_sale_start' => $data['flash_sale_start'] ?? null,
+                'flash_sale_end'   => $data['flash_sale_end'] ?? null,
+            ]);
+        }
+
+        return response()->json(['message' => 'อัปเดตสำเร็จ', 'affected' => $q->count()]);
+    }
+
     // ===== helpers =====
 
     private function validateData(Request $request, ?Product $product = null): array
@@ -147,11 +202,15 @@ class ProductController extends Controller
             'description'       => ['nullable', 'string'],
             'price'             => [$required, 'numeric', 'min:0'],
             'sale_price'        => ['nullable', 'numeric', 'min:0'],
+            'flash_sale_start'  => ['nullable', 'date'],
+            'flash_sale_end'    => ['nullable', 'date', 'after_or_equal:flash_sale_start'],
             'stock_qty'         => ['nullable', 'integer', 'min:0'],
             'unit'              => ['nullable', 'string', 'max:30'],
             'district'          => ['nullable', 'string', 'max:100'],
-            'status'            => ['nullable', 'in:draft,published'],
-            'is_featured'       => ['boolean'],
+            'status'              => ['nullable', 'in:draft,published'],
+            'is_featured'         => ['boolean'],
+            'shipping_option_ids' => ['required', 'array', 'min:1'],
+            'shipping_option_ids.*' => ['integer', 'exists:seller_shipping_options,id'],
         ]);
     }
 

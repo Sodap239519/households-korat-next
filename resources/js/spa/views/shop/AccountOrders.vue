@@ -1,9 +1,9 @@
 <template>
-  <div class="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
     <h1 class="text-xl font-bold text-slate-800 mb-3 px-1">การซื้อของฉัน</h1>
 
     <!-- Status tabs -->
-    <div class="flex gap-1 overflow-x-auto pb-2 -mx-1 px-1 sticky top-16 z-10 bg-transparent">
+    <div class="flex gap-1 overflow-x-auto pb-2 -mx-1 px-1 sticky top-14 z-10 bg-white/90 backdrop-blur-sm">
       <button
         v-for="t in tabs"
         :key="t.key"
@@ -65,7 +65,7 @@
           <div v-if="o.shipment?.tracking_no" class="text-xs text-indigo-600 mb-2">
             <i class="fi fi-rr-truck-side"></i> {{ o.shipment.carrier }} · {{ o.shipment.tracking_no }}
           </div>
-          <div class="flex justify-end gap-2">
+          <div class="flex justify-end gap-2 flex-wrap">
             <button
               v-if="['pending_payment'].includes(o.status)"
               class="btn-orange px-4 py-2 rounded-full text-sm font-semibold"
@@ -76,6 +76,33 @@
               class="btn-orange px-4 py-2 rounded-full text-sm font-semibold"
               @click="receive(o)"
             >ฉันได้รับสินค้าแล้ว</button>
+            <button
+              v-if="o.status === 'completed'"
+              :disabled="reordering === o.id"
+              class="px-4 py-2 rounded-full text-sm font-medium border border-violet-300 text-violet-700 hover:bg-violet-50 disabled:opacity-50 flex items-center gap-1.5"
+              @click.stop="reorder(o)"
+            >
+              <i :class="reordering === o.id ? 'fi fi-rr-spinner animate-spin' : 'fi fi-rr-refresh'"></i>
+              สั่งซื้ออีกครั้ง
+            </button>
+            <RouterLink
+              v-if="o.status === 'completed' && (o.reviews_count || 0) < (o.items_count || 1)"
+              :to="`/shop/account/orders/${o.order_no}/review`"
+              class="px-4 py-2 rounded-full text-sm font-medium border border-amber-300 text-amber-600 hover:bg-amber-50 flex items-center gap-1.5"
+              @click.stop
+            >
+              <i class="fi fi-rr-star"></i> รีวิว
+            </RouterLink>
+            <RouterLink
+              v-else-if="o.status === 'completed' && o.items_count > 0"
+              :to="o.items?.[0]?.product?.slug
+                ? `/shop/products/${o.items[0].product.slug}?tab=reviews`
+                : `/shop/account/orders/${o.order_no}/review`"
+              class="px-4 py-2 rounded-full text-sm font-medium border border-emerald-300 text-emerald-600 hover:bg-emerald-50 flex items-center gap-1.5"
+              @click.stop
+            >
+              <i class="fi fi-sr-star"></i> ดูรีวิว
+            </RouterLink>
             <button class="px-4 py-2 rounded-full text-sm font-medium border border-violet-300 text-violet-700 hover:bg-violet-50" @click="goDetail(o)">
               {{ ['shipped','delivered'].includes(o.status) ? 'ติดตามคำสั่งซื้อ' : 'ดูรายละเอียด' }}
             </button>
@@ -90,33 +117,36 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
+import { useCart } from '../../composables/useCart.js'
 import api from '../../api/index.js'
 import OrderStatusChip from './components/OrderStatusChip.vue'
 import Pagination from '../components/Pagination.vue'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Toast from 'primevue/toast'
 
-const router = useRouter()
+const router  = useRouter()
+const route   = useRoute()
 const confirm = useConfirm()
-const toast = useToast()
+const toast   = useToast()
+const cart    = useCart()
 
-const orders = ref([])
-const meta = ref({})
-const loading = ref(true)
-const page = ref(1)
-const tab = ref('all')
+const orders     = ref([])
+const meta       = ref({})
+const loading    = ref(true)
+const page       = ref(1)
+const tab        = ref('history')
+const reordering = ref(null)
 
 const tabs = [
-  { key: 'all',        label: 'ทั้งหมด' },
+  { key: 'history',    label: 'ประวัติการซื้อ' },
   { key: 'to_pay',     label: 'ที่ต้องชำระ' },
   { key: 'to_ship',    label: 'ที่ต้องจัดส่ง' },
   { key: 'to_receive', label: 'ที่ต้องได้รับ' },
-  { key: 'completed',  label: 'สำเร็จ' },
-  { key: 'return',     label: 'คืน/เคลม' },
+  { key: 'completed',  label: 'สำเร็จแล้ว' },
 ]
 
 function fmt(v) { return Number(v).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
@@ -143,8 +173,7 @@ function receive(o) {
     accept: async () => {
       try {
         await api.post(`/shop/orders/${o.order_no}/receive`)
-        toast.add({ severity: 'success', summary: 'ขอบคุณค่ะ', detail: 'ยืนยันรับสินค้าแล้ว', life: 2500 })
-        load()
+        router.push(`/shop/account/orders/${o.order_no}/review`)
       } catch (e) {
         toast.add({ severity: 'error', summary: 'ไม่สำเร็จ', detail: e.response?.data?.message || '', life: 3000 })
       }
@@ -152,5 +181,33 @@ function receive(o) {
   })
 }
 
-onMounted(load)
+async function reorder(o) {
+  reordering.value = o.id
+  let added = 0
+  try {
+    for (const item of o.items) {
+      if (!item.product?.slug) continue
+      try {
+        const { data } = await api.get(`/shop/products/${item.product.slug}`)
+        cart.add(data.product ?? data, item.qty)
+        added++
+      } catch { /* สินค้าอาจหมดหรือถูกลบ */ }
+    }
+    if (added) {
+      router.push('/shop/checkout')
+    } else {
+      toast.add({ severity: 'warn', summary: 'ไม่สามารถสั่งซื้อได้', detail: 'สินค้าอาจหมดหรือถูกลบแล้ว', life: 3000 })
+    }
+  } finally { reordering.value = null }
+}
+
+onMounted(() => {
+  const s = route.query.status
+  if (s && tabs.some(t => t.key === s)) tab.value = s
+  load()
+})
+
+watch(() => route.query.status, (s) => {
+  if (s && tabs.some(t => t.key === s)) setTab(s)
+})
 </script>

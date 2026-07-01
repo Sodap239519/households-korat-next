@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-2xl mx-auto px-4 py-5 space-y-4">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
     <Breadcrumb :items="[{ label: 'คำสั่งซื้อ', to: '/shop/account/orders' }, { label: orderNo }]" class="mb-2" />
 
     <div v-if="loading" class="box-card p-12 text-center text-slate-400">
@@ -22,8 +22,15 @@
       <div class="box-card p-5">
         <h3 class="font-semibold text-slate-700 text-sm mb-3">รายการสินค้า</h3>
         <div v-for="it in order.items" :key="it.id"
-          class="flex justify-between py-2 text-sm border-b border-slate-50 last:border-0">
-          <span class="text-slate-600 pr-3">{{ it.product_name }} <span class="text-slate-400">×{{ it.qty }}</span></span>
+          class="flex justify-between py-2 text-sm border-b border-slate-50 last:border-0 items-center gap-2">
+          <RouterLink v-if="it.product?.slug"
+            :to="`/shop/products/${it.product.slug}`"
+            class="flex-1 min-w-0 break-words text-slate-600 hover:text-violet-600 hover:underline transition pr-1">
+            {{ it.product_name }} <span class="text-slate-400">×{{ it.qty }}</span>
+          </RouterLink>
+          <span v-else class="flex-1 min-w-0 break-words text-slate-600 pr-1">
+            {{ it.product_name }} <span class="text-slate-400">×{{ it.qty }}</span>
+          </span>
           <span class="text-slate-700 shrink-0">฿{{ fmt(it.line_total) }}</span>
         </div>
         <div class="flex justify-between mt-3 pt-3 border-t border-slate-100 font-bold">
@@ -44,8 +51,8 @@
         <div v-if="order.shipment?.tracking_no"
           class="mt-3 px-3 py-2.5 rounded-xl bg-indigo-50 border border-indigo-100 text-sm text-indigo-700 flex items-center gap-2">
           <i class="fi fi-rr-truck-side"></i>
-          <span class="font-medium">{{ order.shipment.carrier }}</span>
-          <span class="font-mono text-indigo-800">{{ order.shipment.tracking_no }}</span>
+          <span class="font-medium shrink-0">{{ order.shipment.carrier }}</span>
+          <span class="font-mono text-indigo-800 break-all">{{ order.shipment.tracking_no }}</span>
         </div>
       </div>
 
@@ -82,15 +89,25 @@
           </div>
         </div>
 
-        <!-- Bank account info (when payable) -->
-        <template v-if="canPay">
+        <!-- COD notice -->
+        <div v-if="order.payment_method === 'cod'"
+          class="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 p-4 flex items-start gap-3">
+          <i class="fi fi-rr-money-bill-wave text-emerald-500 text-xl shrink-0 mt-0.5"></i>
+          <div>
+            <p class="font-semibold text-emerald-700 text-sm">ชำระเงินปลายทาง (COD)</p>
+            <p class="text-xs text-emerald-600 mt-0.5">เตรียมเงินสด <span class="font-bold">฿{{ fmt(order.total) }}</span> ชำระเมื่อรับสินค้า — ไม่ต้องโอนเงินล่วงหน้า</p>
+          </div>
+        </div>
+
+        <!-- Bank account info (when payable — online only) -->
+        <template v-if="canPay && order.payment_method !== 'cod'">
           <div class="rounded-2xl bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-100 p-4 mb-4">
             <p class="text-xs font-semibold text-violet-500 uppercase tracking-wider mb-2">โอนเงินมาที่</p>
             <template v-if="order.seller_group?.bank_account_no || order.seller_group?.promptpay_id">
               <p v-if="order.seller_group?.bank_name" class="text-sm text-slate-600 font-medium">{{ order.seller_group.bank_name }}</p>
-              <p v-if="order.seller_group?.bank_account_no" class="text-lg font-bold text-slate-800 font-mono tracking-wider mt-1">{{ order.seller_group.bank_account_no }}</p>
+              <p v-if="order.seller_group?.bank_account_no" class="text-base font-bold text-slate-800 font-mono tracking-wide mt-1 break-all">{{ order.seller_group.bank_account_no }}</p>
               <p v-if="order.seller_group?.bank_account_name" class="text-sm text-slate-600 mt-0.5">{{ order.seller_group.bank_account_name }}</p>
-              <p v-if="order.seller_group?.promptpay_id" class="text-sm text-violet-600 mt-1.5 flex items-center gap-1.5"><i class="fi fi-rr-smartphone"></i> พร้อมเพย์: {{ order.seller_group.promptpay_id }}</p>
+              <p v-if="order.seller_group?.promptpay_id" class="text-sm text-violet-600 mt-1.5 flex items-start gap-1.5"><i class="fi fi-rr-smartphone shrink-0 mt-0.5"></i> <span class="break-all">พร้อมเพย์: {{ order.seller_group.promptpay_id }}</span></p>
             </template>
             <p v-else class="text-sm text-slate-500">ติดต่อผู้ขาย: {{ order.seller_group?.contact_phone || '-' }}</p>
             <div class="mt-3 pt-3 border-t border-violet-100 flex items-center justify-between">
@@ -124,8 +141,20 @@
         </template>
       </div>
 
+      <!-- Cancel (pending_payment only) -->
+      <div v-if="canCancel" class="box-card p-5">
+        <button
+          :disabled="cancelling"
+          class="w-full h-12 rounded-2xl border-2 border-rose-300 text-rose-600 hover:bg-rose-50 font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
+          @click="cancelOrder">
+          <i :class="cancelling ? 'fi fi-rr-spinner animate-spin' : 'fi fi-rr-cross-circle'"></i>
+          {{ cancelling ? 'กำลังยกเลิก...' : 'ยกเลิกคำสั่งซื้อ' }}
+        </button>
+        <p class="text-xs text-slate-400 text-center mt-1.5">ยกเลิกได้เฉพาะก่อนชำระเงิน — สต็อกจะถูกคืนอัตโนมัติ</p>
+      </div>
+
       <!-- Actions -->
-      <div v-if="canReceive || canReturn" class="box-card p-5 space-y-2">
+      <div v-if="canReceive || canReturn || order.status === 'completed'" class="box-card p-5 space-y-2">
         <button v-if="canReceive"
           class="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition"
           @click="receive">
@@ -135,6 +164,13 @@
           class="w-full h-12 rounded-2xl border-2 border-rose-300 text-rose-600 hover:bg-rose-50 font-semibold text-sm flex items-center justify-center gap-2 transition"
           @click="returnOpen = true">
           <i class="fi fi-rr-undo"></i> ขอคืน / เคลมสินค้า
+        </button>
+        <button v-if="order.status === 'completed'"
+          :disabled="reordering"
+          class="w-full h-12 rounded-2xl border-2 border-violet-300 text-violet-700 hover:bg-violet-50 font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
+          @click="reorder">
+          <i :class="reordering ? 'fi fi-rr-spinner animate-spin' : 'fi fi-rr-refresh'"></i>
+          {{ reordering ? 'กำลังโหลด...' : 'สั่งซื้ออีกครั้ง' }}
         </button>
       </div>
 
@@ -262,7 +298,8 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useCart } from '../../composables/useCart.js'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import api from '../../api/index.js'
@@ -275,8 +312,10 @@ import Button from 'primevue/button'
 import ConfirmDialog from 'primevue/confirmdialog'
 
 const route   = useRoute()
+const router  = useRouter()
 const toast   = useToast()
 const confirm = useConfirm()
+const cart    = useCart()
 const orderNo = route.params.orderNo
 
 const order      = ref(null)
@@ -309,8 +348,11 @@ const canPay = computed(() => {
   if (latestPayment.value?.status === 'rejected') return true
   return false
 })
-const canReceive = computed(() => ['shipped', 'delivered'].includes(order.value?.status))
-const canReturn  = computed(() => ['shipped', 'delivered', 'completed'].includes(order.value?.status))
+const canReceive  = computed(() => ['shipped', 'delivered'].includes(order.value?.status))
+const canReturn   = computed(() => ['shipped', 'delivered'].includes(order.value?.status))
+const canCancel   = computed(() => order.value?.status === 'pending_payment')
+const reordering  = ref(false)
+const cancelling  = ref(false)
 
 const payStatusLabel = computed(() => ({
   pending:   'แจ้งชำระแล้ว — รอผู้ขายยืนยัน',
@@ -353,7 +395,7 @@ function receive() {
     header: 'ยืนยันรับสินค้า', icon: 'fi fi-rr-box-check',
     acceptLabel: 'ได้รับแล้ว', rejectLabel: 'ยกเลิก',
     accept: async () => {
-      try { await api.post(`/shop/orders/${orderNo}/receive`); toast.add({ severity: 'success', summary: 'ขอบคุณค่ะ', life: 2500 }); await load() }
+      try { await api.post(`/shop/orders/${orderNo}/receive`); router.push(`/shop/account/orders/${orderNo}/review`) }
       catch (e) { toast.add({ severity: 'error', summary: 'ไม่สำเร็จ', detail: e.response?.data?.message || '', life: 3000 }) }
     },
   })
@@ -375,6 +417,47 @@ async function submitReturn() {
     await load()
   } catch (e) { retError.value = e.response?.data?.message || 'ส่งคำขอไม่สำเร็จ' }
   finally { retBusy.value = false }
+}
+
+async function reorder() {
+  if (!order.value?.items?.length) return
+  reordering.value = true
+  let added = 0
+  try {
+    for (const item of order.value.items) {
+      if (!item.product?.slug) continue
+      try {
+        const { data } = await api.get(`/shop/products/${item.product.slug}`)
+        const p = data.product ?? data
+        cart.add(p, item.qty)
+        added++
+      } catch { /* สินค้าอาจถูกลบหรือหมด */ }
+    }
+    if (added) {
+      router.push('/shop/checkout')
+    } else {
+      toast.add({ severity: 'warn', summary: 'ไม่สามารถสั่งซื้อได้', detail: 'สินค้าอาจหมดหรือถูกลบแล้ว', life: 3000 })
+    }
+  } finally { reordering.value = false }
+}
+
+function cancelOrder() {
+  confirm.require({
+    message: `ยืนยันยกเลิกคำสั่งซื้อ ${orderNo}?`,
+    header: 'ยกเลิกคำสั่งซื้อ', icon: 'fi fi-rr-cross-circle',
+    acceptLabel: 'ยกเลิกคำสั่งซื้อ', rejectLabel: 'ไม่ยกเลิก',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      cancelling.value = true
+      try {
+        await api.post(`/shop/orders/${orderNo}/cancel`)
+        toast.add({ severity: 'info', summary: 'ยกเลิกแล้ว', detail: 'ยกเลิกคำสั่งซื้อเรียบร้อย', life: 2500 })
+        await load()
+      } catch (e) {
+        toast.add({ severity: 'error', summary: 'ยกเลิกไม่สำเร็จ', detail: e.response?.data?.message || '', life: 3000 })
+      } finally { cancelling.value = false }
+    },
+  })
 }
 
 onMounted(load)

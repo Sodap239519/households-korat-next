@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class SellerGroup extends Model
 {
@@ -27,13 +28,41 @@ class SellerGroup extends Model
         'lat',
         'lng',
         'map_label',
+        'shop_status',
+        'suspended_until',
+        'ban_reason',
+        'banned_by',
+        'banned_at',
     ];
+
+    public const SHOP_STATUS_ACTIVE    = 'active';
+    public const SHOP_STATUS_SUSPENDED = 'suspended';
+    public const SHOP_STATUS_BANNED    = 'banned';
 
     protected $casts = [
         'districts'            => 'array',
         'is_active'            => 'boolean',
-        'line_notify_enabled' => 'boolean',
+        'line_notify_enabled'  => 'boolean',
+        'suspended_until'      => 'datetime',
+        'banned_at'            => 'datetime',
     ];
+
+    public function isEffectivelyActive(): bool
+    {
+        if ($this->shop_status === self::SHOP_STATUS_BANNED) return false;
+        if ($this->shop_status === self::SHOP_STATUS_SUSPENDED) {
+            // หมดเวลาระงับ = กลับ active อัตโนมัติ
+            return $this->suspended_until && $this->suspended_until->isPast();
+        }
+        return true;
+    }
+
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null;
+    }
 
     /** กลุ่มนี้พร้อมรับแจ้งเตือน LINE หรือไม่ */
     public function canReceiveLineNotify(): bool
@@ -59,5 +88,15 @@ class SellerGroup extends Model
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function shippingOptions()
+    {
+        return $this->hasMany(SellerShippingOption::class)->orderBy('sort_order')->orderBy('fee');
+    }
+
+    public function activeShippingOptions()
+    {
+        return $this->shippingOptions()->where('is_active', true);
     }
 }

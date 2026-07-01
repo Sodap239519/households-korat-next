@@ -106,22 +106,22 @@
 
         <!-- Controls -->
         <div class="shrink-0 bg-black/80 backdrop-blur px-4 py-3 flex items-center justify-center gap-6">
-          <button @click="cropperInst?.rotate(-90)" class="crop-btn" title="หมุนซ้าย">
+          <button @click="cropperInst?.rotate(-90)" title="หมุนซ้าย" class="flex items-center justify-center w-10 h-10 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition">
             <i class="fi fi-rr-rotate-left text-lg"></i>
           </button>
-          <button @click="cropperInst?.rotate(90)" class="crop-btn" title="หมุนขวา">
+          <button @click="cropperInst?.rotate(90)" title="หมุนขวา" class="flex items-center justify-center w-10 h-10 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition">
             <i class="fi fi-rr-rotate-right text-lg"></i>
           </button>
-          <button @click="cropperInst?.scaleX(cropFlipX = -cropFlipX)" class="crop-btn" title="พลิกซ้าย-ขวา">
+          <button @click="cropperInst?.scaleX(cropFlipX = -cropFlipX)" title="พลิกซ้าย-ขวา" class="flex items-center justify-center w-10 h-10 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition">
             <i class="fi fi-rr-reflect text-lg"></i>
           </button>
-          <button @click="cropperInst?.zoom(0.1)" class="crop-btn" title="ซูมเข้า">
+          <button @click="cropperInst?.zoom(0.1)" title="ซูมเข้า" class="flex items-center justify-center w-10 h-10 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition">
             <i class="fi fi-rr-zoom-in text-lg"></i>
           </button>
-          <button @click="cropperInst?.zoom(-0.1)" class="crop-btn" title="ซูมออก">
+          <button @click="cropperInst?.zoom(-0.1)" title="ซูมออก" class="flex items-center justify-center w-10 h-10 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition">
             <i class="fi fi-rr-zoom-out text-lg"></i>
           </button>
-          <button @click="cropperInst?.reset()" class="crop-btn" title="รีเซ็ต">
+          <button @click="cropperInst?.reset()" title="รีเซ็ต" class="flex items-center justify-center w-10 h-10 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition">
             <i class="fi fi-rr-refresh text-lg"></i>
           </button>
         </div>
@@ -281,9 +281,7 @@ onMounted(async () => {
 .inp { height: 2.75rem; padding: 0 0.75rem; border-radius: 0.75rem; border: 1px solid rgb(226 232 240); }
 .inp:focus { outline: none; border-color: rgb(167 139 250); }
 
-.crop-btn {
-  @apply flex items-center justify-center w-10 h-10 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition;
-}
+/* crop-btn moved to inline classes */
 
 .crop-fade-enter-active,
 .crop-fade-leave-active {

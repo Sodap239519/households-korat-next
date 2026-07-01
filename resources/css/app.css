@@ -18,9 +18,7 @@ html, body { height: 100%; }
 body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    /* โทนม่วง-ขาว-ส้ม พาสเทล ไล่เกรเดียน */
-    background: linear-gradient(135deg, #f6f1ff 0%, #ffffff 48%, #fff3e8 100%);
-    background-attachment: fixed;
+    background: #ffffff; /* โทนสว่าง = ขาว */
 }
 
 /* แบรนด์เกรเดียน (ม่วง → ส้ม) ใช้กับโลโก้/ไอคอน */
@@ -167,56 +165,168 @@ body {
 a, button { transition: color .2s ease, background-color .2s ease, border-color .2s ease; }
 
 /* ============================================================
-   โหมดมืด (shop-dark) — สลับผ่าน useDisplaySettings (สว่าง/มืด)
+   โทนสว่าง (light mode) — พื้นขาวบริสุทธิ์สำหรับส่วน storefront
+   ============================================================ */
+html:not(.shop-dark) .shop-storefront .bg-slate-50,
+html:not(.shop-dark) .shop-storefront .bg-slate-100   { background-color: #ffffff !important; }
+html:not(.shop-dark) .shop-storefront .bg-violet-50   { background-color: #faf8ff !important; }
+html:not(.shop-dark) .shop-storefront .bg-violet-50\/40,
+html:not(.shop-dark) .shop-storefront .bg-violet-50\/60 { background-color: rgba(250,248,255,0.6) !important; }
+html:not(.shop-dark) .shop-storefront .border-slate-100 { border-color: #f1f1f1 !important; }
+
+/* ============================================================
+   โหมด Soft Purple (shop-dark) — พื้น lavender อ่อน, การ์ดขาว
+   Header/Footer/Nav = ม่วงเข้ม (inline style ใน StorefrontLayout)
+   Body = lavender อ่อนมาก — แค่ "ซึมม่วง" กว่าโทนสว่าง
    ============================================================ */
 html.shop-dark body {
-    background: linear-gradient(135deg, #1b1733 0%, #0f172a 55%, #2a1a16 100%);
-    color: #e2e8f0;
+    background: linear-gradient(160deg, #ede9fe 0%, #f5f3ff 55%, #fdf4ff 100%);
+    background-attachment: fixed;
+    color: #1e0a3c; /* ตัวอักษรเข้มบนพื้น lavender อ่อน */
 }
-html.shop-dark .blob { opacity: .3; }
+html.shop-dark .blob { opacity: .12; filter: hue-rotate(260deg); }
 
-/* การ์ด/พื้นผิว */
+/* การ์ด — ขาวบน lavender */
 html.shop-dark .box-card,
 html.shop-dark .glass {
-    background: rgba(30, 27, 58, 0.72);
-    backdrop-filter: blur(12px);
-    border-color: #4c1d95;
-    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.84) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1.5px solid rgba(139, 92, 246, 0.18) !important;
+    color: #1e0a3c;
 }
-html.shop-dark .box-card:hover { border-color: #7c3aed; box-shadow: 0 10px 30px -10px rgba(0,0,0,.6); }
+html.shop-dark .box-card:hover {
+    border-color: rgba(139, 92, 246, 0.38) !important;
+    box-shadow: 0 8px 24px -8px rgba(109, 40, 217, 0.18) !important;
+}
 
-/* พื้นขาว/อ่อน → เข้ม */
-html.shop-dark .bg-white { background-color: #1e1b3a !important; }
+/* พื้นขาว/อ่อน → ยังขาว/ครีม (ไม่ใช่ม่วงเข้ม) */
+html.shop-dark .bg-white            { background-color: rgba(255, 255, 255, 0.90) !important; }
+html.shop-dark .bg-white\/70        { background-color: rgba(255, 255, 255, 0.78) !important; }
+html.shop-dark .bg-white\/90        { background-color: rgba(255, 255, 255, 0.93) !important; }
+html.shop-dark .bg-white\/95        { background-color: rgba(255, 255, 255, 0.97) !important; }
 html.shop-dark .bg-slate-50,
-html.shop-dark .bg-slate-100 { background-color: #0f172a !important; }
+html.shop-dark .bg-slate-100        { background-color: rgba(245, 243, 255, 0.75) !important; }
+html.shop-dark .bg-slate-800        { background-color: #3b0764 !important; }
 html.shop-dark .bg-violet-50,
 html.shop-dark .bg-violet-50\/40,
-html.shop-dark .bg-violet-50\/60 { background-color: rgba(76,29,149,.25) !important; }
+html.shop-dark .bg-violet-50\/60    { background-color: rgba(237, 233, 254, 0.60) !important; }
 
-/* ตัวอักษร */
+/* ตัวอักษร → dark violet อ่านง่ายบนพื้นอ่อน */
+html.shop-dark .text-slate-900 { color: #0f0520 !important; }
 html.shop-dark .text-slate-800,
-html.shop-dark .text-slate-700 { color: #e2e8f0 !important; }
-html.shop-dark .text-slate-600 { color: #cbd5e1 !important; }
-html.shop-dark .text-slate-500,
-html.shop-dark .text-slate-400 { color: #94a3b8 !important; }
+html.shop-dark .text-slate-700 { color: #1e0a3c !important; }
+html.shop-dark .text-slate-600 { color: #3b0764 !important; }
+html.shop-dark .text-slate-500 { color: rgba(76, 29, 149, 0.75) !important; }
+html.shop-dark .text-slate-400 { color: rgba(109, 40, 217, 0.55) !important; }
+html.shop-dark .text-slate-300 { color: rgba(139, 92, 246, 0.60) !important; }
+html.shop-dark .text-gray-900  { color: #0f0520 !important; }
+html.shop-dark .text-gray-800,
+html.shop-dark .text-gray-700  { color: #1e0a3c !important; }
+html.shop-dark .text-gray-600  { color: #3b0764 !important; }
+html.shop-dark .text-gray-500  { color: rgba(76, 29, 149, 0.75) !important; }
 
-/* header / footer / bottom-nav */
-html.shop-dark header.bg-white\/90 { background: rgba(15,23,42,.92) !important; border-color: #312e81 !important; }
-html.shop-dark nav.fixed { background: rgba(15,23,42,.95) !important; border-color: #312e81 !important; }
+/* กรอบ — ให้กลืนกับพื้น lavender (ไม่ขาวจั๊วะ) */
+html.shop-dark .border-slate-100 { border-color: rgba(139, 92, 246, 0.12) !important; }
+html.shop-dark .border-slate-200 { border-color: rgba(139, 92, 246, 0.20) !important; }
+html.shop-dark .border-slate-300 { border-color: rgba(109, 40, 217, 0.28) !important; }
+html.shop-dark .border-gray-100  { border-color: rgba(139, 92, 246, 0.12) !important; }
+html.shop-dark .border-gray-200  { border-color: rgba(139, 92, 246, 0.20) !important; }
+html.shop-dark .divide-slate-100 > * + * { border-color: rgba(139, 92, 246, 0.10) !important; }
+html.shop-dark .divide-slate-200 > * + * { border-color: rgba(139, 92, 246, 0.16) !important; }
 
-/* อินพุต */
+/* Footer — เข้มเป็น accent */
+html.shop-dark footer {
+    background-color: #3b0764 !important;
+    color: rgba(237, 233, 254, 0.65) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Header + bottom nav ถูก style โดยตรงใน StorefrontLayout.vue
+   (purple gradient ทั้งสอง mode) — ไม่มี override ที่นี่
+   ────────────────────────────────────────────────────────────── */
+
+/* active nav indicator — โทนมืด: nav ม่วงเข้ม ตัวอักษรขาว */
+nav.fixed a.shop-nav-active { color: #ffffff !important; position: relative; }
+nav.fixed a.shop-nav-active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 28px; height: 3px;
+    background: rgba(255, 255, 255, 0.75);
+    border-radius: 0 0 4px 4px;
+}
+
+/* ── โทนสว่าง: Header = ขาว ── */
+html:not(.shop-dark) header.shop-header {
+    background: #ffffff !important;
+    box-shadow: 0 1px 0 #ede9fe, 0 2px 8px rgba(139,92,246,0.07) !important;
+}
+html:not(.shop-dark) header.shop-header .text-white,
+html:not(.shop-dark) header.shop-header .text-white\/75,
+html:not(.shop-dark) header.shop-header .text-white\/55,
+html:not(.shop-dark) header.shop-header .text-white\/50,
+html:not(.shop-dark) header.shop-header .text-white\/80,
+html:not(.shop-dark) header.shop-header .hover\:text-white:hover { color: #3b0764 !important; }
+/* badge บน icon ยังคงเป็นขาวบนพื้นส้ม/ชมพู */
+html:not(.shop-dark) header.shop-header .bg-orange-500,
+html:not(.shop-dark) header.shop-header .bg-rose-500 { color: #ffffff !important; }
+/* search input — ขาวบริสุทธิ์ ตัวอักษรมืด */
+html:not(.shop-dark) header.shop-header input {
+    background-color: #ffffff !important;
+    border-color: #d1c4e9 !important;
+    color: #1e0a3c !important;
+}
+html:not(.shop-dark) header.shop-header input::placeholder {
+    color: rgba(76,29,149,0.50) !important;
+}
+/* icon แว่นขยาย */
+html:not(.shop-dark) header.shop-header .fi-rr-search { color: #7c3aed !important; }
+/* logo icon bg + button hover bg */
+html:not(.shop-dark) header.shop-header .bg-white\/15,
+html:not(.shop-dark) header.shop-header .bg-white\/20 { background-color: rgba(237,233,254,0.75) !important; }
+html:not(.shop-dark) header.shop-header .hover\:bg-white\/15:hover,
+html:not(.shop-dark) header.shop-header .hover\:bg-white\/10:hover { background-color: rgba(237,233,254,0.65) !important; }
+
+/* ── โทนสว่าง: Bottom nav = ขาว ── */
+html:not(.shop-dark) nav.shop-bottom-nav {
+    background: #ffffff !important;
+    border-top-color: #e5deff !important;
+    box-shadow: 0 -2px 10px rgba(139,92,246,0.10) !important;
+}
+html:not(.shop-dark) nav.shop-bottom-nav .text-white\/45 { color: rgba(59,7,100,0.45) !important; }
+html:not(.shop-dark) nav.shop-bottom-nav a.shop-nav-active { color: #6d28d9 !important; }
+html:not(.shop-dark) nav.shop-bottom-nav a.shop-nav-active::before { background: rgba(109,40,217,0.75) !important; }
+
+/* ── โทนสว่าง: Footer = ขาว ── */
+html:not(.shop-dark) footer.shop-footer {
+    background: #ffffff !important;
+    border-top: 1px solid #ede9fe;
+    color: rgba(59,7,100,0.65) !important;
+}
+html:not(.shop-dark) footer.shop-footer * { color: rgba(59,7,100,0.70) !important; }
+html:not(.shop-dark) footer.shop-footer .bg-white\/20 { background-color: #ede9fe !important; }
+html:not(.shop-dark) footer.shop-footer a:hover { color: #6d28d9 !important; }
+
+/* อินพุตทั่วไป — ขาวอ่อนบนพื้น lavender */
 html.shop-dark input,
 html.shop-dark textarea,
 html.shop-dark select,
 html.shop-dark .inp {
-    background-color: #1e1b3a !important;
-    color: #e2e8f0 !important;
-    border-color: #475569 !important;
+    background-color: rgba(255, 255, 255, 0.85) !important;
+    color: #1e0a3c !important;
+    border-color: rgba(139, 92, 246, 0.28) !important;
+}
+/* อินพุตใน header — glass บนพื้นม่วงเข้ม (specificity สูงกว่า rule ข้างต้น) */
+html.shop-dark header input {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
 }
 
-/* hero โทนมืด */
-html.shop-dark .hero-banner { background: linear-gradient(to bottom right, #2e1065, #1e1b3a, #3a1e12) !important; }
-html.shop-dark .hero-banner .text-slate-600 { color: #cbd5e1 !important; }
+/* hero banner */
+html.shop-dark .hero-banner { background: linear-gradient(to bottom right, #4c1d95, #6d28d9) !important; }
+html.shop-dark .hero-banner .text-slate-600 { color: #ede9fe !important; }
 
 @media (prefers-reduced-motion: reduce) {
     *, .reveal, .reveal.is-visible, .anim-fade-in, .anim-fade-up, .anim-scale-in, .anim-float, .blob, .skeleton {

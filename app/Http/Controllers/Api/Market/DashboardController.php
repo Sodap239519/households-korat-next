@@ -3,8 +3,14 @@
 namespace App\Http\Controllers\Api\Market;
 
 use App\Http\Controllers\Controller;
+use App\Models\Conversation;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Product;
+use App\Models\ProductComment;
+use App\Models\ProductReview;
+use App\Models\ReturnRequest;
+use App\Models\SellerApplication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -84,5 +90,51 @@ class DashboardController extends Controller
             'sales_by_day'  => $salesByDay,
             'top_products'  => $topProducts,
         ]);
+    }
+
+    /** GET /market/dashboard/badges — นับรายการที่ต้องดำเนินการ (lightweight, poll ได้บ่อย) */
+    public function badges(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
+
+        $scope = $user->sellerGroupScope();
+
+        $orderScope   = fn ($q) => $scope ? $q->where('seller_group_id', $scope) : $q;
+        $productScope = fn ($q) => $scope ? $q->where('seller_group_id', $scope) : $q;
+
+        $orders = Order::query()->tap($orderScope)
+            ->whereIn('status', ['pending_payment', 'awaiting_confirm'])->count();
+
+        $payments = Payment::query()
+            ->whereHas('order', $orderScope)->where('status', 'pending')->count();
+
+        $shipments = Order::query()->tap($orderScope)
+            ->whereIn('status', ['confirmed', 'processing'])->count();
+
+        $returns = ReturnRequest::query()
+            ->whereHas('order', $orderScope)->where('status', 'pending')->count();
+
+        $chat = Conversation::query()
+            ->when($scope, fn ($q) => $q->where('seller_group_id', $scope))
+            ->where('is_read_by_seller', false)->count();
+
+        $reviews = ProductReview::query()
+            ->whereHas('product', $productScope)
+            ->where('status', 'published')->whereNull('reply')->count();
+
+        $comments = ProductComment::query()
+            ->whereHas('product', $productScope)
+            ->where('status', 'pending')->count();
+
+        // คำขอสมัครขายที่รอดำเนินการ (superadmin เห็นทุกสถานะที่รอ, admin เห็นเฉพาะ pending)
+        $sellerAppStatuses = $user->isSuperAdmin()
+            ? ['pending', 'admin_approved', 'escalated']
+            : ['pending'];
+        $seller_apps = $user->isAdmin()
+            ? SellerApplication::whereIn('status', $sellerAppStatuses)->count()
+            : 0;
+
+        return response()->json(compact('orders', 'payments', 'shipments', 'returns', 'chat', 'reviews', 'comments', 'seller_apps'));
     }
 }

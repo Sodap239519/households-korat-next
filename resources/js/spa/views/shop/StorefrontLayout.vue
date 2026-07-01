@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-white">
+  <div class="shop-storefront min-h-screen flex flex-col">
     <!-- ===== Header ===== -->
-    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-violet-100 shadow-sm">
+    <header class="sticky top-0 z-50 shadow-lg shop-header" style="background:linear-gradient(to right,#2e1065,#4c1d95,#5b21b6)">
 
       <!-- Single header row — all sizes -->
       <div class="max-w-7xl mx-auto px-3 sm:px-6">
@@ -9,37 +9,37 @@
 
           <!-- Logo: Desktop only -->
           <RouterLink to="/shop" class="hidden md:flex items-center gap-2 shrink-0">
-            <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl brand-gradient text-white text-lg shadow-md shadow-violet-500/30">
+            <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white/15 text-white text-lg shadow backdrop-blur">
               <i class="fi fi-rr-shop"></i>
             </span>
             <span>
-              <span class="block font-bold text-slate-800 leading-tight">ตลาดชุมชนโคราช</span>
-              <span class="block text-[11px] text-slate-400 leading-tight">สินค้าจากกลุ่มแก้จน</span>
+              <span class="block font-bold text-white leading-tight">ตลาดชุมชนโคราช</span>
+              <span class="block text-[11px] text-white/55 leading-tight">สินค้าจากกลุ่มแก้จน</span>
             </span>
           </RouterLink>
 
           <!-- Desktop nav -->
-          <nav class="hidden lg:flex items-center gap-1 text-sm font-medium text-slate-600 shrink-0">
-            <RouterLink to="/shop" class="px-3 py-2 rounded-lg hover:text-violet-700 hover:bg-violet-50" active-class="text-violet-700">หน้าแรก</RouterLink>
-            <RouterLink to="/shop/products" class="px-3 py-2 rounded-lg hover:text-violet-700 hover:bg-violet-50" active-class="text-violet-700">สินค้า</RouterLink>
+          <nav class="hidden lg:flex items-center gap-1 text-sm font-medium shrink-0">
+            <RouterLink to="/shop" class="px-3 py-2 rounded-lg text-white/75 hover:text-white hover:bg-white/10" active-class="text-white bg-white/15">หน้าแรก</RouterLink>
+            <RouterLink to="/shop/products" class="px-3 py-2 rounded-lg text-white/75 hover:text-white hover:bg-white/10" active-class="text-white bg-white/15">สินค้า</RouterLink>
           </nav>
 
           <!-- ── SEARCH (flex-1, all sizes) ── -->
           <div class="flex-1 relative min-w-0" ref="searchRef">
             <form @submit.prevent="doSearch">
               <div class="relative">
-                <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
+                <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-white/50 text-sm pointer-events-none"></i>
                 <input
                   v-model="search"
                   type="text"
                   :placeholder="mobilePlaceholder"
-                  class="w-full pl-9 pr-8 h-10 rounded-full border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:border-violet-400 focus:bg-white transition"
+                  class="w-full pl-9 pr-8 h-10 rounded-full bg-white/15 border border-white/20 text-white placeholder:text-white/50 text-sm focus:outline-none focus:bg-white/22 focus:border-white/40 transition"
                   @focus="searchFocused = true"
                   @keydown.escape="searchFocused = false"
                 />
                 <button v-if="search" type="button"
                   @mousedown.prevent="search = ''; searchFocused = false; router.replace({ path: '/shop/products' })"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition">
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition">
                   <i class="fi fi-rr-cross-circle text-sm"></i>
                 </button>
               </div>
@@ -62,7 +62,7 @@
 
             <!-- ตัวกรอง (Display settings) -->
             <div class="relative" ref="accessRef">
-              <button class="w-9 h-9 rounded-full hover:bg-violet-50 text-slate-600 hover:text-violet-700 transition flex items-center justify-center" title="การแสดงผล" @click="accessOpen = !accessOpen">
+              <button class="w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center" title="การแสดงผล" @click="accessOpen = !accessOpen">
                 <i class="fi fi-rr-settings-sliders text-base"></i>
               </button>
               <div v-if="accessOpen" class="absolute top-full right-0 mt-1 w-60 bg-white rounded-xl shadow-xl border border-slate-100 p-3 text-sm z-50">
@@ -87,23 +87,80 @@
             </div>
 
             <!-- ตะกร้า (all sizes) -->
-            <RouterLink to="/shop/cart" class="relative w-9 h-9 rounded-full hover:bg-violet-50 text-slate-600 hover:text-violet-700 transition flex items-center justify-center">
+            <RouterLink to="/shop/cart" class="relative w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center">
               <i class="fi fi-rr-shopping-cart text-base"></i>
-              <span v-if="cart.items.value.length > 0" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
-                {{ cart.items.value.length }}
+              <span v-if="cart.count.value > 0" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {{ cart.count.value }}
               </span>
             </RouterLink>
 
             <!-- ข้อความ (all sizes when logged in) -->
-            <RouterLink v-if="user" to="/shop/chat" class="relative w-9 h-9 rounded-full hover:bg-violet-50 text-slate-600 hover:text-violet-700 transition flex items-center justify-center">
+            <RouterLink v-if="user" to="/shop/chat" class="relative w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center">
               <i class="fi fi-rr-comment-alt text-base"></i>
               <span v-if="chatUnread > 0" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
                 {{ chatUnread }}
               </span>
             </RouterLink>
 
+            <!-- แจ้งเตือนลูกค้า (Desktop: dropdown panel) -->
+            <div v-if="user" class="relative hidden lg:block" ref="notifRef">
+              <button class="relative w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center"
+                title="การแจ้งเตือน" @click="openNotif">
+                <i class="fi fi-rr-bell text-base"></i>
+                <span v-if="customerNotifCount > 0"
+                  class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {{ customerNotifCount > 99 ? '99+' : customerNotifCount }}
+                </span>
+              </button>
+              <!-- Dropdown -->
+              <div v-if="notifOpen"
+                class="absolute top-full right-0 mt-1 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <span class="font-semibold text-slate-700 flex items-center gap-2">
+                    <i class="fi fi-rr-bell text-violet-500 text-sm"></i> การแจ้งเตือน
+                  </span>
+                  <button v-if="customerNotifCount > 0" @click="markAllNotifRead"
+                    class="text-[11px] text-violet-600 hover:text-violet-800 font-medium transition">
+                    อ่านทั้งหมด
+                  </button>
+                </div>
+                <div class="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                  <div v-if="!notifications.length" class="px-4 py-8 text-center text-sm text-slate-400">
+                    <i class="fi fi-rr-bell-slash block text-2xl mb-2 opacity-40"></i>
+                    ไม่มีการแจ้งเตือน
+                  </div>
+                  <RouterLink v-for="n in notifications" :key="n.id"
+                    :to="n.link || '/shop/account/orders'"
+                    class="flex gap-3 px-4 py-3 hover:bg-slate-50 transition"
+                    :class="!n.read_at ? 'bg-violet-50/50' : ''"
+                    @click="readNotif(n); notifOpen = false">
+                    <span class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5"
+                      :class="{
+                        'bg-orange-100 text-orange-500': n.type === 'promotion',
+                        'bg-violet-100 text-violet-500': n.type === 'abandoned_cart',
+                        'bg-sky-100 text-sky-500':       n.type === 'shipping_reminder',
+                        'bg-green-100 text-green-600':   n.type === 'shipped',
+                      }">
+                      <i class="text-sm" :class="{
+                        'fi fi-rr-tags':           n.type === 'promotion',
+                        'fi fi-rr-shopping-bag':   n.type === 'abandoned_cart',
+                        'fi fi-rr-box-open':       n.type === 'shipping_reminder',
+                        'fi fi-rr-truck-side':     n.type === 'shipped',
+                      }"></i>
+                    </span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-slate-700 leading-tight" :class="!n.read_at ? 'font-semibold' : ''">{{ n.title }}</p>
+                      <p class="text-xs text-slate-500 mt-0.5 line-clamp-2">{{ n.message }}</p>
+                      <p class="text-[10px] text-slate-400 mt-1">{{ formatNotifTime(n.created_at) }}</p>
+                    </div>
+                    <span v-if="!n.read_at" class="shrink-0 w-2 h-2 rounded-full bg-orange-400 mt-2"></span>
+                  </RouterLink>
+                </div>
+              </div>
+            </div>
+
             <!-- Wishlist (Desktop only) -->
-            <RouterLink v-if="user" to="/shop/wishlist" class="relative hidden md:flex w-9 h-9 rounded-full hover:bg-rose-50 text-slate-500 hover:text-rose-500 transition items-center justify-center" title="รายการโปรด">
+            <RouterLink v-if="user" to="/shop/wishlist" class="relative hidden md:flex w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition items-center justify-center" title="รายการโปรด">
               <i class="fi fi-rr-heart text-base"></i>
               <span v-if="wishlist.count.value > 0" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
                 {{ wishlist.count.value }}
@@ -112,8 +169,8 @@
 
             <!-- บัญชี — desktop only; mobile ใช้ bottom nav sheet แทน -->
             <div class="relative hidden lg:block" ref="accountRef">
-              <button class="flex items-center gap-2 p-1.5 sm:pl-2 sm:pr-3 rounded-full hover:bg-violet-50 text-slate-700 transition" @click="accountOpen = !accountOpen">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-violet-100 text-violet-700 text-sm">
+              <button class="flex items-center gap-2 p-1.5 sm:pl-2 sm:pr-3 rounded-full hover:bg-white/15 text-white transition" @click="accountOpen = !accountOpen">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white text-sm">
                   <i class="fi fi-rr-user"></i>
                 </span>
                 <span class="hidden sm:block text-sm font-medium max-w-[120px] truncate">{{ user ? user.name : 'เข้าสู่ระบบ' }}</span>
@@ -136,6 +193,10 @@
                   <RouterLink to="/shop/wishlist" class="flex items-center gap-2 px-3 py-2 hover:bg-rose-50 text-slate-600" @click="accountOpen = false">
                     <i class="fi fi-rr-heart text-rose-400"></i> รายการโปรด
                     <span v-if="wishlist.count.value > 0" class="ml-auto text-[11px] bg-rose-500 text-white rounded-full px-1.5 py-0.5 font-bold">{{ wishlist.count.value }}</span>
+                  </RouterLink>
+                  <hr class="my-1 border-slate-100" />
+                  <RouterLink to="/shop/seller-apply" class="flex items-center gap-2 px-3 py-2 hover:bg-violet-50 text-slate-600" @click="accountOpen = false">
+                    <i class="fi fi-rr-shop text-violet-500"></i> สมัครเป็นผู้ขาย
                   </RouterLink>
                   <RouterLink to="/shop/chat" class="flex items-center gap-2 px-3 py-2 hover:bg-violet-50 text-slate-600" @click="accountOpen = false">
                     <i class="fi fi-rr-comment-alt text-violet-500"></i> ข้อความ
@@ -167,7 +228,7 @@
     </div>
 
     <!-- ===== Content ===== -->
-    <main class="flex-1 pb-16 lg:pb-0">
+    <main class="pb-20 lg:pb-0">
       <RouterView v-slot="{ Component }">
         <Transition name="fade-slide">
           <component :is="Component" :key="route.path" />
@@ -176,83 +237,86 @@
     </main>
 
     <!-- ===== Mobile bottom nav (5 items) ===== -->
-    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-violet-100 shadow-[0_-4px_20px_-8px_rgba(124,58,237,.25)]">
-      <div class="grid grid-cols-5 h-16">
-        <RouterLink to="/shop" exact-active-class="text-violet-700"
-          class="flex flex-col items-center justify-center gap-0.5 text-slate-500">
-          <i class="fi fi-rr-home text-[18px]"></i>
-          <span class="text-[10px]">หน้าแรก</span>
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 h-16 border-t border-violet-900/40 shadow-[0_-4px_24px_-8px_rgba(76,29,149,.65)] shop-bottom-nav" style="background:linear-gradient(to right,#2e1065,#4c1d95)">
+      <div class="grid grid-cols-5 h-full">
+        <RouterLink to="/shop" exact-active-class="shop-nav-active"
+          class="relative flex flex-col items-center justify-center gap-0.5 text-white/45 h-full shrink-0">
+          <i class="fi fi-rr-home shrink-0" style="font-size:18px;line-height:1"></i>
+          <span style="font-size:10px;line-height:1">หน้าแรก</span>
         </RouterLink>
 
-        <RouterLink to="/shop/products" active-class="text-violet-700"
-          class="flex flex-col items-center justify-center gap-0.5 text-slate-500">
-          <i class="fi fi-rr-grid text-[18px]"></i>
-          <span class="text-[10px]">สินค้า</span>
+        <RouterLink to="/shop/products" active-class="shop-nav-active"
+          class="relative flex flex-col items-center justify-center gap-0.5 text-white/45 h-full shrink-0">
+          <i class="fi fi-rr-grid shrink-0" style="font-size:18px;line-height:1"></i>
+          <span style="font-size:10px;line-height:1">สินค้า</span>
         </RouterLink>
 
         <!-- รายการโปรด -->
-        <RouterLink :to="user ? '/shop/wishlist' : '/shop/login'" active-class="text-violet-700"
-          class="relative flex flex-col items-center justify-center gap-0.5 text-slate-500">
+        <RouterLink :to="user ? '/shop/wishlist' : '/shop/login'" active-class="shop-nav-active"
+          class="relative flex flex-col items-center justify-center gap-0.5 text-white/45 h-full shrink-0">
           <span class="relative">
-            <i class="fi fi-rr-heart text-[18px]"></i>
+            <i class="fi fi-rr-heart shrink-0" style="font-size:18px;line-height:1"></i>
             <span v-if="user && wishlist.count.value > 0"
               class="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
               {{ wishlist.count.value }}
             </span>
           </span>
-          <span class="text-[10px]">รายการโปรด</span>
+          <span style="font-size:10px;line-height:1">รายการโปรด</span>
         </RouterLink>
 
         <!-- แจ้งเตือน -->
-        <RouterLink :to="user ? '/shop/account/orders' : '/shop/login'"
-          active-class="text-violet-700"
-          class="relative flex flex-col items-center justify-center gap-0.5 text-slate-500">
+        <RouterLink :to="user ? '/shop/notifications' : '/shop/login'"
+          active-class="shop-nav-active"
+          class="relative flex flex-col items-center justify-center gap-0.5 text-white/45 h-full shrink-0">
           <span class="relative">
-            <i class="fi fi-rr-bell text-[18px]"></i>
-            <span v-if="notifCount > 0"
+            <i class="fi fi-rr-bell shrink-0" style="font-size:18px;line-height:1"></i>
+            <span v-if="customerNotifCount > 0"
               class="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
-              {{ notifCount }}
+              {{ customerNotifCount > 99 ? '99+' : customerNotifCount }}
             </span>
           </span>
-          <span class="text-[10px]">แจ้งเตือน</span>
+          <span style="font-size:10px;line-height:1">แจ้งเตือน</span>
         </RouterLink>
 
         <!-- บัญชี → หน้า AccountHome -->
-        <RouterLink to="/shop/account" active-class="text-violet-700"
-          class="flex flex-col items-center justify-center gap-0.5 text-slate-500">
-          <i class="fi fi-rr-user text-[18px]"></i>
-          <span class="text-[10px]">{{ user ? 'บัญชี' : 'เข้าสู่ระบบ' }}</span>
+        <RouterLink to="/shop/account" active-class="shop-nav-active"
+          class="relative flex flex-col items-center justify-center gap-0.5 text-white/45 h-full shrink-0">
+          <i class="fi fi-rr-user shrink-0" style="font-size:18px;line-height:1"></i>
+          <span style="font-size:10px;line-height:1">{{ user ? 'บัญชี' : 'เข้าสู่ระบบ' }}</span>
         </RouterLink>
       </div>
     </nav>
 
     <Toast position="top-center" />
 
-    <!-- ===== Scroll-to-top button ===== -->
+    <!-- ===== Scroll-to-top button (ซ่อนในหน้าแชท + หน้า product detail) ===== -->
     <Transition name="fade-up">
-      <button v-if="showScrollTop" @click="scrollToTop"
-        class="fixed bottom-20 lg:bottom-6 right-4 z-30 w-10 h-10 rounded-full bg-violet-600 hover:bg-violet-700 active:scale-95 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center transition">
-        <i class="fi fi-rr-arrow-up text-sm"></i>
+      <button v-if="showScrollTop && !route.path.includes('/chat') && !isProductDetail" @click="scrollToTop"
+        class="fixed bottom-20 lg:bottom-6 right-4 z-30 w-10 h-10 rounded-full bg-white/70 hover:bg-white/95 active:scale-95 text-violet-600 border border-violet-200/80 shadow-lg backdrop-blur-sm flex items-center justify-center transition">
+        <i class="fi fi-rr-angle-up text-sm"></i>
       </button>
     </Transition>
 
-    <!-- ===== Footer (slim strip) ===== -->
-    <footer class="bg-slate-800 text-slate-400 pb-20 lg:pb-0">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white text-[11px]">
-            <i class="fi fi-rr-shop"></i>
-          </span>
-          <span class="text-slate-300 font-medium">ตลาดชุมชนโคราช</span>
+    <!-- ===== Footer + spacer (เฉพาะหน้า login และ account เท่านั้น) ===== -->
+    <template v-if="showFooter">
+      <footer class="shop-footer" style="background:linear-gradient(to right,#2e1065,#4c1d95);color:rgba(196,181,253,0.70)">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-white/20 text-white text-[11px]">
+              <i class="fi fi-rr-shop"></i>
+            </span>
+            <span class="font-medium" style="color:rgba(233,213,255,0.90)">ตลาดชุมชนโคราช</span>
+          </div>
+          <div class="hidden sm:flex items-center gap-4">
+            <RouterLink to="/shop" class="hover:text-white transition">หน้าแรก</RouterLink>
+            <RouterLink to="/shop/products" class="hover:text-white transition">สินค้าทั้งหมด</RouterLink>
+            <RouterLink to="/shop/account/orders" class="hover:text-white transition">คำสั่งซื้อ</RouterLink>
+          </div>
+          <span style="color:rgba(167,139,250,0.50)">© {{ year }} · households-korat</span>
         </div>
-        <div class="hidden sm:flex items-center gap-4">
-          <RouterLink to="/shop" class="hover:text-white transition">หน้าแรก</RouterLink>
-          <RouterLink to="/shop/products" class="hover:text-white transition">สินค้าทั้งหมด</RouterLink>
-          <RouterLink to="/shop/account/orders" class="hover:text-white transition">คำสั่งซื้อ</RouterLink>
-        </div>
-        <span class="text-slate-500">© {{ year }} · households-korat</span>
-      </div>
-    </footer>
+      </footer>
+      <div class="lg:hidden h-16 shrink-0" style="background:linear-gradient(to right,#2e1065,#4c1d95)"></div>
+    </template>
 
   </div>
 </template>
@@ -274,9 +338,13 @@ const cart   = useCart()
 const { user, fetchUser, logout } = useAuth()
 const display = useDisplaySettings()
 
-const chatUnread  = ref(0)
-const notifCount  = ref(0)
-const wishlist    = useWishlist()
+const chatUnread         = ref(0)
+const notifCount         = ref(0)
+const customerNotifCount = ref(0)
+const notifOpen          = ref(false)
+const notifRef           = ref(null)
+const notifications      = ref([])
+const wishlist           = useWishlist()
 const search      = ref('')
 const accountOpen = ref(false)
 const accountRef  = ref(null)
@@ -299,8 +367,8 @@ const searchHistory = ref(JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'))
 const mobilePlaceholder = computed(() => `ค้นหา "${POPULAR_TAGS[placeholderIndex.value]}"...`)
 
 const modes = [
-  { value: 'light', label: 'โทนสว่าง', swatch: 'background:linear-gradient(120deg,#f3e8ff,#fed7aa);border-color:#e9d5ff' },
-  { value: 'dark',  label: 'โทนมืด',   swatch: 'background:linear-gradient(120deg,#2e1065,#0f172a);border-color:#1e1b3a' },
+  { value: 'light', label: 'โทนสว่าง', swatch: 'background:linear-gradient(120deg,#f5f3ff,#fce7f3);border-color:#e9d5ff' },
+  { value: 'dark',  label: 'โทนม่วง',  swatch: 'background:linear-gradient(120deg,#ede9fe,#c4b5fd);border-color:#a78bfa' },
 ]
 
 function saveHistory(term) {
@@ -335,12 +403,20 @@ function clearHistory() {
   localStorage.removeItem(HISTORY_KEY)
 }
 
+const isProductDetail = computed(() => /\/shop\/products\/.+/.test(route.path))
+const showFooter = computed(() => {
+  const p = route.path
+  return p === '/shop/login' || p === '/shop/register' || p.startsWith('/shop/forgot')
+})
+
 const STAFF_ROLES = ['superadmin', 'admin', 'staff', 'area_staff']
 
 async function onLogout() {
   accountOpen.value = false
-  const wasRole = user.value?.role
+  const wasRole    = user.value?.role
+  const savedEmail = user.value?.email
   await logout()
+  if (savedEmail) localStorage.setItem('shop_last_email', savedEmail)
   router.push(wasRole && STAFF_ROLES.includes(wasRole) ? '/login' : '/shop')
 }
 
@@ -348,9 +424,20 @@ function onClickOutside(e) {
   if (accountRef.value && !accountRef.value.contains(e.target)) accountOpen.value = false
   if (accessRef.value  && !accessRef.value.contains(e.target))  accessOpen.value  = false
   if (searchRef.value  && !searchRef.value.contains(e.target))  searchFocused.value = false
+  if (notifRef.value   && !notifRef.value.contains(e.target))   notifOpen.value   = false
 }
 
 watch(() => route.query.q, (q) => { search.value = q || '' }, { immediate: true })
+
+// ซิงค์ตะกร้า + โหลด notif เมื่อ login
+watch(user, (newUser, oldUser) => {
+  if (newUser && !oldUser) {
+    cart.syncToServer()
+    fetchCustomerNotifCount()
+    fetchChatUnread()
+    wishlist.fetchIds(newUser)
+  }
+})
 
 watch(search, (v) => {
   if (v === '' && route.path === '/shop/products' && route.query.q) {
@@ -358,9 +445,10 @@ watch(search, (v) => {
   }
 })
 
-let chatTimer   = null
-let notifTimer  = null
-let placeholderTimer = null
+let chatTimer         = null
+let notifTimer        = null
+let customerNotifTimer = null
+let placeholderTimer  = null
 
 async function fetchChatUnread() {
   if (!user.value) return
@@ -370,6 +458,50 @@ async function fetchChatUnread() {
 async function fetchNotifCount() {
   if (!user.value) return
   try { const { data } = await api.get('/shop/my/notifications'); notifCount.value = data.count } catch { /* ignore */ }
+}
+
+async function fetchCustomerNotifCount() {
+  if (!user.value) return
+  try {
+    const { data } = await api.get('/shop/my/customer-notifications/count')
+    customerNotifCount.value = data.count
+  } catch { /* ignore */ }
+}
+
+async function openNotif() {
+  notifOpen.value = !notifOpen.value
+  if (notifOpen.value) {
+    try {
+      const { data } = await api.get('/shop/my/customer-notifications', { params: { per_page: 10 } })
+      notifications.value = data.data ?? data
+    } catch { /* ignore */ }
+  }
+}
+
+async function markAllNotifRead() {
+  try {
+    await api.post('/shop/my/customer-notifications/read-all')
+    notifications.value.forEach(n => { n.read_at = new Date().toISOString() })
+    customerNotifCount.value = 0
+  } catch { /* ignore */ }
+}
+
+async function readNotif(notif) {
+  if (notif.read_at) return
+  try {
+    await api.post(`/shop/my/customer-notifications/${notif.id}/read`)
+    notif.read_at = new Date().toISOString()
+    customerNotifCount.value = Math.max(0, customerNotifCount.value - 1)
+  } catch { /* ignore */ }
+}
+
+function formatNotifTime(isoStr) {
+  if (!isoStr) return ''
+  const diff = Math.floor((Date.now() - new Date(isoStr)) / 60000)
+  if (diff < 1)   return 'เมื่อกี้'
+  if (diff < 60)  return `${diff} นาทีที่แล้ว`
+  if (diff < 1440) return `${Math.floor(diff / 60)} ชั่วโมงที่แล้ว`
+  return `${Math.floor(diff / 1440)} วันที่แล้ว`
 }
 
 router.beforeEach(() => { navigating.value = true })
@@ -382,9 +514,11 @@ onMounted(() => {
 
   fetchChatUnread()
   fetchNotifCount()
+  fetchCustomerNotifCount()
   wishlist.fetchIds(user.value)
-  chatTimer  = setInterval(fetchChatUnread,  30000)
-  notifTimer = setInterval(fetchNotifCount,  30000)
+  chatTimer         = setInterval(fetchChatUnread,         30000)
+  notifTimer        = setInterval(fetchNotifCount,         30000)
+  customerNotifTimer = setInterval(fetchCustomerNotifCount, 60000)
   placeholderTimer = setInterval(() => {
     placeholderIndex.value = (placeholderIndex.value + 1) % POPULAR_TAGS.length
   }, 2500)
@@ -395,6 +529,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleScroll)
   clearInterval(chatTimer)
   clearInterval(notifTimer)
+  clearInterval(customerNotifTimer)
   clearInterval(placeholderTimer)
 })
 </script>

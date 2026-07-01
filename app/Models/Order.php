@@ -28,6 +28,8 @@ class Order extends Model
         'status',
         'subtotal',
         'shipping_fee',
+        'shipping_method',
+        'payment_method',
         'discount',
         'total',
         'shipping_name',
@@ -37,6 +39,8 @@ class Order extends Model
         'shipping_district',
         'shipping_province',
         'shipping_zipcode',
+        'shipping_carrier',
+        'shipping_option_id',
         'shipping_note',
         'shipped_at',
         'delivered_at',
@@ -90,6 +94,11 @@ class Order extends Model
     public function returnRequests()
     {
         return $this->hasMany(ReturnRequest::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
     }
 
     /** บันทึกการเปลี่ยนสถานะพร้อม audit trail */

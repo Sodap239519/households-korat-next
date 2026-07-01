@@ -125,11 +125,11 @@ class User extends Authenticatable
         return $this->belongsTo(SellerGroup::class, 'seller_group_id');
     }
 
-    /** กลุ่มที่ผู้ใช้จัดการได้ (admin = null คือไม่จำกัด, เจ้าหน้าที่ = กลุ่มตัวเอง) */
+    /** กลุ่มที่ผู้ใช้จัดการได้ (superadmin = null คือไม่จำกัด, อื่นๆ = กลุ่มตัวเอง) */
     public function sellerGroupScope(): ?int
     {
-        if ($this->isAdmin()) return null;        // null = ไม่จำกัด เห็นทุกกลุ่ม
-        return $this->seller_group_id;            // จำกัดเฉพาะกลุ่มตัวเอง
+        if ($this->isSuperAdmin()) return null;   // null = ไม่จำกัด เห็นทุกกลุ่ม
+        return $this->seller_group_id;            // admin/staff → เห็นเฉพาะกลุ่มตัวเอง
     }
 
     /** ผู้ใช้จัดการข้อมูลตลาดของกลุ่มนี้ได้หรือไม่ */

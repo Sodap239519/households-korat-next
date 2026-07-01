@@ -1,8 +1,13 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 max-lg:pb-20 space-y-5">
+    <!-- Flash Sale banner (แสดงเมื่อ ?on_sale=1) -->
+    <FlashSaleBanner v-if="filters.on_sale" class="-mx-4 sm:-mx-6 -mt-6" />
+
     <!-- header: breadcrumb + filter button (right, mobile/tablet only) -->
     <div class="flex items-center justify-between gap-3">
-      <Breadcrumb :items="[{ label: 'สินค้าทั้งหมด' }]" />
+      <Breadcrumb :items="filters.on_sale
+        ? [{ label: 'FLASH SALE', icon: 'fi fi-rr-bolt' }]
+        : [{ label: 'สินค้าทั้งหมด' }]" />
       <button
         class="lg:hidden inline-flex items-center gap-2 px-4 py-2 rounded-full box-card text-sm font-medium text-slate-700"
         @click="filterOpen = true"
@@ -47,7 +52,7 @@
           <div v-for="n in 9" :key="n" class="box-card aspect-[3/4] skeleton"></div>
         </div>
         <div v-else-if="products.length" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <ProductCard v-for="(p, i) in products" :key="p.id" v-reveal="i % 6" :product="p" />
+          <ProductCard v-for="(p, i) in products" :key="p.id" v-reveal="i % 6" :product="p" :flash-sale="!!filters.on_sale" />
         </div>
         <div v-else class="box-card p-12 text-center text-slate-400">
           <i class="fi fi-rr-search text-4xl"></i>
@@ -67,6 +72,7 @@ import api from '../../api/index.js'
 import ProductCard from './components/ProductCard.vue'
 import Breadcrumb from './components/Breadcrumb.vue'
 import CatalogFilters from './components/CatalogFilters.vue'
+import FlashSaleBanner from './components/FlashSaleBanner.vue'
 import Pagination from '../components/Pagination.vue'
 import Drawer from 'primevue/drawer'
 import { useLocale } from '../../composables/useLocale.js'
@@ -91,6 +97,7 @@ const filters = reactive({
   max_price: route.query.max_price || null,
   sort: route.query.sort || 'newest',
   page: Number(route.query.page) || 1,
+  on_sale: route.query.on_sale ? 1 : 0,
 })
 
 async function loadProducts() {
@@ -100,6 +107,7 @@ async function loadProducts() {
     for (const k of ['q', 'category', 'group', 'min_price', 'max_price', 'sort']) {
       if (filters[k]) params[k] = filters[k]
     }
+    if (filters.on_sale) params.on_sale = 1
     const { data } = await api.get('/shop/products', { params })
     products.value = data.data || []
     meta.value = data
@@ -148,6 +156,16 @@ function goPage(p) {
 watch(() => route.query.q, (q) => {
   if (q !== filters.q) {
     filters.q = q || ''
+    filters.page = 1
+    loadProducts()
+  }
+})
+
+// ตอบสนอง ?on_sale=1 จาก FlashSaleStrip "ดูทั้งหมด"
+watch(() => route.query.on_sale, (v) => {
+  const val = v ? 1 : 0
+  if (val !== filters.on_sale) {
+    filters.on_sale = val
     filters.page = 1
     loadProducts()
   }

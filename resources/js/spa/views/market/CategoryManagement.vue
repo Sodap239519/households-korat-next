@@ -67,6 +67,11 @@
           <InputText v-model="form.name" class="w-full" :invalid="!!err.name" />
           <small v-if="err.name" class="text-rose-500 text-xs">{{ err.name }}</small>
         </div>
+        <div>
+          <label class="form-label">รหัสประเภท (ใช้นำหน้า SKU)</label>
+          <InputText v-model="form.code" class="w-full uppercase" placeholder="เช่น MUSH, VEG, HERB" maxlength="20" />
+          <small class="text-slate-400 text-xs">ตัวอักษร A-Z ไม่เกิน 20 ตัว — ถ้าไม่ระบุจะใช้ PRD</small>
+        </div>
         <div class="flex items-center gap-2">
           <ToggleSwitch v-model="form.is_active" inputId="catact" />
           <label for="catact" class="text-sm text-slate-600">ใช้งาน</label>
@@ -111,7 +116,7 @@ const dialogOpen = ref(false)
 const saving = ref(false)
 const err = reactive({})
 const errorMsg = ref('')
-const form = reactive({ id: null, name: '', is_active: true, is_global: false })
+const form = reactive({ id: null, name: '', code: '', is_active: true, is_global: false })
 
 function canEdit(cat) {
   if (!cat.seller_group_id) return isAdmin.value
@@ -124,15 +129,16 @@ async function reload() {
   finally { loading.value = false }
 }
 
-function openCreate() { Object.assign(form, { id: null, name: '', is_active: true, is_global: false }); clearErr(); dialogOpen.value = true }
-function openEdit(c) { Object.assign(form, { id: c.id, name: c.name, is_active: !!c.is_active, is_global: !c.seller_group_id }); clearErr(); dialogOpen.value = true }
+function openCreate() { Object.assign(form, { id: null, name: '', code: '', is_active: true, is_global: false }); clearErr(); dialogOpen.value = true }
+function openEdit(c) { Object.assign(form, { id: c.id, name: c.name, code: c.code ?? '', is_active: !!c.is_active, is_global: !c.seller_group_id }); clearErr(); dialogOpen.value = true }
 function clearErr() { Object.keys(err).forEach(k => delete err[k]); errorMsg.value = '' }
 
 async function save() {
   saving.value = true; clearErr()
   try {
-    if (form.id) await api.put(`/market/categories/${form.id}`, { name: form.name, is_active: form.is_active })
-    else await api.post('/market/categories', { name: form.name, is_active: form.is_active, is_global: form.is_global })
+    const code = form.code.trim().toUpperCase() || null
+    if (form.id) await api.put(`/market/categories/${form.id}`, { name: form.name, code, is_active: form.is_active })
+    else await api.post('/market/categories', { name: form.name, code, is_active: form.is_active, is_global: form.is_global })
     toast.add({ severity: 'success', summary: 'บันทึกแล้ว', life: 2000 })
     dialogOpen.value = false; reload()
   } catch (e) {

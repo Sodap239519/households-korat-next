@@ -10,11 +10,15 @@ const api = axios.create({
     },
 })
 
-// Attach CSRF token from meta tag if present
+// Attach CSRF token + fix Content-Type for multipart (FormData) requests
 api.interceptors.request.use((config) => {
     const token = document.querySelector('meta[name="csrf-token"]')?.content
     if (token) {
         config.headers['X-CSRF-TOKEN'] = token
+    }
+    // Let the browser set Content-Type (with boundary) for FormData uploads
+    if (config.data instanceof FormData) {
+        delete config.headers['Content-Type']
     }
     return config
 })

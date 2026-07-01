@@ -23,6 +23,8 @@ class Product extends Model
         'description',
         'price',
         'sale_price',
+        'flash_sale_start',
+        'flash_sale_end',
         'stock_qty',
         'unit',
         'district',
@@ -31,16 +33,20 @@ class Product extends Model
         'view_count',
         'rating_avg',
         'rating_count',
+        'shipping_option_ids',
     ];
 
     protected $casts = [
-        'price'        => 'decimal:2',
-        'sale_price'   => 'decimal:2',
-        'stock_qty'    => 'integer',
-        'is_featured'  => 'boolean',
-        'view_count'   => 'integer',
-        'rating_avg'   => 'float',
-        'rating_count' => 'integer',
+        'price'               => 'decimal:2',
+        'sale_price'          => 'decimal:2',
+        'flash_sale_start'    => 'datetime',
+        'flash_sale_end'      => 'datetime',
+        'shipping_option_ids' => 'array',
+        'stock_qty'        => 'integer',
+        'is_featured'      => 'boolean',
+        'view_count'       => 'integer',
+        'rating_avg'       => 'float',
+        'rating_count'     => 'integer',
     ];
 
     protected $appends = ['effective_price', 'primary_image_url'];
@@ -83,6 +89,59 @@ class Product extends Model
     public function comments()
     {
         return $this->hasMany(ProductComment::class);
+    }
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function (Product $product): void {
+            if (empty($product->sku)) {
+                $product->sku = static::generateSku($product);
+            }
+        });
+    }
+
+    public static function generateSku(Product $product): string
+    {
+        $catCode  = static::categoryCode($product->category_id);
+        $zone     = static::districtCode($product->district ?? '');
+        $prefix   = strtoupper("{$catCode}-{$zone}");
+        $seq      = static::withTrashed()
+                        ->where('sku', 'LIKE', "{$prefix}-%")
+                        ->count() + 1;
+
+        return "{$prefix}-{$seq}";
+    }
+
+    private static function categoryCode(?int $categoryId): string
+    {
+        if (!$categoryId) return 'PRD';
+        $cat = ProductCategory::find($categoryId);
+        return $cat?->code ? strtoupper($cat->code) : 'PRD';
+    }
+
+    private static function districtCode(string $district): string
+    {
+        $map = [
+            'เมืองนครราชสีมา' => 'MUEANG', 'ครบุรี'       => 'KRB',
+            'เสิงสาง'         => 'SSG',     'คง'           => 'KHONG',
+            'บ้านเหลื่อม'     => 'BNL',     'จักราช'       => 'CKR',
+            'โชคชัย'          => 'CHK',     'ด่านขุนทด'    => 'DKT',
+            'โนนไทย'          => 'NNT',     'โนนสูง'       => 'NNS',
+            'ขามสะแกแสง'      => 'KSK',     'บัวใหญ่'      => 'BUY',
+            'ประทาย'          => 'PRT',     'ปักธงชัย'     => 'PKT',
+            'พิมาย'           => 'PMY',     'ห้วยแถลง'     => 'HWT',
+            'ชุมพวง'          => 'CHP',     'สูงเนิน'      => 'SNG',
+            'ขามทะเลสอ'       => 'KTS',     'สีคิ้ว'       => 'SKW',
+            'ปากช่อง'         => 'PCH',     'หนองบุนนาก'   => 'NNB',
+            'แก้งสนามนาง'     => 'KSN',     'วังน้ำเขียว'  => 'WNK',
+            'เทพารักษ์'       => 'TPR',     'เมืองยาง'     => 'MYG',
+            'พระทองคำ'        => 'PTC',     'ลำทะเมนชัย'   => 'LTC',
+            'บัวลาย'          => 'BLL',     'สีดา'         => 'SDA',
+            'เฉลิมพระเกียรติ' => 'CPK',
+        ];
+        return $map[$district] ?? 'GEN';
     }
 
     /** อัปเดตคะแนนรีวิวเฉลี่ย + จำนวน จากรีวิวที่ published */

@@ -3,7 +3,7 @@
     <!-- Loading skeleton -->
     <template v-if="loading">
       <div class="h-60 bg-slate-200 animate-pulse"></div>
-      <div class="max-w-5xl mx-auto px-4 py-6">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           <div v-for="i in 8" :key="i" class="box-card aspect-[3/4] skeleton"></div>
         </div>

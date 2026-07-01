@@ -26,7 +26,7 @@
         <Select v-model="filters.category_id" :options="categories" optionLabel="name" optionValue="id"
           placeholder="ทุกหมวด" showClear filter class="w-full" @change="reload" />
       </div>
-      <Select v-if="isAdmin" v-model="filters.group_id" :options="groups" optionLabel="name" optionValue="id"
+      <Select v-if="isSuperAdmin" v-model="filters.group_id" :options="groups" optionLabel="name" optionValue="id"
         placeholder="ทุกกลุ่มผู้ขาย" showClear filter class="w-full" @change="reload" />
     </div>
 
@@ -101,7 +101,7 @@ import InputIcon from 'primevue/inputicon'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Toast from 'primevue/toast'
 
-const { isAdmin } = useAuth()
+const { isAdmin, isSuperAdmin } = useAuth()
 const confirm = useConfirm()
 const toast = useToast()
 
@@ -162,7 +162,7 @@ function confirmDelete(row) {
 
 async function loadFacets() {
   const reqs = [api.get('/market/categories'), api.get('/locations/districts')]
-  if (isAdmin.value) reqs.push(api.get('/market/seller-groups'))
+  if (isSuperAdmin.value) reqs.push(api.get('/market/seller-groups'))
   const [catRes, distRes, grpRes] = await Promise.all(reqs)
   categories.value = catRes.data || []
   districts.value = distRes.data || []

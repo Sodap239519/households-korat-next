@@ -38,6 +38,7 @@ class CategoryController extends Controller
 
         $validated = $request->validate([
             'name'        => ['required', 'string', 'max:255'],
+            'code'        => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]+$/'],
             'parent_id'   => ['nullable', 'exists:product_categories,id'],
             'sort_order'  => ['nullable', 'integer'],
             'is_active'   => ['boolean'],
@@ -53,6 +54,7 @@ class CategoryController extends Controller
             'seller_group_id' => $groupId,
             'parent_id'       => $validated['parent_id'] ?? null,
             'name'            => $validated['name'],
+            'code'            => strtoupper($validated['code'] ?? '') ?: null,
             'slug'            => $this->uniqueSlug($validated['name'], $groupId),
             'sort_order'      => $validated['sort_order'] ?? 0,
             'is_active'       => $validated['is_active'] ?? true,
@@ -67,10 +69,15 @@ class CategoryController extends Controller
 
         $validated = $request->validate([
             'name'       => ['sometimes', 'string', 'max:255'],
+            'code'       => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]*$/'],
             'parent_id'  => ['nullable', 'exists:product_categories,id'],
             'sort_order' => ['nullable', 'integer'],
             'is_active'  => ['boolean'],
         ]);
+
+        if (array_key_exists('code', $validated)) {
+            $validated['code'] = strtoupper($validated['code'] ?? '') ?: null;
+        }
 
         $category->update($validated);
         return response()->json($category);

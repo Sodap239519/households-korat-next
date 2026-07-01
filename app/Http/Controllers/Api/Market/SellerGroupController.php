@@ -7,6 +7,7 @@ use App\Models\SellerGroup;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -27,7 +28,10 @@ class SellerGroupController extends Controller
             $query->where('id', $scope);
         }
 
-        return response()->json($query->orderBy('name')->get());
+        return response()->json(
+            $query->with(['members:id,name,email,seller_group_id'])
+                  ->orderBy('name')->get()
+        );
     }
 
     public function show(Request $request, SellerGroup $sellerGroup): JsonResponse
@@ -86,6 +90,38 @@ class SellerGroupController extends Controller
         return response()->json(['message' => 'ลบกลุ่มแล้ว']);
     }
 
+    /** อัปโหลดโลโก้/รูปกลุ่ม (admin หรือเจ้าหน้าที่กลุ่มตัวเอง) */
+    public function uploadLogo(Request $request, SellerGroup $sellerGroup): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->canManageSellerGroups() || $user->canActInGroup($sellerGroup->id), 403, 'ไม่มีสิทธิ์');
+
+        $request->validate(['logo' => ['required', 'image', 'max:2048']]); // 2MB
+
+        if ($sellerGroup->logo_path) {
+            Storage::disk('public')->delete($sellerGroup->logo_path);
+        }
+
+        $path = $request->file('logo')->store("seller-groups/{$sellerGroup->id}", 'public');
+        $sellerGroup->update(['logo_path' => $path]);
+
+        return response()->json(['logo_url' => Storage::disk('public')->url($path)]);
+    }
+
+    /** ลบโลโก้กลุ่ม */
+    public function deleteLogo(Request $request, SellerGroup $sellerGroup): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->canManageSellerGroups() || $user->canActInGroup($sellerGroup->id), 403, 'ไม่มีสิทธิ์');
+
+        if ($sellerGroup->logo_path) {
+            Storage::disk('public')->delete($sellerGroup->logo_path);
+            $sellerGroup->update(['logo_path' => null]);
+        }
+
+        return response()->json(['message' => 'ลบโลโก้แล้ว']);
+    }
+
     /** กำหนด/ปลดสมาชิกของกลุ่ม (admin เท่านั้น) */
     public function setMembers(Request $request, SellerGroup $sellerGroup): JsonResponse
     {
@@ -128,6 +164,53 @@ class SellerGroupController extends Controller
             'line_notify_enabled' => ['boolean'],
             'is_active'           => ['boolean'],
         ]);
+    }
+
+    /** POST /market/seller-groups/{id}/ban — แบนร้านค้าถาวร */
+    public function ban(Request $request, SellerGroup $sellerGroup): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403, 'เฉพาะ superadmin เท่านั้น');
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $sellerGroup->update([
+            'shop_status' => SellerGroup::SHOP_STATUS_BANNED,
+            'ban_reason'  => $data['reason'],
+            'banned_by'   => $request->user()->id,
+            'banned_at'   => now(),
+            'suspended_until' => null,
+        ]);
+        return response()->json(['message' => 'แบนร้านค้าแล้ว', 'shop_status' => $sellerGroup->shop_status]);
+    }
+
+    /** POST /market/seller-groups/{id}/suspend — ระงับชั่วคราว */
+    public function suspend(Request $request, SellerGroup $sellerGroup): JsonResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403, 'เฉพาะ admin/superadmin เท่านั้น');
+        $data = $request->validate([
+            'reason'          => ['required', 'string', 'max:500'],
+            'suspended_until' => ['required', 'date', 'after:now'],
+        ]);
+        $sellerGroup->update([
+            'shop_status'     => SellerGroup::SHOP_STATUS_SUSPENDED,
+            'ban_reason'      => $data['reason'],
+            'suspended_until' => $data['suspended_until'],
+            'banned_by'       => $request->user()->id,
+            'banned_at'       => now(),
+        ]);
+        return response()->json(['message' => 'ระงับร้านค้าชั่วคราวแล้ว', 'shop_status' => $sellerGroup->shop_status]);
+    }
+
+    /** POST /market/seller-groups/{id}/restore — คืนสถานะปกติ */
+    public function restore(Request $request, SellerGroup $sellerGroup): JsonResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403, 'เฉพาะ admin/superadmin เท่านั้น');
+        $sellerGroup->update([
+            'shop_status'     => SellerGroup::SHOP_STATUS_ACTIVE,
+            'ban_reason'      => null,
+            'suspended_until' => null,
+            'banned_by'       => null,
+            'banned_at'       => null,
+        ]);
+        return response()->json(['message' => 'คืนสถานะร้านค้าแล้ว', 'shop_status' => $sellerGroup->shop_status]);
     }
 
     private function uniqueSlug(string $name): string

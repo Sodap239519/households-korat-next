@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\Market;
 
 use App\Http\Controllers\Controller;
+use App\Models\Conversation;
 use App\Models\Order;
 use App\Models\Shipment;
+use App\Services\CustomerNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,11 +30,11 @@ class OrderController extends Controller
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
 
         $query = Order::query()
-            ->with(['user:id,name', 'items', 'latestPayment', 'sellerGroup:id,name'])
+            ->with(['user:id,name', 'items', 'latestPayment', 'sellerGroup:id,name', 'shipment'])
             ->withCount('items');
 
-        if ($scope = $user->sellerGroupScope()) $query->where('seller_group_id', $scope);
-        elseif ($request->filled('group_id'))   $query->where('seller_group_id', $request->input('group_id'));
+        if (($scope = $user->sellerGroupScope()) !== null) $query->where('seller_group_id', $scope);
+        elseif ($request->filled('group_id'))              $query->where('seller_group_id', $request->input('group_id'));
 
         if ($g = $request->input('status_group')) {
             $query->whereIn('status', self::GROUPS[$g] ?? []);
@@ -87,7 +89,35 @@ class OrderController extends Controller
         $note = 'จัดส่งแล้ว' . (!empty($data['tracking_no']) ? " ({$data['tracking_no']})" : '');
         $order->changeStatus(Order::STATUS_SHIPPED, $request->user()->id, $note);
 
-        return response()->json(['message' => 'บันทึกการจัดส่งแล้ว', 'order' => $order->fresh(['shipment'])]);
+        // แจ้งเตือนลูกค้าทันทีที่จัดส่ง
+        $fresh = $order->fresh(['shipment']);
+        CustomerNotificationService::shipped($fresh);
+
+        // ส่งข้อความแชทอัตโนมัติแจ้งเปลี่ยน/ยืนยันการจัดส่ง
+        $conversation = Conversation::firstOrCreate(
+            ['seller_group_id' => $order->seller_group_id, 'customer_id' => $order->user_id],
+            ['last_message_at' => now(), 'is_read_by_seller' => true, 'is_read_by_customer' => false],
+        );
+        $carrier  = $data['carrier']     ?? null;
+        $tracking = $data['tracking_no'] ?? null;
+        $chatBody = "📦 ร้านค้าได้บันทึกข้อมูลการจัดส่งสำหรับคำสั่งซื้อ {$order->order_no} แล้ว";
+        if ($carrier)  $chatBody .= "\nบริษัทขนส่ง: {$carrier}";
+        if ($tracking) $chatBody .= "\nเลขพัสดุ: {$tracking}";
+        if (!$carrier && !$tracking) $chatBody .= "\n(จัดส่งโดยผู้ขายโดยตรง ไม่มีเลขพัสดุ)";
+        $chatBody .= "\n\nหากมีค่าใช้จ่ายเพิ่มเติมหรือข้อสงสัยเรื่องการจัดส่ง สามารถพูดคุยกับร้านค้าได้ที่นี่ หรือดูข้อมูลติดต่อที่หน้าร้านค้า";
+        $conversation->messages()->create([
+            'sender_type' => 'staff',
+            'sender_id'   => $request->user()->id,
+            'body'        => $chatBody,
+            'is_read'     => false,
+        ]);
+        $conversation->update([
+            'last_message_at'     => now(),
+            'is_read_by_customer' => false,
+            'is_read_by_seller'   => true,
+        ]);
+
+        return response()->json(['message' => 'บันทึกการจัดส่งแล้ว', 'order' => $fresh]);
     }
 
     /** เปลี่ยนสถานะทั่วไป (processing / cancelled) */

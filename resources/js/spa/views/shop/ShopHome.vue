@@ -1,25 +1,32 @@
 <template>
-  <div class="bg-slate-50">
+  <div class="bg-violet-950">
 
     <!-- ===== Hero Banner Carousel (single-direction, always slides left) ===== -->
-    <section class="relative overflow-hidden select-none" style="height:220px" :style="smUp ? 'height:340px' : ''">
+    <section class="relative overflow-hidden select-none transition-all duration-500" :style="`aspect-ratio:${heroAspectRatio}`">
       <Transition name="hero-slide">
         <div :key="current"
           class="absolute inset-0 flex items-center overflow-hidden"
-          :class="slides[current].gradient">
-          <!-- BG blobs -->
-          <div class="absolute inset-0" :style="slides[current].bgBlob"></div>
+          :class="slides[current].image ? 'bg-slate-900' : slides[current].gradient">
+
+          <!-- Hero image (full cover) -->
+          <img v-if="slides[current].image"
+            :src="slides[current].image"
+            class="absolute inset-0 w-full h-full object-cover" />
+
+          <!-- BG blobs (only when no image) -->
+          <div v-if="!slides[current].image" class="absolute inset-0" :style="slides[current].bgBlob"></div>
+
 
           <!-- Content -->
           <div class="relative w-full max-w-5xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center gap-4">
             <div class="flex-1 text-white text-center sm:text-left">
-              <p class="text-xs sm:text-sm font-medium mb-1.5 opacity-80 flex items-center gap-1.5 justify-center sm:justify-start">
+              <p v-if="slides[current].tag" class="text-xs sm:text-sm font-medium mb-1.5 opacity-80 flex items-center gap-1.5 justify-center sm:justify-start">
                 <i class="fi fi-rr-mushroom"></i> {{ slides[current].tag }}
               </p>
               <h1 class="text-2xl sm:text-4xl font-bold leading-tight drop-shadow" v-html="slides[current].title"></h1>
-              <p class="mt-1.5 text-white/75 text-xs sm:text-sm max-w-xs sm:max-w-md leading-relaxed">{{ slides[current].subtitle }}</p>
+              <p v-if="slides[current].subtitle" class="mt-1.5 text-white/75 text-xs sm:text-sm max-w-xs sm:max-w-md leading-relaxed">{{ slides[current].subtitle }}</p>
               <div class="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
-                <RouterLink :to="slides[current].cta.to"
+                <RouterLink v-if="slides[current].cta" :to="slides[current].cta.to"
                   class="inline-flex items-center gap-1.5 text-white font-semibold px-5 py-2 rounded-full shadow-lg transition text-sm"
                   :class="slides[current].cta.color">
                   <i :class="slides[current].cta.icon"></i> {{ slides[current].cta.label }}
@@ -30,8 +37,8 @@
                 </a>
               </div>
             </div>
-            <!-- Emoji grid (desktop) -->
-            <div class="hidden sm:flex flex-wrap gap-3 w-48 justify-center opacity-90 shrink-0">
+            <!-- Emoji grid (desktop — ซ่อนเมื่อมีรูป) -->
+            <div v-if="!slides[current].image && slides[current].emojis.length" class="hidden sm:flex flex-wrap gap-3 w-48 justify-center opacity-90 shrink-0">
               <div v-for="(em, j) in slides[current].emojis" :key="j"
                 class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-lg"
                 style="background:rgba(255,255,255,0.15)">{{ em }}</div>
@@ -59,44 +66,50 @@
       </div>
     </section>
 
+    <!-- ===== White Content Card ===== -->
+    <div class="relative z-10 bg-white">
+
     <!-- ===== Quick Access Categories + Seller Groups ===== -->
-    <section class="bg-white border-b border-slate-100">
+    <section class="border-b border-slate-100">
       <div class="max-w-7xl mx-auto px-4 sm:px-6">
-        <div class="flex gap-1 overflow-x-auto py-4 scrollbar-hide">
+        <div class="flex gap-0.5 overflow-x-auto py-3 scrollbar-hide">
           <!-- ทั้งหมด -->
           <RouterLink to="/shop/products"
-            class="flex flex-col items-center gap-1.5 px-3 shrink-0 group">
-            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center text-violet-600 text-2xl group-hover:scale-105 transition">
+            class="flex flex-col items-center gap-1 px-2.5 shrink-0 group">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center text-violet-600 text-lg group-hover:scale-105 transition">
               <i class="fi fi-rr-apps"></i>
             </div>
-            <span class="text-xs text-slate-600 font-medium whitespace-nowrap">ทั้งหมด</span>
+            <span class="text-[10px] text-slate-600 font-medium w-12 h-7 flex items-start justify-center text-center leading-tight pt-0.5">ทั้งหมด</span>
           </RouterLink>
           <!-- หมวดหมู่ -->
           <RouterLink v-for="(cat, i) in categories.slice(0, 10)" :key="cat.id"
             :to="{ path: '/shop/products', query: { category: cat.slug } }"
-            class="flex flex-col items-center gap-1.5 px-3 shrink-0 group">
-            <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl group-hover:scale-105 transition"
+            class="flex flex-col items-center gap-1 px-2.5 shrink-0 group">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg group-hover:scale-105 transition"
               :style="catColors[i % catColors.length]">
               <i :class="catIcons[i % catIcons.length]"></i>
             </div>
-            <span class="text-xs text-slate-600 font-medium whitespace-nowrap max-w-[64px] text-center leading-tight">{{ cat.name }}</span>
+            <span class="text-[10px] text-slate-600 font-medium w-12 h-7 flex items-start justify-center text-center leading-tight pt-0.5 line-clamp-2">{{ cat.name }}</span>
           </RouterLink>
           <!-- divider -->
-          <div class="self-stretch w-px bg-slate-100 mx-2 my-2 shrink-0"></div>
+          <div class="self-stretch w-px bg-slate-100 mx-1.5 my-1.5 shrink-0"></div>
           <!-- โซนตลาด → แผนที่ -->
           <RouterLink to="/shop/map"
-            class="flex flex-col items-center gap-1.5 px-3 shrink-0 group">
-            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-600 text-2xl group-hover:scale-105 transition">
+            class="flex flex-col items-center gap-1 px-2.5 shrink-0 group">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-600 text-lg group-hover:scale-105 transition">
               <i class="fi fi-rr-map-marker"></i>
             </div>
-            <span class="text-xs text-slate-600 font-medium whitespace-nowrap">โซนตลาด</span>
+            <span class="text-[10px] text-slate-600 font-medium w-12 h-7 flex items-start justify-center text-center leading-tight pt-0.5">โซนตลาด</span>
           </RouterLink>
         </div>
       </div>
     </section>
 
+    <!-- ===== Flash Sale Strip ===== -->
+    <FlashSaleStrip />
+
     <!-- ===== สินค้าทั้งหมด (infinite scroll) ===== -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 max-lg:pb-20">
       <!-- Loading initial skeleton -->
       <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <div v-for="n in 12" :key="n" class="box-card aspect-[3/4] skeleton"></div>
@@ -113,7 +126,7 @@
         </div>
 
         <!-- Sentinel / load-more indicator -->
-        <div ref="sentinel" class="flex items-center justify-center py-8">
+        <div ref="sentinel" class="flex items-center justify-center py-3">
           <template v-if="loadingMore">
             <i class="fi fi-rr-spinner animate-spin text-violet-400 text-xl"></i>
           </template>
@@ -122,14 +135,18 @@
           </template>
         </div>
       </div>
-    </div>
-  </div>
+
+    </div><!-- /max-w-7xl (products) -->
+
+    </div><!-- /white-card -->
+  </div><!-- /bg-violet-950 -->
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import api from '../../api/index.js'
 import ProductCard from './components/ProductCard.vue'
+import FlashSaleStrip from './components/FlashSaleStrip.vue'
 
 const loading     = ref(true)
 const allProducts = ref([])
@@ -186,14 +203,28 @@ function bannerLinkPath(b) {
 const slides = computed(() => {
   if (!apiBanners.value.length) return defaultSlides
   return apiBanners.value.map(b => ({
-    tag: b.tag || '',
-    title: b.title,
-    subtitle: b.subtitle || '',
-    gradient: `bg-gradient-to-r ${b.gradient}`,
-    bgBlob: '',
-    cta: { label: b.cta_label, to: bannerLinkPath(b), icon: b.cta_icon, color: b.cta_color },
-    emojis: b.emojis || [],
+    tag:          b.tag      || '',
+    title:        b.title    || '',
+    subtitle:     b.subtitle || '',
+    gradient:     `bg-gradient-to-r ${b.gradient}`,
+    image:        b.image_path ? `/storage/${b.image_path}` : null,
+    noColor:      b.gradient === 'from-white to-white',
+    bgBlob:       '',
+    aspect_ratio: b.aspect_ratio || '16/9',
+    cta:          b.cta_label ? { label: b.cta_label, to: bannerLinkPath(b), icon: b.cta_icon || 'fi fi-rr-shopping-cart', color: b.cta_color || 'bg-orange-500 hover:bg-orange-600' } : null,
+    emojis:       b.emojis || [],
   }))
+})
+
+const heroAspectRatio = computed(() => {
+  const r = slides.value[current.value]?.aspect_ratio
+  if (!r) return smUp.value ? '16/9' : '4/3'
+  if (!smUp.value) {
+    // mobile: ทำให้สูงขึ้นนิดหน่อย (denominator × 0.75 = สูงขึ้น 25%)
+    const [w, h] = r.split('/').map(Number)
+    if (w && h) return `${w}/${Math.round(h * 0.75)}`
+  }
+  return r
 })
 
 const catColors = [

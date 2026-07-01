@@ -107,11 +107,25 @@
                   </div>
                 </RouterLink>
 
-                <!-- Text bubble -->
-                <div class="px-3 py-2 rounded-2xl text-sm leading-relaxed"
+                <!-- Image message -->
+                <div v-if="msg.image_url"
+                  class="overflow-hidden rounded-2xl cursor-pointer mt-0.5 max-w-[220px]"
+                  @click="previewImage = msg.image_url"
+                  @contextmenu="handleContextMenu($event, msg)"
+                  @touchstart.passive="startLongPress($event, msg)"
+                  @touchend="cancelLongPress"
+                  @touchmove.passive="cancelLongPress">
+                  <img :src="msg.image_url" class="w-full object-cover block" style="max-height:280px" />
+                </div>
+                <!-- Text bubble (แสดงเมื่อมีข้อความ หรือไม่มีรูป) -->
+                <div v-if="msg.body" class="px-3 py-2 rounded-2xl text-sm leading-relaxed"
                   :class="msg.sender_type === 'customer'
                     ? 'bg-violet-600 text-white rounded-br-sm'
-                    : 'bg-white text-slate-700 border border-slate-100 rounded-bl-sm shadow-sm'">
+                    : 'bg-white text-slate-700 border border-slate-100 rounded-bl-sm shadow-sm'"
+                  @contextmenu="handleContextMenu($event, msg)"
+                  @touchstart.passive="startLongPress($event, msg)"
+                  @touchend="cancelLongPress"
+                  @touchmove.passive="cancelLongPress">
                   {{ msg.body }}
                 </div>
                 <div class="flex items-center gap-1"
@@ -151,22 +165,66 @@
         </Transition>
 
         <!-- Input -->
-        <div class="p-3 border-t border-slate-100 bg-white shrink-0 flex items-end gap-2">
-          <textarea
-            v-model="newMsg"
-            @keydown.enter.exact.prevent="send"
-            rows="1"
-            placeholder="พิมพ์ข้อความ..."
-            class="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:border-violet-400 max-h-28"
-            style="min-height:42px;"
-          ></textarea>
-          <button @click="send" :disabled="!newMsg.trim() || sending"
-            class="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 hover:bg-violet-700 transition disabled:opacity-40">
-            <i class="fi fi-rr-paper-plane text-sm"></i>
-          </button>
+        <div class="p-3 border-t border-slate-100 bg-white shrink-0">
+          <!-- Image preview before send -->
+          <div v-if="pendingImage" class="mb-2 relative inline-block">
+            <img :src="pendingImageUrl" class="h-20 w-auto rounded-xl object-cover border border-violet-200" />
+            <button @click="clearPendingImage"
+              class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-700 text-white text-[10px] flex items-center justify-center hover:bg-rose-600 transition">
+              <i class="fi fi-rr-cross-small"></i>
+            </button>
+          </div>
+          <div class="flex items-end gap-2">
+            <!-- Image upload button -->
+            <button @click="imgInput?.click()" title="แนบรูปภาพ"
+              class="w-10 h-10 rounded-xl border border-slate-200 text-slate-500 flex items-center justify-center shrink-0 hover:border-violet-400 hover:text-violet-600 transition">
+              <i class="fi fi-rr-picture text-base"></i>
+            </button>
+            <input ref="imgInput" type="file" accept="image/*" class="hidden" @change="onImageSelect" />
+            <textarea
+              v-model="newMsg"
+              @keydown.enter.exact.prevent="send"
+              rows="1"
+              placeholder="พิมพ์ข้อความ..."
+              class="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:border-violet-400 max-h-28"
+              style="min-height:42px;"
+            ></textarea>
+            <button @click="send" :disabled="(!newMsg.trim() && !pendingImage) || sending"
+              class="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 hover:bg-violet-700 transition disabled:opacity-40">
+              <i class="fi fi-rr-paper-plane text-sm"></i>
+            </button>
+          </div>
         </div>
       </div>
     </template>
+
+  <!-- Image preview lightbox -->
+  <Teleport to="body">
+    <Transition name="fade-slide">
+      <div v-if="previewImage"
+        class="fixed inset-0 z-[300] bg-black/85 flex items-center justify-center p-4"
+        @click="previewImage = null">
+        <img :src="previewImage" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" @click.stop />
+        <button @click="previewImage = null"
+          class="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/20 text-white hover:bg-white/40 flex items-center justify-center transition">
+          <i class="fi fi-rr-cross text-sm"></i>
+        </button>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Context menu -->
+  <Teleport to="body">
+    <div v-if="ctxMenu.visible"
+      class="fixed z-[200] bg-white rounded-xl shadow-xl border border-slate-100 py-1 min-w-[140px] overflow-hidden"
+      :style="{ top: ctxMenu.y + 'px', left: ctxMenu.x + 'px' }"
+      @click.stop>
+      <button @click="deleteMsg"
+        class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition">
+        <i class="fi fi-rr-trash"></i> ลบ / ยกเลิกการส่ง
+      </button>
+    </div>
+  </Teleport>
 
   </div>
 </template>
@@ -188,8 +246,14 @@ const loadingMsg     = ref(false)
 const sending        = ref(false)
 const msgBox         = ref(null)
 const productContext = ref(null)
+const ctxMenu        = ref({ visible: false, msgId: null, x: 0, y: 0 })
+const imgInput       = ref(null)
+const pendingImage   = ref(null)
+const pendingImageUrl = ref(null)
+const previewImage   = ref(null)
 
-let pollTimer = null
+let pollTimer      = null
+let longPressTimer = null
 
 function fmtPrice(v) {
   return Number(v || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -224,18 +288,48 @@ async function openConv(conv) {
   startPolling(conv.id)
 }
 
+function onImageSelect(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  pendingImage.value = file
+  pendingImageUrl.value = URL.createObjectURL(file)
+  if (imgInput.value) imgInput.value.value = ''
+}
+
+function clearPendingImage() {
+  if (pendingImageUrl.value) URL.revokeObjectURL(pendingImageUrl.value)
+  pendingImage.value = null
+  pendingImageUrl.value = null
+}
+
 async function send() {
-  if (!newMsg.value.trim() || sending.value) return
-  const body = newMsg.value.trim()
+  if ((!newMsg.value.trim() && !pendingImage.value) || sending.value) return
+  const body      = newMsg.value.trim()
   const productId = productContext.value?.id || null
+  const imgFile   = pendingImage.value
+
   newMsg.value = ''
   productContext.value = null
+  clearPendingImage()
   sending.value = true
+
   try {
-    const { data } = await api.post(`/shop/chat/conversations/${activeConv.value.id}/messages`, {
-      body,
-      product_id: productId,
-    })
+    let data
+    if (imgFile) {
+      const fd = new FormData()
+      fd.append('image', imgFile)
+      if (body) fd.append('body', body)
+      if (productId) fd.append('product_id', productId)
+      ;({ data } = await api.post(
+        `/shop/chat/conversations/${activeConv.value.id}/messages`,
+        fd
+      ))
+    } else {
+      ;({ data } = await api.post(`/shop/chat/conversations/${activeConv.value.id}/messages`, {
+        body,
+        product_id: productId,
+      }))
+    }
     messages.value.push(data)
     scrollBottom()
   } finally { sending.value = false }
@@ -245,7 +339,9 @@ async function pollMessages(convId) {
   if (!activeConv.value || activeConv.value.id !== convId) return
   try {
     const { data } = await api.get(`/shop/chat/conversations/${convId}/messages`)
-    if (data.length !== messages.value.length) {
+    const lastLocal  = messages.value.at(-1)?.id
+    const lastRemote = data.at(-1)?.id
+    if (lastRemote !== lastLocal || data.length !== messages.value.length) {
       messages.value = data
       scrollBottom()
     }
@@ -263,9 +359,48 @@ function scrollBottom() {
   })
 }
 
+function handleContextMenu(event, msg) {
+  if (msg.sender_type !== 'customer') return
+  event.preventDefault()
+  const x = Math.min(event.clientX, window.innerWidth - 160)
+  const y = Math.min(event.clientY, window.innerHeight - 60)
+  ctxMenu.value = { visible: true, msgId: msg.id, x, y }
+}
+
+function startLongPress(event, msg) {
+  if (msg.sender_type !== 'customer') return
+  cancelLongPress()
+  const touch = event.touches[0]
+  longPressTimer = setTimeout(() => {
+    const x = Math.min(touch.clientX, window.innerWidth - 160)
+    const y = Math.min(touch.clientY - 60, window.innerHeight - 60)
+    ctxMenu.value = { visible: true, msgId: msg.id, x, y }
+    if (navigator.vibrate) navigator.vibrate(50)
+  }, 600)
+}
+
+function cancelLongPress() {
+  clearTimeout(longPressTimer)
+}
+
+function closeMenu() {
+  ctxMenu.value.visible = false
+}
+
+async function deleteMsg() {
+  const msgId   = ctxMenu.value.msgId
+  const convId  = activeConv.value?.id
+  closeMenu()
+  if (!msgId || !convId) return
+  try {
+    await api.delete(`/shop/chat/conversations/${convId}/messages/${msgId}`)
+    messages.value = messages.value.filter(m => m.id !== msgId)
+  } catch { /* ignore */ }
+}
+
 onMounted(async () => {
-  // ล็อค scroll ทั้งหน้า — ให้เลื่อนได้เฉพาะกล่องข้อความ
   document.documentElement.style.overflow = 'hidden'
+  document.addEventListener('click', closeMenu)
 
   await loadConversations()
 
@@ -288,6 +423,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   clearInterval(pollTimer)
+  cancelLongPress()
+  document.removeEventListener('click', closeMenu)
   document.documentElement.style.overflow = ''
 })
 

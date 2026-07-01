@@ -109,7 +109,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth.js'
 import api from '../../api/index.js'
@@ -118,8 +118,13 @@ const route  = useRoute()
 const router = useRouter()
 const { login } = useAuth()
 
+const LAST_EMAIL_KEY = 'shop_last_email'
 const mode      = ref('login')
 const email     = ref('')
+
+onMounted(() => {
+  email.value = localStorage.getItem(LAST_EMAIL_KEY) || ''
+})
 const password  = ref('')
 const showPw    = ref(false)
 const loading   = ref(false)
@@ -146,6 +151,7 @@ async function submit() {
   error.value   = ''
   try {
     const loggedUser = await login(email.value, password.value)
+    localStorage.setItem(LAST_EMAIL_KEY, email.value)
     // เจ้าหน้าที่/แอดมิน → เด้งไปหลังบ้านทันที
     if (loggedUser && STAFF_ROLES.includes(loggedUser.role)) {
       router.push('/app/market')

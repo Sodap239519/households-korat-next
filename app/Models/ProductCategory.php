@@ -13,6 +13,7 @@ class ProductCategory extends Model
         'seller_group_id',
         'parent_id',
         'name',
+        'code',
         'slug',
         'image_path',
         'sort_order',

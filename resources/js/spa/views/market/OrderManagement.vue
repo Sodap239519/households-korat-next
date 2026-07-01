@@ -72,14 +72,57 @@
     <Pagination :meta="meta" @change="goPage" />
 
     <!-- Ship dialog -->
-    <Dialog v-model:visible="shipOpen" modal header="บันทึกการจัดส่ง" :style="{ width: '95vw', maxWidth: '26rem' }">
+    <Dialog v-model:visible="shipOpen" modal :style="{ width: '95vw', maxWidth: '26rem' }">
+      <template #header>
+        <div>
+          <p class="font-semibold text-slate-800 text-sm">บันทึกการจัดส่ง</p>
+          <p class="text-xs text-violet-600 font-mono mt-0.5">{{ ship.order_no }}</p>
+        </div>
+      </template>
       <div class="space-y-3">
-        <div><label class="form-label">ขนส่ง</label>
-          <InputText v-model="ship.carrier" class="w-full" placeholder="ไปรษณีย์ไทย / Flash / Kerry" /></div>
-        <div><label class="form-label">เลขพัสดุ</label>
-          <InputText v-model="ship.tracking_no" class="w-full" /></div>
-        <div><label class="form-label">หมายเหตุ</label>
-          <Textarea v-model="ship.note" rows="2" class="w-full" /></div>
+        <!-- บริการจัดส่งที่ลูกค้าเลือก -->
+        <div v-if="ship.method" class="flex items-center gap-2 text-xs bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
+          <i class="fi fi-rr-truck-side text-violet-500 text-[11px]"></i>
+          <span class="text-slate-600">ลูกค้าเลือก: <span class="font-semibold text-violet-700">{{ ship.method }}</span></span>
+          <span v-if="ship.self" class="ml-auto text-[10px] bg-slate-100 text-slate-500 rounded px-1.5 py-0.5">จัดส่งเอง</span>
+        </div>
+        <!-- แจ้งเตือนเมื่อดึงข้อมูลเดิม -->
+        <div v-if="ship.prefilled" class="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+          <i class="fi fi-rr-info text-[11px]"></i>
+          <span>ดึงข้อมูลจัดส่งเดิมมาให้แล้ว — แก้ไขหรือยืนยันต่อได้เลย</span>
+        </div>
+        <!-- เลือกบริษัทขนส่ง (dropdown ถ้ามี options / fallback InputText) -->
+        <div>
+          <label class="form-label">บริษัทขนส่ง</label>
+          <template v-if="shipDropdownOptions.length > 1">
+            <Select
+              v-model="selectedOptId"
+              :options="shipDropdownOptions"
+              optionLabel="label"
+              optionValue="id"
+              placeholder="เลือกบริษัทขนส่ง"
+              class="w-full"
+              @change="onShipOptSelect(selectedOptId)"
+            />
+          </template>
+          <template v-else>
+            <InputText v-model="ship.carrier" class="w-full" placeholder="ไปรษณีย์ไทย / Flash / Kerry / J&T" />
+          </template>
+        </div>
+        <!-- เลขพัสดุ — ซ่อนถ้าจัดส่งเอง -->
+        <div v-if="!ship.self">
+          <label class="form-label">เลขพัสดุ <span class="text-rose-400">*</span></label>
+          <InputText v-model="ship.tracking_no" class="w-full" />
+        </div>
+        <!-- จัดส่งเอง -->
+        <div v-else class="text-xs text-slate-500 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2.5 flex items-center gap-2">
+          <i class="fi fi-rr-check-circle text-emerald-500"></i>
+          ไม่ต้องกรอกเลขพัสดุ — จัดส่งโดยผู้ขายโดยตรง
+        </div>
+        <div>
+          <label class="form-label">หมายเหตุ</label>
+          <Textarea v-model="ship.note" rows="2" class="w-full" />
+        </div>
       </div>
       <template #footer>
         <Button label="ยกเลิก" text @click="shipOpen=false" />
@@ -91,25 +134,51 @@
     <Dialog v-model:visible="detailOpen" modal :header="detail?.order_no"
       :style="{ width: '95vw', maxWidth: '34rem' }" :breakpoints="{ '640px': '100vw' }">
       <div v-if="detail" class="space-y-3 text-sm">
+        <!-- Status + total -->
         <div class="flex items-center justify-between">
           <OrderStatusChip :status="detail.status" />
           <span class="font-bold text-fuchsia-700 text-base">฿{{ fmt(detail.total) }}</span>
         </div>
+
+        <!-- Payment method -->
+        <div class="flex items-center gap-2 text-xs px-1">
+          <template v-if="detail.payment_method === 'cod'">
+            <i class="fi fi-rr-money-bill-wave text-emerald-500"></i>
+            <span class="text-slate-600">ชำระเงินปลายทาง <span class="font-semibold text-emerald-600">(COD)</span></span>
+          </template>
+          <template v-else>
+            <i class="fi fi-rr-bank text-violet-500"></i>
+            <span class="text-slate-600">ชำระเงินในระบบ <span class="font-semibold text-violet-600">(โอนเงิน + สลิป)</span></span>
+          </template>
+        </div>
+
+        <!-- รายการสินค้า -->
         <div class="box-card p-3 bg-slate-50">
-          <p class="font-medium text-slate-700 mb-2 text-xs uppercase tracking-wide text-slate-400">รายการสินค้า</p>
+          <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">รายการสินค้า</p>
           <div v-for="it in detail.items" :key="it.id"
             class="flex justify-between text-slate-600 py-1.5 border-b border-slate-100 last:border-0">
-            <span class="truncate pr-2">{{ it.product_name }} <span class="text-slate-400 text-xs">×{{ it.qty }}</span></span>
+            <span class="truncate pr-2">
+              {{ it.product_name }}
+              <span class="text-slate-400 text-xs">จำนวน {{ it.qty }} {{ it.unit || 'ชิ้น' }}</span>
+            </span>
             <span class="font-medium shrink-0">฿{{ fmt(it.line_total) }}</span>
           </div>
         </div>
+
+        <!-- ผู้รับ + หมายเหตุ -->
         <div class="box-card p-3 bg-slate-50">
           <p class="text-xs uppercase tracking-wide text-slate-400 mb-1.5">ผู้รับ</p>
           <p class="font-medium text-slate-700">{{ detail.shipping_name }} · {{ detail.shipping_phone }}</p>
           <p class="text-slate-500 text-xs mt-0.5 leading-relaxed">
             {{ [detail.shipping_address, detail.shipping_sub_district, detail.shipping_district, detail.shipping_province, detail.shipping_zipcode].filter(Boolean).join(' ') }}
           </p>
+          <p v-if="detail.shipping_note" class="text-slate-500 text-xs mt-1.5 flex items-start gap-1.5 border-t border-slate-100 pt-1.5">
+            <i class="fi fi-rr-comment-alt text-slate-400 text-[10px] mt-0.5 shrink-0"></i>
+            <span><span class="font-medium text-slate-600">หมายเหตุ:</span> {{ detail.shipping_note }}</span>
+          </p>
         </div>
+
+        <!-- สลิปโอนเงิน -->
         <div v-if="detail.payments?.length && detail.payments[0].slip_url" class="box-card p-3 bg-slate-50">
           <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">สลิปโอนเงิน</p>
           <img :src="detail.payments[0].slip_url" class="max-h-48 rounded-xl border border-slate-200 w-auto" />
@@ -122,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import api from '../../api/index.js'
 import OrderStatusChip from '../shop/components/OrderStatusChip.vue'
@@ -130,6 +199,7 @@ import Pagination from '../components/Pagination.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Toast from 'primevue/toast'
 
@@ -149,7 +219,30 @@ const tabs = [
 ]
 
 const shipOpen = ref(false)
-const ship = reactive({ id: null, carrier: '', tracking_no: '', note: '' })
+const ship = reactive({ id: null, group_id: null, order_no: '', carrier: '', tracking_no: '', note: '', prefilled: false, self: false, method: '' })
+const shipOptionsList = ref([])   // [{id, name, carrier, self}]
+const selectedOptId   = ref(null) // id ที่เลือกใน dropdown
+
+const shipDropdownOptions = computed(() => {
+  const list = shipOptionsList.value.map(o => ({
+    id:      o.id,
+    label:   o.carrier ? `${o.name}  (${o.carrier})` : o.name,
+    carrier: o.carrier || null,
+    self:    !o.carrier,
+  }))
+  if (!list.some(o => o.self)) {
+    list.push({ id: null, label: 'จัดส่งโดยผู้ขาย (ไม่มีเลขพัสดุ)', carrier: null, self: true })
+  }
+  return list
+})
+
+function onShipOptSelect(optId) {
+  const opt = shipDropdownOptions.value.find(o => o.id === optId)
+  if (!opt) return
+  ship.carrier = opt.carrier || ''
+  ship.self    = opt.self
+}
+
 const busy = ref(false)
 const detailOpen = ref(false)
 const detail = ref(null)
@@ -175,7 +268,45 @@ async function setStatus(o, status) {
   catch (e) { toast.add({ severity: 'error', summary: 'ไม่สำเร็จ', detail: e.response?.data?.message || '', life: 3000 }) }
 }
 
-function openShip(o) { Object.assign(ship, { id: o.id, carrier: '', tracking_no: '', note: '' }); shipOpen.value = true }
+async function openShip(o) {
+  const s = o.shipment
+  const activeCarrier = s?.carrier || o.shipping_carrier || null
+  const isSelf = !activeCarrier
+
+  Object.assign(ship, {
+    id:          o.id,
+    group_id:    o.seller_group_id,
+    order_no:    o.order_no,
+    carrier:     activeCarrier || '',
+    tracking_no: s?.tracking_no || '',
+    note:        s?.note        || '',
+    prefilled:   !!(s?.carrier || s?.tracking_no),
+    self:        isSelf,
+    method:      o.shipping_method || '',
+  })
+
+  // โหลด options จัดส่งของกลุ่มนี้
+  shipOptionsList.value = []
+  selectedOptId.value   = null
+  shipOpen.value = true
+
+  try {
+    if (o.seller_group_id) {
+      const params = new URLSearchParams()
+      params.append('groups[]', o.seller_group_id)
+      const { data } = await api.get(`/shop/shipping/by-groups?${params}`)
+      const opts = data[o.seller_group_id] || []
+      shipOptionsList.value = opts
+
+      // pre-select: ตรงกับ shipping_option_id หรือ carrier ที่ลูกค้าเลือก
+      const matched = opts.find(op =>
+        (o.shipping_option_id && op.id === o.shipping_option_id) ||
+        (activeCarrier && op.carrier === activeCarrier)
+      )
+      selectedOptId.value = matched?.id ?? (isSelf ? null : null)
+    }
+  } catch { /* ถ้าโหลดไม่ได้ใช้ InputText ธรรมดา */ }
+}
 async function doShip() {
   busy.value = true
   try {

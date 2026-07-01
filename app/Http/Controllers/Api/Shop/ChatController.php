@@ -8,6 +8,7 @@ use App\Models\SellerGroup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Storage;
 
 class ChatController extends Controller
 {
@@ -55,33 +56,50 @@ class ChatController extends Controller
                 if ($msg->product) {
                     $msg->product->append('primary_image_url');
                 }
+                $msg->append('image_url');
             });
 
         return response()->json($messages);
     }
 
-    // POST /shop/chat/conversations/{id}/messages — ลูกค้าส่งข้อความ
+    // POST /shop/chat/conversations/{id}/messages — ลูกค้าส่งข้อความ (รองรับทั้ง text และ image)
     public function send(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'body'       => 'required|string|max:1000',
+            'body'       => 'nullable|string|max:1000',
             'product_id' => 'nullable|integer|exists:products,id',
+            'image'      => ['nullable', 'file', 'max:5120'],
         ]);
+
+        abort_unless(
+            $request->filled('body') || $request->hasFile('image'),
+            422,
+            'กรุณาพิมพ์ข้อความหรือแนบภาพ'
+        );
+
         $user = $request->user();
         $conv = Conversation::where('id', $id)->where('customer_id', $user->id)->firstOrFail();
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store("chat-images/{$id}", 'public');
+        }
+
+        $body = $request->input('body', '') ?: '';
 
         $msg = ChatMessage::create([
             'conversation_id' => $conv->id,
             'sender_id'       => $user->id,
             'sender_type'     => 'customer',
-            'body'            => $request->body,
+            'body'            => $body,
             'product_id'      => $request->product_id,
+            'image_path'      => $imagePath,
         ]);
 
-        $preview = mb_substr($request->body, 0, 80);
+        $preview = $body ?: '[ภาพ]';
         $conv->update([
             'last_message_at'      => now(),
-            'last_message_preview' => $preview,
+            'last_message_preview' => mb_substr($preview, 0, 80),
             'is_read_by_seller'    => false,
             'is_read_by_customer'  => true,
         ]);
@@ -90,8 +108,29 @@ class ChatController extends Controller
         if ($msg->product) {
             $msg->product->append('primary_image_url');
         }
+        $msg->append('image_url');
 
         return response()->json($msg, 201);
+    }
+
+    // DELETE /shop/chat/conversations/{id}/messages/{message} — ลบข้อความของตัวเอง
+    public function deleteMessage(Request $request, int $id, ChatMessage $message): JsonResponse
+    {
+        $user = $request->user();
+        $conv = Conversation::where('id', $id)->where('customer_id', $user->id)->firstOrFail();
+
+        abort_unless($message->conversation_id === $conv->id, 403, 'ข้อความนี้ไม่ใช่ในบทสนทนานี้');
+        abort_unless($message->sender_type === 'customer' && $message->sender_id === $user->id, 403, 'ลบได้เฉพาะข้อความที่คุณส่งเอง');
+
+        if ($message->image_path) {
+            Storage::disk('public')->delete($message->image_path);
+        }
+        $message->delete();
+
+        $last = $conv->messages()->latest()->first();
+        $conv->update(['last_message_preview' => $last?->body ?? '']);
+
+        return response()->json(['message' => 'ลบข้อความแล้ว']);
     }
 
     // GET /shop/chat/unread — จำนวนข้อความยังไม่ได้อ่าน (สำหรับ badge)
