@@ -151,7 +151,25 @@
                 </p>
               </div>
             </div>
-            <button @click="handleSellerLogin"
+            <!-- logged-in เป็น customer — แสดงคำเตือนก่อน logout -->
+            <div v-if="user && !isMarketStaff" class="space-y-2">
+              <div class="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+                <i class="fi fi-rr-exclamation shrink-0 mt-0.5"></i>
+                <span>ระบบจะออกจากบัญชีลูกค้าปัจจุบัน (<strong>{{ user.name }}</strong>) ก่อน แล้วพาไปหน้าเข้าสู่ระบบผู้ขาย</span>
+              </div>
+              <div class="flex gap-2">
+                <button @click="handleSellerLogin"
+                  class="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold transition">
+                  <i class="fi fi-rr-sign-in-alt"></i> ดำเนินการต่อ
+                </button>
+                <RouterLink to="/shop/account"
+                  class="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-full border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 transition">
+                  <i class="fi fi-rr-arrow-small-left"></i> กลับ
+                </RouterLink>
+              </div>
+            </div>
+            <!-- ไม่ได้ login หรือเป็น market staff อยู่แล้ว -->
+            <button v-else @click="handleSellerLogin"
               class="flex items-center justify-center gap-2 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold transition w-full">
               <i class="fi fi-rr-sign-in-alt"></i>
               {{ isMarketStaff ? 'ไปหน้าจัดการร้านค้า' : 'เข้าสู่ระบบผู้ขาย' }}
