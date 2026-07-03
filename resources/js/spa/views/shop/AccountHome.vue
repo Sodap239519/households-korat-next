@@ -169,7 +169,7 @@
             <span class="w-9 h-9 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
               <i class="fi fi-rr-file-check text-sm"></i>
             </span>
-            <span class="flex-1 text-sm font-medium text-slate-700">ติดตามการสมัครร้านค้า</span>
+            <span class="flex-1 text-sm font-medium text-slate-700">ร้านค้าของฉัน</span>
             <i class="fi fi-rr-angle-small-right text-slate-300"></i>
           </RouterLink>
 

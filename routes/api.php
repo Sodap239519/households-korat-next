@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Market\PaymentController as MarketPaymentController
 use App\Http\Controllers\Api\Market\ProductController as MarketProductController;
 use App\Http\Controllers\Api\Market\ReturnController as MarketReturnController;
 use App\Http\Controllers\Api\Market\ReviewController as MarketReviewController;
+use App\Http\Controllers\Api\Market\SellerContactRequestController as MarketSellerContactRequestController;
 use App\Http\Controllers\Api\Market\SellerGroupController as MarketSellerGroupController;
 use App\Http\Controllers\Api\Market\SellerShippingController as MarketSellerShippingController;
 use App\Http\Controllers\Api\Market\SellerApplicationController as MarketSellerApplicationController;
@@ -60,7 +61,8 @@ Route::post('/line/webhook',       [LineWebhookController::class, 'handle']);
 Route::middleware('auth:sanctum')->get('/line/targets', [LineWebhookController::class, 'recentTargets']);
 
 // ===== Storefront (public, no auth) =====
-Route::get('/shop/sellers/{slug}',    [ShopCatalogController::class, 'seller']);
+Route::get('/shop/sellers/{slug}',          [ShopCatalogController::class, 'seller']);
+Route::get('/shop/sellers/{slug}/reviews', [ShopCatalogController::class, 'sellerReviews']);
 Route::get('/shop/groups',            [ShopCatalogController::class, 'groups']);
 Route::get('/shop/categories',        [ShopCatalogController::class, 'categories']);
 Route::get('/shop/banners',           [ShopBannerController::class, 'public']);
@@ -82,6 +84,7 @@ Route::get('/seller/apply/groups',              [ShopSellerApplicationController
 Route::post('/seller/apply',                    [ShopSellerApplicationController::class, 'store']);
 Route::get('/seller/apply/status/{token}',      [ShopSellerApplicationController::class, 'status']);
 Route::post('/seller/apply/{token}/reveal-password', [ShopSellerApplicationController::class, 'revealPassword']);
+Route::post('/seller/apply/{token}/reset-password',  [ShopSellerApplicationController::class, 'resetPassword'])->middleware('throttle:6,1');
 
 // ===== Protected =====
 Route::middleware('auth:sanctum')->group(function () {
@@ -165,6 +168,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/shop/my/orders/{orderNo}',        [ShopOrderController::class, 'show']);
     Route::post('/shop/orders/{orderNo}/payment',  [ShopOrderController::class, 'submitPayment']);
     Route::post('/shop/orders/{orderNo}/receive',  [ShopOrderController::class, 'receive']);
+    Route::patch('/shop/orders/{orderNo}',          [ShopOrderController::class, 'update']);
     Route::post('/shop/orders/{orderNo}/cancel',   [ShopOrderController::class, 'cancel']);
     Route::post('/shop/orders/{orderNo}/returns',  [ShopOrderController::class, 'requestReturn']);
 
@@ -219,13 +223,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('comments/{comment}/reply',      [MarketCommentController::class, 'reply']);
         Route::post('comments/{comment}/status',     [MarketCommentController::class, 'setStatus']);
 
+        // Seller contact requests (ผู้ขายส่งคำขอถึงแอดมิน)
+        Route::get('seller-requests/my',           [MarketSellerContactRequestController::class, 'myRequests']);
+        Route::get('seller-requests',              [MarketSellerContactRequestController::class, 'index']);
+        Route::post('seller-requests',             [MarketSellerContactRequestController::class, 'store']);
+        Route::put('seller-requests/{sellerContactRequest}/resolve', [MarketSellerContactRequestController::class, 'resolve']);
+
         // Chat backoffice (ผู้ขายตอบลูกค้า)
         Route::get('chat/unread',                          [MarketChatController::class, 'unread']);
         Route::get('chat/conversations',                   [MarketChatController::class, 'index']);
         Route::get('chat/conversations/{id}/messages',     [MarketChatController::class, 'messages']);
         Route::post('chat/conversations/{id}/messages',    [MarketChatController::class, 'send']);
+        Route::delete('chat/conversations/{id}/messages/{message}', [MarketChatController::class, 'deleteMessage']);
 
         // Seller groups (admin จัดการเต็ม / เจ้าหน้าที่กลุ่มแก้ข้อมูลติดต่อ+LINE ของตัวเอง)
+        Route::get('seller-groups/my-group',                [MarketSellerGroupController::class, 'myGroup']);
+        Route::put('seller-groups/my-group',                [MarketSellerGroupController::class, 'updateMyGroup']);
+        // รูปโปรไฟล์ร้านของตัวเอง (avatar ของ user แยกจากโลโก้โซน)
+        Route::post('my-avatar',                            [MarketSellerGroupController::class, 'uploadMyAvatar']);
+        Route::delete('my-avatar',                          [MarketSellerGroupController::class, 'deleteMyAvatar']);
         Route::post('seller-groups/{sellerGroup}/members',  [MarketSellerGroupController::class, 'setMembers']);
         Route::post('seller-groups/{sellerGroup}/logo',    [MarketSellerGroupController::class, 'uploadLogo']);
         Route::delete('seller-groups/{sellerGroup}/logo',  [MarketSellerGroupController::class, 'deleteLogo']);
@@ -262,6 +278,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Flash Sale Events (event-based: superadmin สร้าง → ร้านเพิ่มสินค้า)
         Route::get('flash-sale-events',                                          [MarketFlashSaleEventController::class, 'index']);
         Route::post('flash-sale-events',                                         [MarketFlashSaleEventController::class, 'store']);
+        Route::get('flash-sale-events/seller-history',                           [MarketFlashSaleEventController::class, 'sellerHistory']);
         Route::get('flash-sale-events/{flashSaleEvent}',                         [MarketFlashSaleEventController::class, 'show']);
         Route::put('flash-sale-events/{flashSaleEvent}',                         [MarketFlashSaleEventController::class, 'update']);
         Route::delete('flash-sale-events/{flashSaleEvent}',                      [MarketFlashSaleEventController::class, 'destroy']);

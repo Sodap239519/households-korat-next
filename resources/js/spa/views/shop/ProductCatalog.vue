@@ -39,6 +39,7 @@
           <div class="flex items-center gap-2">
             <span class="text-sm text-slate-500">{{ t('เรียงโดย') }}</span>
             <select v-model="filters.sort" class="h-9 px-2 rounded-lg border border-slate-200 text-sm" @change="applyAndReload">
+              <option value="">{{ t('แนะนำ (สุ่ม)') }}</option>
               <option value="newest">{{ t('ใหม่ล่าสุด') }}</option>
               <option value="price_asc">{{ t('ราคา: ต่ำ→สูง') }}</option>
               <option value="price_desc">{{ t('ราคา: สูง→ต่ำ') }}</option>
@@ -95,7 +96,7 @@ const filters = reactive({
   group: route.query.group || null,
   min_price: route.query.min_price || null,
   max_price: route.query.max_price || null,
-  sort: route.query.sort || 'newest',
+  sort: route.query.sort || '',
   page: Number(route.query.page) || 1,
   on_sale: route.query.on_sale ? 1 : 0,
 })

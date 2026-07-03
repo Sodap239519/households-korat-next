@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Market;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductCategory;
+use App\Models\SellerApplication;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -26,6 +27,22 @@ class CategoryController extends Controller
             $query->where(fn ($q) => $q->whereNull('seller_group_id')->orWhere('seller_group_id', $scope));
         }
 
+        // staff ทั่วไป: กรองตาม business_categories ที่สมัครไว้
+        // category_key = null → ไม่จำกัด (ทุกร้านใช้ได้)
+        if (!$user->isAdmin() && $user->seller_group_id) {
+            $raw = SellerApplication::where(function ($q) use ($user) {
+                $q->where('applicant_user_id', $user->id)
+                  ->orWhere('created_user_id', $user->id);
+            })->latest()->value('business_categories');
+
+            $bizCategories = $raw ? (is_string($raw) ? json_decode($raw, true) : $raw) : [];
+
+            $query->where(fn ($q) => $q
+                ->whereNull('category_key')
+                ->orWhereIn('category_key', $bizCategories ?: [])
+            );
+        }
+
         return response()->json(
             $query->orderBy('sort_order')->orderBy('name')->get()
         );
@@ -37,12 +54,13 @@ class CategoryController extends Controller
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เพิ่มหมวดหมู่');
 
         $validated = $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'code'        => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]+$/'],
-            'parent_id'   => ['nullable', 'exists:product_categories,id'],
-            'sort_order'  => ['nullable', 'integer'],
-            'is_active'   => ['boolean'],
-            'is_global'   => ['boolean'], // admin เท่านั้น
+            'name'         => ['required', 'string', 'max:255'],
+            'code'         => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]+$/'],
+            'category_key' => ['nullable', 'string', 'max:50'],
+            'parent_id'    => ['nullable', 'exists:product_categories,id'],
+            'sort_order'   => ['nullable', 'integer'],
+            'is_active'    => ['boolean'],
+            'is_global'    => ['boolean'], // admin เท่านั้น
         ]);
 
         $groupId = $user->seller_group_id;
@@ -55,6 +73,7 @@ class CategoryController extends Controller
             'parent_id'       => $validated['parent_id'] ?? null,
             'name'            => $validated['name'],
             'code'            => strtoupper($validated['code'] ?? '') ?: null,
+            'category_key'    => $validated['category_key'] ?? null,
             'slug'            => $this->uniqueSlug($validated['name'], $groupId),
             'sort_order'      => $validated['sort_order'] ?? 0,
             'is_active'       => $validated['is_active'] ?? true,
@@ -68,11 +87,12 @@ class CategoryController extends Controller
         $this->authorizeCategory($request, $category);
 
         $validated = $request->validate([
-            'name'       => ['sometimes', 'string', 'max:255'],
-            'code'       => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]*$/'],
-            'parent_id'  => ['nullable', 'exists:product_categories,id'],
-            'sort_order' => ['nullable', 'integer'],
-            'is_active'  => ['boolean'],
+            'name'         => ['sometimes', 'string', 'max:255'],
+            'code'         => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]*$/'],
+            'category_key' => ['nullable', 'string', 'max:50'],
+            'parent_id'    => ['nullable', 'exists:product_categories,id'],
+            'sort_order'   => ['nullable', 'integer'],
+            'is_active'    => ['boolean'],
         ]);
 
         if (array_key_exists('code', $validated)) {

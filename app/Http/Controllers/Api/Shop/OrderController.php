@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ReturnRequest;
+use App\Models\SellerShippingOption;
 use App\Services\AdminNotificationService;
 use App\Services\LineNotifier;
 use App\Services\SlipVerifier;
@@ -31,7 +32,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Order::where('user_id', $request->user()->id)
-            ->with(['sellerGroup:id,name', 'items.product.images', 'latestPayment', 'shipment'])
+            ->with(['sellerGroup:id,name,slug', 'items.product.images', 'items.product.sellerUser:id,name,shop_name', 'latestPayment', 'shipment'])
             ->withCount(['items', 'reviews']);
 
         if ($g = $request->input('status_group')) {
@@ -49,7 +50,8 @@ class OrderController extends Controller
             ->where('user_id', $request->user()->id)
             ->with([
                 'sellerGroup',
-                'items.product:id,slug',
+                'items.product:id,slug,seller_user_id',
+                'items.product.sellerUser:id,name,shop_name',
                 'statusHistories',
                 'payments',
                 'shipment',
@@ -256,6 +258,56 @@ class OrderController extends Controller
             ->paginate($request->input('per_page', 20));
 
         return response()->json($orders);
+    }
+
+    /** ลูกค้าแก้ไขที่อยู่จัดส่ง/ช่องทางชำระเงิน (เฉพาะก่อนผู้ขายยืนยัน) */
+    public function update(Request $request, string $orderNo): JsonResponse
+    {
+        $order = Order::where('order_no', $orderNo)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        abort_unless(
+            in_array($order->status, [Order::STATUS_PENDING_PAYMENT, Order::STATUS_AWAITING_CONFIRM], true),
+            422,
+            'แก้ไขได้เฉพาะออเดอร์ที่ยังไม่ได้รับการยืนยันจากผู้ขายเท่านั้น',
+        );
+
+        $data = $request->validate([
+            'shipping_name'         => ['required', 'string', 'max:100'],
+            'shipping_phone'        => ['required', 'string', 'max:20'],
+            'shipping_address'      => ['required', 'string', 'max:255'],
+            'shipping_sub_district' => ['nullable', 'string', 'max:100'],
+            'shipping_district'     => ['nullable', 'string', 'max:100'],
+            'shipping_province'     => ['nullable', 'string', 'max:100'],
+            'shipping_zipcode'      => ['nullable', 'string', 'max:10'],
+            'shipping_note'         => ['nullable', 'string', 'max:255'],
+            'shipping_option_id'    => ['nullable', 'integer', 'exists:seller_shipping_options,id'],
+            'payment_method'        => ['nullable', 'in:bank_transfer,cod'],
+        ]);
+
+        // ถ้าเปลี่ยนบริการจัดส่ง → อัปเดต snapshot ชื่อ + ค่าส่ง + ยอดรวม
+        if (!empty($data['shipping_option_id']) && (int) $data['shipping_option_id'] !== (int) $order->shipping_option_id) {
+            $opt = SellerShippingOption::find($data['shipping_option_id']);
+            if ($opt) {
+                $diff                    = (float) $opt->fee - (float) $order->shipping_fee;
+                $data['shipping_method'] = $opt->name;
+                $data['shipping_fee']    = (float) $opt->fee;
+                $data['total']           = max(0, (float) $order->total + $diff);
+            }
+        }
+
+        // ห้ามเปลี่ยน payment_method หากแจ้งชำระเงินแล้ว (awaiting_confirm)
+        if ($order->status === Order::STATUS_AWAITING_CONFIRM) {
+            unset($data['payment_method']);
+        }
+
+        $order->update($data);
+
+        return response()->json([
+            'message' => 'อัปเดตคำสั่งซื้อเรียบร้อยแล้ว',
+            'order'   => $order->fresh(),
+        ]);
     }
 
     /** นับการแจ้งเตือนสำหรับลูกค้า (สลิปยืนยันแล้ว + จัดส่งแล้ว) */

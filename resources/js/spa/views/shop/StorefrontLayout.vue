@@ -5,7 +5,7 @@
 
       <!-- Single header row — all sizes -->
       <div class="max-w-7xl mx-auto px-3 sm:px-6">
-        <div class="h-14 flex items-center gap-2 sm:gap-4">
+        <div class="h-11 sm:h-14 flex items-center gap-2 sm:gap-4">
 
           <!-- Logo: Desktop only -->
           <RouterLink to="/shop" class="hidden md:flex items-center gap-2 shrink-0">
@@ -33,7 +33,7 @@
                   v-model="search"
                   type="text"
                   :placeholder="mobilePlaceholder"
-                  class="w-full pl-9 pr-8 h-10 rounded-full bg-white/15 border border-white/20 text-white placeholder:text-white/50 text-sm focus:outline-none focus:bg-white/22 focus:border-white/40 transition"
+                  class="w-full pl-9 pr-8 h-8 sm:h-10 rounded-full bg-white/15 border border-white/20 text-white placeholder:text-white/50 text-sm focus:outline-none focus:bg-white/22 focus:border-white/40 transition"
                   @focus="searchFocused = true"
                   @keydown.escape="searchFocused = false"
                 />
@@ -62,8 +62,8 @@
 
             <!-- ตัวกรอง (Display settings) -->
             <div class="relative" ref="accessRef">
-              <button class="w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center" title="การแสดงผล" @click="accessOpen = !accessOpen">
-                <i class="fi fi-rr-settings-sliders text-base"></i>
+              <button class="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center" title="การแสดงผล" @click="accessOpen = !accessOpen">
+                <i class="fi fi-rr-settings-sliders text-sm sm:text-base"></i>
               </button>
               <div v-if="accessOpen" class="absolute top-full right-0 mt-1 w-60 bg-white rounded-xl shadow-xl border border-slate-100 p-3 text-sm z-50">
                 <p class="font-semibold text-slate-700 mb-2 flex items-center gap-2"><i class="fi fi-rr-text-size text-violet-500"></i> ขนาดตัวอักษร</p>
@@ -87,16 +87,16 @@
             </div>
 
             <!-- ตะกร้า (all sizes) -->
-            <RouterLink to="/shop/cart" class="relative w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center">
-              <i class="fi fi-rr-shopping-cart text-base"></i>
+            <RouterLink to="/shop/cart" class="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center">
+              <i class="fi fi-rr-shopping-cart text-sm sm:text-base"></i>
               <span v-if="cart.count.value > 0" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
                 {{ cart.count.value }}
               </span>
             </RouterLink>
 
             <!-- ข้อความ (all sizes when logged in) -->
-            <RouterLink v-if="user" to="/shop/chat" class="relative w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center">
-              <i class="fi fi-rr-comment-alt text-base"></i>
+            <RouterLink v-if="user" to="/shop/chat" class="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center">
+              <i class="fi fi-rr-comment-alt text-sm sm:text-base"></i>
               <span v-if="chatUnread > 0" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
                 {{ chatUnread }}
               </span>
@@ -104,7 +104,7 @@
 
             <!-- แจ้งเตือนลูกค้า (Desktop: dropdown panel) -->
             <div v-if="user" class="relative hidden lg:block" ref="notifRef">
-              <button class="relative w-9 h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center"
+              <button class="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-white/15 text-white/75 hover:text-white transition flex items-center justify-center"
                 title="การแจ้งเตือน" @click="openNotif">
                 <i class="fi fi-rr-bell text-base"></i>
                 <span v-if="customerNotifCount > 0"

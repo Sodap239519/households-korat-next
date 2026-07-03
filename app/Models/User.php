@@ -34,9 +34,11 @@ class User extends Authenticatable
         'role',
         'assigned_districts',
         'seller_group_id',
+        'shop_name',
         'is_approved',
         'approved_at',
         'approved_by',
+        'must_change_password',
     ];
 
     protected $hidden = [
@@ -49,9 +51,10 @@ class User extends Authenticatable
         return [
             'email_verified_at'   => 'datetime',
             'password'            => 'hashed',
-            'is_approved'         => 'boolean',
-            'approved_at'         => 'datetime',
-            'assigned_districts'  => 'array',
+            'is_approved'          => 'boolean',
+            'approved_at'          => 'datetime',
+            'assigned_districts'   => 'array',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -119,6 +122,12 @@ class User extends Authenticatable
         return $this->isAdmin() || ($this->isStaff() && !is_null($this->seller_group_id));
     }
 
+    /** สินค้าของผู้ขายรายย่อย (seller_user_id) */
+    public function products()
+    {
+        return $this->hasMany(\App\Models\Product::class, 'seller_user_id');
+    }
+
     /** กลุ่มผู้ขายที่ผู้ใช้สังกัด */
     public function sellerGroup()
     {
@@ -142,6 +151,17 @@ class User extends Authenticatable
     }
 
     public function canManageSellerGroups(): bool { return $this->isAdmin(); }
+
+    /**
+     * Personal scope สำหรับข้อมูลตลาด
+     * admin/superadmin → null (เห็นทั้งกลุ่ม)
+     * staff ทั่วไป → user_id ตัวเอง (เห็นเฉพาะข้อมูลร้านค้าตัวเอง)
+     */
+    public function sellerPersonalScope(): ?int
+    {
+        if ($this->isAdmin()) return null;
+        return $this->id;
+    }
 
     public function approver()
     {

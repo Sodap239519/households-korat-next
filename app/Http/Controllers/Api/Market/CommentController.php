@@ -21,8 +21,13 @@ class CommentController extends Controller
             ->whereNull('parent_id')
             ->with(['product:id,name,slug,seller_group_id', 'user:id,name', 'replies.user:id,name'])
             ->whereHas('product', function ($q) use ($user, $request) {
-                if ($scope = $user->sellerGroupScope()) $q->where('seller_group_id', $scope);
-                elseif ($request->filled('group_id'))   $q->where('seller_group_id', $request->input('group_id'));
+                if (($personal = $user->sellerPersonalScope()) !== null) {
+                    $q->where('seller_user_id', $personal);
+                } elseif ($scope = $user->sellerGroupScope()) {
+                    $q->where('seller_group_id', $scope);
+                } elseif ($request->filled('group_id')) {
+                    $q->where('seller_group_id', $request->input('group_id'));
+                }
             });
 
         if ($request->filled('status')) $query->where('status', $request->input('status'));
@@ -59,5 +64,8 @@ class CommentController extends Controller
         $user = $request->user();
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
         abort_unless($user->canActInGroup($comment->product?->seller_group_id), 403, 'คอมเมนต์นี้อยู่นอกกลุ่มที่คุณดูแล');
+        if (!$user->isAdmin()) {
+            abort_unless((int) $comment->product?->seller_user_id === $user->id, 403, 'คอมเมนต์นี้ไม่ใช่สินค้าของคุณ');
+        }
     }
 }

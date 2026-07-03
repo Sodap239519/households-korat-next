@@ -1,16 +1,62 @@
 <template>
   <div class="p-3 sm:p-5 space-y-5">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
       <div>
         <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
           <i class="fi fi-rr-chart-histogram text-violet-600"></i> แดชบอร์ดตลาด
         </h2>
         <p class="text-xs text-slate-400 mt-0.5">ยอดขาย / ออเดอร์ / สินค้า</p>
       </div>
-      <button @click="load" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-violet-100 text-slate-500 hover:text-violet-600 flex items-center justify-center transition">
-        <i class="fi fi-rr-refresh text-sm"></i>
-      </button>
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- group filter สำหรับ admin/superadmin -->
+        <div v-if="groups.length > 1" class="relative">
+          <select v-model="selectedGroupId" @change="load"
+            class="text-xs border border-slate-200 rounded-xl px-3 py-2 pr-7 bg-white text-slate-700 focus:outline-none focus:border-violet-400 appearance-none cursor-pointer">
+            <option value="">ทุกกลุ่ม</option>
+            <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+          </select>
+          <i class="fi fi-rr-angle-small-down absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+        </div>
+        <!-- preset days filter -->
+        <div class="relative">
+          <select v-model="selectedDays" @change="onPresetChange"
+            class="text-xs border border-slate-200 rounded-xl px-3 py-2 pr-7 bg-white text-slate-700 focus:outline-none focus:border-violet-400 appearance-none cursor-pointer"
+            :class="dateRange ? 'opacity-40' : ''">
+            <option :value="7">7 วัน</option>
+            <option :value="14">14 วัน</option>
+            <option :value="30">30 วัน</option>
+            <option :value="90">90 วัน</option>
+          </select>
+          <i class="fi fi-rr-angle-small-down absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+        </div>
+        <!-- calendar date range picker -->
+        <div class="relative flex items-center">
+          <DatePicker
+            v-model="dateRange"
+            selectionMode="range"
+            dateFormat="dd/mm/yy"
+            :maxDate="new Date()"
+            showIcon
+            iconDisplay="button"
+            placeholder="ปฏิทิน"
+            :numberOfMonths="1"
+            inputClass="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-violet-400 w-36 h-9"
+            :pt="{
+              inputIconButton: { class: 'text-violet-500 hover:text-violet-700' },
+              dropdown: { class: 'text-xs' },
+            }"
+            @update:modelValue="onDateRangeChange"
+          />
+          <button v-if="dateRange" @click="clearDateRange"
+            class="absolute -right-1 -top-1 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[9px] hover:bg-rose-600 transition z-10">
+            <i class="fi fi-rr-cross-small leading-none"></i>
+          </button>
+        </div>
+        <button @click="load" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-violet-100 text-slate-500 hover:text-violet-600 flex items-center justify-center transition">
+          <i class="fi fi-rr-refresh text-sm"></i>
+        </button>
+      </div>
     </div>
 
     <!-- KPI cards -->
@@ -97,27 +143,49 @@
       </template>
     </div>
 
-    <!-- ยอดขาย 14 วัน -->
+    <!-- ยอดขาย N วัน -->
     <div class="box-card p-4">
       <p class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-        <i class="fi fi-rr-chart-line-up text-violet-600"></i> ยอดขาย 14 วันล่าสุด
+        <i class="fi fi-rr-chart-line-up text-violet-600"></i> {{ chartTitle }}
       </p>
       <div v-if="salesByDay.length">
-        <div class="flex items-end gap-0.5 h-28">
-          <div v-for="d in salesByDay" :key="d.date" class="flex-1 flex flex-col items-center group">
-            <div class="w-full rounded-t-sm transition-colors relative cursor-default"
-              :class="d.total > 0 ? 'bg-violet-300 group-hover:bg-violet-600' : 'bg-slate-100'"
-              :style="{ height: barH(d.total) + 'px' }">
+        <!-- chart area: bars + SVG line overlay -->
+        <div class="relative" style="height: 128px;">
+          <!-- bars + number labels -->
+          <div class="absolute bottom-0 left-0 right-0 flex items-end gap-px" style="height: 108px;">
+            <div v-for="(d, i) in salesByDay" :key="d.date"
+              class="flex-1 relative flex flex-col justify-end group cursor-default">
+              <!-- bar -->
+              <div class="w-full rounded-t-sm transition-colors"
+                :class="d.total > 0 ? 'bg-violet-300 group-hover:bg-violet-500' : 'bg-slate-100'"
+                :style="{ height: barH(d.total) + 'px' }">
+              </div>
+              <!-- number label always visible above bar -->
               <div v-if="d.total > 0"
-                class="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition z-10 pointer-events-none shadow">
-                ฿{{ fmtShort(d.total) }}
+                class="absolute left-0 right-0 text-center font-semibold text-violet-600 pointer-events-none whitespace-nowrap overflow-hidden"
+                :style="{ bottom: barH(d.total) + 3 + 'px', fontSize: labelFontSize + 'px', lineHeight: '1' }">
+                {{ fmtShort(d.total) }}
               </div>
             </div>
           </div>
+          <!-- SVG connecting line -->
+          <svg class="absolute bottom-0 left-0 w-full pointer-events-none" height="108" viewBox="0 0 100 108" preserveAspectRatio="none">
+            <polyline
+              :points="polylinePoints"
+              fill="none"
+              stroke="#7c3aed"
+              stroke-width="0.6"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+              opacity="0.55"
+            />
+          </svg>
         </div>
-        <div class="flex gap-0.5 mt-1.5">
-          <div v-for="(d, i) in salesByDay" :key="d.date" class="flex-1 text-center text-[8px] text-slate-400 truncate">
-            {{ i % 2 === 0 ? d.date : '' }}
+        <!-- x-axis labels -->
+        <div class="flex gap-px mt-1.5">
+          <div v-for="(d, i) in salesByDay" :key="d.date"
+            class="flex-1 text-center text-[8px] text-slate-400 truncate">
+            {{ showDateLabel(i) ? d.date : '' }}
           </div>
         </div>
       </div>
@@ -169,19 +237,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import DatePicker from 'primevue/datepicker'
 import api from '../../api/index.js'
 
-const loading = ref(true)
-const summary = ref({ sales_total: 0, orders_total: 0, awaiting: 0, to_ship: 0, products_count: 0, low_stock: 0 })
-const salesByDay = ref([])
-const topProducts = ref([])
+const loading         = ref(true)
+const summary         = ref({ sales_total: 0, orders_total: 0, awaiting: 0, to_ship: 0, products_count: 0, low_stock: 0 })
+const salesByDay      = ref([])
+const topProducts     = ref([])
+const groups          = ref([])
+const selectedGroupId = ref('')
+const selectedDays    = ref(14)
+const dateRange       = ref(null) // [Date, Date] เมื่อเลือกจาก date picker
 
 const maxSale = computed(() => Math.max(...salesByDay.value.map(d => d.total), 1))
 const maxQty  = computed(() => Math.max(...topProducts.value.map(p => Number(p.qty)), 1))
 
-function barH(v) { return Math.max(4, Math.round((v / maxSale.value) * 100)) }
+// chart: bar height (max 100px ใน container 108px)
+function barH(v) { return Math.max(3, Math.round((v / maxSale.value) * 100)) }
 function topBarPct(v) { return Math.round((Number(v) / maxQty.value) * 100) }
 function fmtShort(v) {
   const n = Number(v)
@@ -190,6 +264,33 @@ function fmtShort(v) {
   return n.toLocaleString('th-TH', { maximumFractionDigits: 0 })
 }
 
+// แสดง label ทุก N แท่งตามจำนวนวัน
+function showDateLabel(i) {
+  const step = selectedDays.value <= 14 ? 2 : selectedDays.value <= 30 ? 4 : 9
+  return i % step === 0
+}
+
+// font size ของ label เล็กลงเมื่อมีแท่งเยอะ
+const labelFontSize = computed(() => {
+  const n = salesByDay.value.length
+  if (n <= 14) return 7
+  if (n <= 30) return 6
+  return 5
+})
+
+// จุดสำหรับ SVG polyline (viewBox 0 0 100 108)
+const polylinePoints = computed(() => {
+  const n = salesByDay.value.length
+  if (!n) return ''
+  return salesByDay.value
+    .map((d, i) => {
+      const x = (i + 0.5) / n * 100
+      const y = 108 - barH(d.total)
+      return `${x.toFixed(2)},${y}`
+    })
+    .join(' ')
+})
+
 const quickLinks = [
   { to: '/app/market/orders',    icon: 'fi fi-rr-shopping-bag', label: 'คำสั่งซื้อ',    bg: 'bg-violet-100', color: 'text-violet-600' },
   { to: '/app/market/payments',  icon: 'fi fi-rr-receipt',      label: 'ยืนยันชำระ',   bg: 'bg-amber-100',  color: 'text-amber-600'  },
@@ -197,15 +298,62 @@ const quickLinks = [
   { to: '/app/market/returns',   icon: 'fi fi-rr-undo',         label: 'คืน/เคลม',    bg: 'bg-rose-100',   color: 'text-rose-500'   },
 ]
 
+// label ช่วงวันที่ที่เลือกอยู่ (สำหรับแสดงในชื่อ chart)
+const dateRangeLabel = computed(() => {
+  const r = dateRange.value
+  if (!r?.[0] || !r?.[1]) return null
+  const fmt = (d) => d.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  return `${fmt(r[0])} – ${fmt(r[1])}`
+})
+
+const chartTitle = computed(() =>
+  dateRangeLabel.value
+    ? `ยอดขาย ${dateRangeLabel.value}`
+    : `ยอดขาย ${selectedDays.value} วันล่าสุด`
+)
+
+function onPresetChange() {
+  dateRange.value = null // ล้าง custom range เมื่อเลือก preset
+  load()
+}
+
+function onDateRangeChange(range) {
+  if (range && range[0] && range[1]) {
+    load() // โหลดเมื่อเลือกครบ 2 วัน
+  }
+}
+
+function clearDateRange() {
+  dateRange.value = null
+  load()
+}
+
 async function load() {
   loading.value = true
   try {
-    const { data } = await api.get('/market/dashboard')
-    summary.value    = data.summary    || summary.value
-    salesByDay.value = data.sales_by_day || []
+    const params = {}
+    if (selectedGroupId.value) params.group_id = selectedGroupId.value
+    const r = dateRange.value
+    if (r?.[0] && r?.[1]) {
+      params.from_date = r[0].toISOString().split('T')[0]
+      params.to_date   = r[1].toISOString().split('T')[0]
+    } else {
+      params.days = selectedDays.value
+    }
+    const { data } = await api.get('/market/dashboard', { params })
+    summary.value     = data.summary      || summary.value
+    salesByDay.value  = data.sales_by_day || []
     topProducts.value = data.top_products || []
   } catch { /* ignore */ }
   finally { loading.value = false }
 }
-onMounted(load)
+
+async function loadGroups() {
+  try {
+    const { data } = await api.get('/market/seller-groups', { params: { per_page: 100 } })
+    groups.value = data.data ?? data
+  } catch { /* ถ้าไม่ใช่ admin ก็ไม่มี groups */ }
+}
+
+onMounted(() => { loadGroups(); load() })
 </script>

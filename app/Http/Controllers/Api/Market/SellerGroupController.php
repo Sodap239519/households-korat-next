@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Market;
 
 use App\Http\Controllers\Controller;
+use App\Models\SellerApplication;
 use App\Models\SellerGroup;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -105,6 +106,11 @@ class SellerGroupController extends Controller
         $path = $request->file('logo')->store("seller-groups/{$sellerGroup->id}", 'public');
         $sellerGroup->update(['logo_path' => $path]);
 
+        // ซิงค์รูป avatar ของ user ที่เป็นเจ้าของร้าน เพื่อให้หน้าร้านแสดงรูปล่าสุด
+        if ($user->seller_group_id === $sellerGroup->id) {
+            $user->update(['avatar_path' => $path]);
+        }
+
         return response()->json(['logo_url' => Storage::disk('public')->url($path)]);
     }
 
@@ -120,6 +126,149 @@ class SellerGroupController extends Controller
         }
 
         return response()->json(['message' => 'ลบโลโก้แล้ว']);
+    }
+
+    /** GET /market/my-group — ข้อมูลกลุ่มของตัวเอง + ข้อมูลจาก seller application */
+    public function myGroup(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->seller_group_id, 403, 'คุณยังไม่ได้สังกัดกลุ่มผู้ขาย');
+
+        $group = SellerGroup::find($user->seller_group_id);
+        abort_unless($group, 404, 'ไม่พบข้อมูลกลุ่ม');
+
+        // ค้นหา seller application ที่เกี่ยวข้องกับ user หรือกลุ่มนี้
+        $application = SellerApplication::where(function ($q) use ($user, $group) {
+            $q->where('applicant_email', $user->email)
+              ->orWhere('applicant_user_id', $user->id)
+              ->orWhere('created_user_id', $user->id)
+              ->orWhere(fn ($q2) => $q2
+                  ->whereIn('requested_group_id', [$group->id])
+                  ->whereIn('assigned_group_id', [$group->id])
+              );
+        })->latest()->first()
+        // fallback: หา application ที่ requested_group_id ตรงกัน
+        ?? SellerApplication::where('requested_group_id', $group->id)->latest()->first();
+
+        $appData = null;
+        if ($application) {
+            $cats = $application->business_categories;
+            if (is_string($cats)) $cats = json_decode($cats, true);
+            $appData = [
+                'business_name'        => $application->business_name,
+                'business_type'        => $application->business_type,
+                'business_categories'  => $cats ?? [],
+                'products_description' => $application->products_description,
+                'logo_url'             => $application->logo_path
+                    ? Storage::disk('public')->url($application->logo_path)
+                    : null,
+                'applicant_name'  => $application->applicant_name,
+                'district'         => $application->district,
+                'sub_district'     => $application->sub_district,
+                'business_address' => $application->business_address,
+            ];
+        }
+
+        return response()->json([
+            'group'       => $group,
+            'application' => $appData,
+            // รูปโปรไฟล์ของร้าน (avatar ของ user เอง — แยกจากโลโก้โซน)
+            'avatar_url'  => $user->avatar_path
+                ? Storage::disk('public')->url($user->avatar_path)
+                : null,
+        ]);
+    }
+
+    /** POST /market/my-avatar — อัปโหลดรูปโปรไฟล์ร้านของตัวเอง (แก้เฉพาะ avatar ของ user ไม่แตะโลโก้โซน) */
+    public function uploadMyAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->seller_group_id, 403, 'คุณยังไม่ได้สังกัดกลุ่มผู้ขาย');
+
+        $request->validate(['logo' => ['required', 'image', 'max:2048']]);
+
+        // ลบรูปเก่าเฉพาะที่เป็นของ user เอง (ไม่ลบถ้า path ตรงกับโลโก้โซน — อาจแชร์กัน)
+        $group = SellerGroup::find($user->seller_group_id);
+        if ($user->avatar_path && $user->avatar_path !== $group?->logo_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+
+        $path = $request->file('logo')->store("seller-avatars/{$user->id}", 'public');
+        $user->update(['avatar_path' => $path]);
+
+        return response()->json(['avatar_url' => Storage::disk('public')->url($path)]);
+    }
+
+    /** DELETE /market/my-avatar — ลบรูปโปรไฟล์ร้านของตัวเอง */
+    public function deleteMyAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->seller_group_id, 403, 'คุณยังไม่ได้สังกัดกลุ่มผู้ขาย');
+
+        $group = SellerGroup::find($user->seller_group_id);
+        if ($user->avatar_path && $user->avatar_path !== $group?->logo_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+        $user->update(['avatar_path' => null]);
+
+        return response()->json(['message' => 'ลบรูปโปรไฟล์แล้ว']);
+    }
+
+    /** PUT /market/seller-groups/my-group — เจ้าของร้านแก้ไขข้อมูลร้านและใบสมัครของตัวเอง */
+    public function updateMyGroup(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->seller_group_id, 403, 'คุณยังไม่ได้สังกัดกลุ่มผู้ขาย');
+
+        $group = SellerGroup::find($user->seller_group_id);
+        abort_unless($group, 404, 'ไม่พบข้อมูลกลุ่ม');
+
+        $validated = $request->validate([
+            // กลุ่ม
+            'description'          => ['nullable', 'string'],
+            'contact_phone'        => ['nullable', 'string', 'max:30'],
+            'contact_address'      => ['nullable', 'string', 'max:255'],
+            'bank_name'            => ['nullable', 'string', 'max:255'],
+            'bank_account_no'      => ['nullable', 'string', 'max:30'],
+            'bank_account_name'    => ['nullable', 'string', 'max:255'],
+            'promptpay_id'         => ['nullable', 'string', 'max:30'],
+            // ใบสมัคร
+            'business_name'        => ['nullable', 'string', 'max:255'],
+            'products_description' => ['nullable', 'string'],
+            'district'             => ['nullable', 'string', 'max:100'],
+            'sub_district'         => ['nullable', 'string', 'max:100'],
+            'business_address'     => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $group->update(array_intersect_key($validated, array_flip([
+            'description', 'contact_phone', 'contact_address',
+            'bank_name', 'bank_account_no', 'bank_account_name', 'promptpay_id',
+        ])));
+
+        $application = SellerApplication::where(function ($q) use ($user, $group) {
+            $q->where('applicant_email', $user->email)
+              ->orWhere('applicant_user_id', $user->id)
+              ->orWhere('created_user_id', $user->id)
+              ->orWhere(fn ($q2) => $q2
+                  ->whereIn('requested_group_id', [$group->id])
+                  ->whereIn('assigned_group_id', [$group->id])
+              );
+        })->latest()->first()
+        ?? SellerApplication::where('requested_group_id', $group->id)->latest()->first();
+
+        if ($application) {
+            $appFields = array_filter(
+                array_intersect_key($validated, array_flip([
+                    'business_name', 'products_description', 'district', 'sub_district', 'business_address',
+                ])),
+                fn ($v) => $v !== null
+            );
+            if ($appFields) {
+                $application->update($appFields);
+            }
+        }
+
+        return response()->json(['message' => 'บันทึกสำเร็จ', 'group' => $group]);
     }
 
     /** กำหนด/ปลดสมาชิกของกลุ่ม (admin เท่านั้น) */

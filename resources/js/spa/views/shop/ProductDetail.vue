@@ -231,26 +231,53 @@
       <section v-if="product.seller_group" class="mt-6 box-card p-4">
         <div class="flex items-center gap-3">
           <!-- Logo / Avatar -->
-          <div class="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-violet-400 to-fuchsia-500 flex items-center justify-center shrink-0 shadow-md shadow-violet-200">
-            <img v-if="product.seller_group.logo_path"
-              :src="`/storage/${product.seller_group.logo_path}`"
-              :alt="product.seller_group.name"
-              class="w-full h-full object-cover" />
-            <span v-else class="text-white font-bold text-2xl">
-              {{ product.seller_group.name.charAt(0) }}
-            </span>
+          <div class="shrink-0 shadow-md shadow-violet-200 rounded-full">
+            <!-- ถ้ามีร้านค้าย่อย: รูปโปรไฟล์ร้านเป็นหลัก, fallback → โลโก้กลุ่ม -->
+            <UserAvatar v-if="product.seller_user"
+              :avatar-path="product.seller_user.avatar_path || product.seller_group?.logo_path"
+              :name="product.seller_user.shop_name || product.seller_user.name"
+              size="lg"
+            />
+            <!-- ถ้าไม่มี: แสดงโลโก้กลุ่ม -->
+            <div v-else class="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-violet-400 to-fuchsia-500 flex items-center justify-center">
+              <img v-if="product.seller_group.logo_path"
+                :src="`/storage/${product.seller_group.logo_path}`"
+                :alt="product.seller_group.name"
+                class="w-full h-full object-cover" />
+              <span v-else class="text-white font-bold text-2xl">
+                {{ product.seller_group.name.charAt(0) }}
+              </span>
+            </div>
           </div>
           <!-- Info -->
           <div class="flex-1 min-w-0">
-            <p class="font-bold text-slate-800 truncate">{{ product.seller_group.name }}</p>
-            <p v-if="product.seller_group.districts?.length" class="text-xs text-slate-400 mt-0.5">
-              <i class="fi fi-rr-marker text-[10px]"></i>
-              {{ product.seller_group.districts.slice(0, 2).join(' · ') }}
-            </p>
+            <!-- มีร้านค้าย่อย: แสดงชื่อร้านเป็นหลัก + ลิงก์โซนเป็น secondary -->
+            <template v-if="product.seller_user">
+              <p class="font-bold text-slate-800 truncate">
+                {{ product.seller_user.shop_name || product.seller_user.name }}
+              </p>
+              <p class="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                <i class="fi fi-rr-store-alt text-[10px]"></i>
+                โซน:&nbsp;<RouterLink
+                  :to="`/shop/sellers/${product.seller_group.slug}`"
+                  class="text-violet-600 hover:underline"
+                >{{ product.seller_group.name }}</RouterLink>
+              </p>
+            </template>
+            <!-- ไม่มีร้านค้าย่อย: แสดงกลุ่มเป็นหลัก -->
+            <template v-else>
+              <p class="font-bold text-slate-800 truncate">{{ product.seller_group.name }}</p>
+              <p v-if="product.seller_group.districts?.length" class="text-xs text-slate-400 mt-0.5">
+                <i class="fi fi-rr-marker text-[10px]"></i>
+                {{ product.seller_group.districts.slice(0, 2).join(' · ') }}
+              </p>
+            </template>
           </div>
           <!-- ดูร้านค้า -->
           <RouterLink
-            :to="`/shop/sellers/${product.seller_group.slug}`"
+            :to="product.seller_user
+              ? `/shop/sellers/${product.seller_group.slug}?member=${product.seller_user.id}`
+              : `/shop/sellers/${product.seller_group.slug}`"
             class="shrink-0 px-4 py-1.5 rounded-full border-2 border-violet-500 text-violet-700 text-xs font-semibold hover:bg-violet-50 transition"
           >ดูร้านค้า</RouterLink>
         </div>
@@ -280,7 +307,9 @@
           </h2>
           <RouterLink
             v-if="product.seller_group?.slug"
-            :to="`/shop/sellers/${product.seller_group.slug}`"
+            :to="product.seller_user
+              ? `/shop/sellers/${product.seller_group.slug}?member=${product.seller_user.id}`
+              : `/shop/sellers/${product.seller_group.slug}`"
             class="text-sm text-violet-600 hover:underline flex items-center gap-1 shrink-0"
           >ดูทั้งหมด <i class="fi fi-rr-angle-right text-xs"></i></RouterLink>
         </div>
@@ -365,15 +394,34 @@
                 <img v-if="activeImage" :src="activeImage" class="w-full h-full object-cover" />
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-slate-800 line-clamp-2 text-sm leading-snug">{{ product.name }}</p>
-                <p class="text-fuchsia-700 font-bold mt-1">฿{{ formatPrice(effectivePrice) }} <span class="text-slate-400 font-normal text-xs">/ {{ product.unit }}</span></p>
+                <p class="font-semibold text-slate-800 line-clamp-2 text-sm leading-snug">
+                  {{ product.name }}<span v-if="selectedOption" class="text-violet-600"> · {{ selectedOption.name }}</span>
+                </p>
+                <p class="text-fuchsia-700 font-bold mt-1">
+                  ฿{{ formatPrice(effectivePrice) }}
+                  <span class="text-slate-400 font-normal text-xs">{{ selectedOption ? `/ ${selectedOption.name}` : `/ ${product.unit}` }}</span>
+                </p>
+              </div>
+            </div>
+            <!-- ตัวเลือกสินค้า -->
+            <div v-if="hasOptions" class="space-y-1.5">
+              <p class="text-xs font-semibold text-slate-600">เลือกตัวเลือก</p>
+              <div class="flex flex-wrap gap-2">
+                <button v-for="opt in options" :key="opt.id"
+                  @click="selectOptionInSheet(opt)" :disabled="Number(opt.stock_qty) <= 0"
+                  class="px-3 py-1.5 rounded-xl border-2 text-sm transition"
+                  :class="Number(opt.stock_qty) <= 0
+                    ? 'border-slate-200 bg-slate-50 text-slate-300 line-through cursor-not-allowed'
+                    : (selectedOption?.id === opt.id ? 'border-violet-500 bg-violet-50 text-violet-700 font-semibold' : 'border-slate-200 text-slate-600')">
+                  {{ opt.name }} · ฿{{ formatPrice(opt.price) }}<span v-if="Number(opt.stock_qty) <= 0" class="text-rose-400"> หมด</span>
+                </button>
               </div>
             </div>
             <!-- Qty & Total -->
             <div class="bg-violet-50 rounded-2xl p-4 space-y-2">
               <div class="flex justify-between text-sm">
                 <span class="text-slate-500">จำนวน</span>
-                <span class="font-semibold text-slate-700">{{ qty }} {{ product.unit }}</span>
+                <span class="font-semibold text-slate-700">{{ qty }} {{ selectedOption ? `× ${selectedOption.name}` : product.unit }}</span>
               </div>
               <div class="flex justify-between items-end border-t border-violet-100 pt-2">
                 <span class="text-slate-600 font-medium">ยอดรวม</span>
@@ -381,9 +429,10 @@
               </div>
             </div>
             <!-- Actions -->
-            <button @click="executeBuyNow"
-              class="w-full h-12 rounded-2xl btn-orange btn-sheen font-bold text-base flex items-center justify-center gap-2">
-              <i class="fi fi-rr-bolt"></i> ยืนยันซื้อเลย
+            <button @click="executeBuyNow" :disabled="hasOptions && !selectedOption"
+              class="w-full h-12 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition"
+              :class="hasOptions && !selectedOption ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'btn-orange btn-sheen'">
+              <i class="fi fi-rr-bolt"></i> {{ hasOptions && !selectedOption ? 'เลือกตัวเลือกก่อน' : 'ยืนยันซื้อเลย' }}
             </button>
             <button @click="sheetOpen = false"
               class="w-full h-10 rounded-2xl text-slate-400 text-sm font-medium hover:bg-slate-50 transition">
@@ -392,41 +441,12 @@
           </div>
         </template>
 
-        <!-- ── Add to Cart Confirm ── -->
-        <template v-if="sheetMode === 'cart'">
-          <div class="flex items-center justify-between px-5 pb-3 border-b border-slate-100">
-            <h3 class="font-bold text-slate-800 text-lg">เพิ่มลงตะกร้า</h3>
-            <button @click="sheetOpen = false" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
-              <i class="fi fi-rr-cross-small"></i>
-            </button>
-          </div>
-          <div class="px-5 py-4 space-y-3">
-            <div class="flex gap-3">
-              <div class="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0">
-                <img v-if="activeImage" :src="activeImage" class="w-full h-full object-cover" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-slate-800 line-clamp-2 text-sm leading-snug">{{ product.name }}</p>
-                <p class="text-fuchsia-700 font-bold mt-1">฿{{ formatPrice(effectivePrice) }} <span class="text-slate-400 font-normal text-xs">/ {{ product.unit }}</span></p>
-              </div>
-            </div>
-            <div class="bg-violet-50 rounded-2xl p-4 flex items-center justify-between">
-              <span class="text-violet-700 font-medium text-sm">เพิ่ม <strong>{{ qty }}</strong> {{ product.unit }} ลงตะกร้า</span>
-              <span class="font-bold text-violet-800 text-lg">฿{{ formatPrice(effectivePrice * qty) }}</span>
-            </div>
-            <button @click="executeAddToCart"
-              class="w-full h-12 rounded-2xl border-2 border-violet-500 text-violet-700 font-bold text-base flex items-center justify-center gap-2 hover:bg-violet-50 transition">
-              <i class="fi fi-rr-shopping-cart-add"></i> ยืนยันเพิ่มลงตะกร้า
-            </button>
-            <button @click="sheetOpen = false"
-              class="w-full h-10 rounded-2xl text-slate-400 text-sm font-medium hover:bg-slate-50 transition">
-              ยกเลิก
-            </button>
-          </div>
-        </template>
       </div>
     </Transition>
   </Teleport>
+
+  <!-- Add-to-cart sheet (ตัวเดียวกับที่เปิดจากการ์ดสินค้า) -->
+  <ProductBuySheet v-model="showBuySheet" :product="product" />
 
   <!-- ═══ Mobile sticky buy bar ═══ -->
   <div v-if="product" class="lg:hidden fixed bottom-16 inset-x-0 z-30 bg-white/97 backdrop-blur-lg border-t border-violet-100 shadow-[0_-4px_20px_-8px_rgba(124,58,237,.18)]">
@@ -586,10 +606,12 @@ import { useCart } from '../../composables/useCart.js'
 import { useWishlist } from '../../composables/useWishlist.js'
 import { useAuth } from '../../composables/useAuth.js'
 import ProductCard from './components/ProductCard.vue'
+import ProductBuySheet from './components/ProductBuySheet.vue'
 import Breadcrumb from './components/Breadcrumb.vue'
 import ReviewSection from './components/ReviewSection.vue'
 import CommentSection from './components/CommentSection.vue'
 import ShareButton from './components/ShareButton.vue'
+import UserAvatar from './components/UserAvatar.vue'
 import { useBuyNow } from '../../composables/useBuyNow.js'
 import { useProductHistory } from '../../composables/useProductHistory.js'
 
@@ -646,6 +668,7 @@ function scrollTop() { window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
 const sheetOpen = ref(false)
 const sheetMode = ref('')
+const showBuySheet = ref(false)
 
 const loading = ref(true)
 const product = ref(null)
@@ -659,6 +682,7 @@ const activeImageIdx = ref(0)
 const lightboxOpen = ref(false)
 const lightboxIdx = ref(0)
 const qty = ref(1)
+const selectedOption = ref(null)
 const activeTab = ref('desc')
 
 const tabs = [
@@ -670,8 +694,13 @@ const tabs = [
 const slug = computed(() => route.params.slug)
 const images = computed(() => (product.value?.images || []).map(i => i.url).filter(Boolean))
 const groupName = computed(() => product.value?.seller_group?.name || '')
+const options    = computed(() => product.value?.options || [])
+const hasOptions  = computed(() => options.value.length > 0)
+// ป้ายหน่วย/ตัวเลือกสำหรับแสดงในชีต: ถ้าเลือกตัวเลือกแล้วใช้ชื่อตัวเลือก ไม่งั้นใช้หน่วยสินค้า
+const unitLabel   = computed(() => selectedOption.value?.name || product.value?.unit || 'ชิ้น')
 const effectivePrice = computed(() => {
   if (!product.value) return 0
+  if (hasOptions.value && selectedOption.value) return Number(selectedOption.value.price)
   if (isFlashSale.value && flashSalePrice.value != null) return Number(flashSalePrice.value)
   return Number(product.value.effective_price ?? product.value.price ?? 0)
 })
@@ -735,27 +764,33 @@ function formatPrice(v) {
   return Number(v).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 }
 
-function addToCart() {
-  sheetMode.value = 'cart'
-  sheetOpen.value = true
+function selectOptionInSheet(opt) {
+  if (Number(opt.stock_qty) <= 0) return
+  selectedOption.value = opt
+  if (qty.value > opt.stock_qty) qty.value = Math.max(1, opt.stock_qty)
 }
 
-function executeAddToCart() {
-  sheetOpen.value = false
-  cart.add(product.value, qty.value)
-  toast.add({ severity: 'success', summary: 'เพิ่มลงตะกร้าแล้ว', detail: `${product.value.name} × ${qty.value}`, life: 2000 })
+// เปิด ProductBuySheet (ตัวเดียวกับที่เปิดจากการ์ดสินค้า) เพื่อความสอดคล้อง
+function addToCart() {
+  showBuySheet.value = true
 }
 
 function buyNow() {
+  qty.value = 1
+  selectedOption.value = null
   sheetMode.value = 'buy-now'
   sheetOpen.value = true
 }
 
 async function executeBuyNow() {
   if (!product.value) return
+  if (hasOptions.value && !selectedOption.value) return
   sheetOpen.value = false
+  const opt = selectedOption.value
   buyNow_.set({
     product_id: product.value.id,
+    option_id:  opt?.id ?? null,
+    option_name: opt?.name ?? null,
     slug:       product.value.slug,
     name:       product.value.name,
     price:      Number(effectivePrice.value),
@@ -764,7 +799,9 @@ async function executeBuyNow() {
     group_id:   product.value.seller_group_id ?? product.value.seller_group?.id ?? null,
     group_name: product.value.seller_group?.name ?? '',
     group_slug: product.value.seller_group?.slug ?? '',
-    stock_qty:  product.value.stock_qty ?? null,
+    seller_id:   product.value.seller_user?.id ?? product.value.seller_user_id ?? null,
+    seller_name: product.value.seller_user?.shop_name || product.value.seller_user?.name || null,
+    stock_qty:  opt ? opt.stock_qty : (product.value.stock_qty ?? null),
     qty:        qty.value,
   })
   await nextTick()

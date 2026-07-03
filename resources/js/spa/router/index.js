@@ -61,6 +61,8 @@ const routes = [
             { path: 'market/returns',        component: () => import('../views/market/ReturnManagement.vue') },
             { path: 'market/reviews',        component: () => import('../views/market/ReviewManagement.vue') },
             { path: 'market/comments',       component: () => import('../views/market/CommentManagement.vue') },
+            { path: 'change-password',           component: () => import('../views/ForceChangePasswordView.vue'), meta: { skipForcePasswordCheck: true } },
+            { path: 'market/my-shop',            component: () => import('../views/market/MyShopSettings.vue') },
             { path: 'market/seller-groups',      component: () => import('../views/market/SellerGroupManagement.vue') },
             { path: 'market/seller-applications', component: () => import('../views/market/SellerApplicationManagement.vue') },
             { path: 'market/shipping',           component: () => import('../views/market/ShippingSettings.vue') },
@@ -123,13 +125,31 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-    const { user, fetchUser } = useAuth()
+    const { user, fetchUser, mustChangePassword } = useAuth()
 
-    if (user.value === null && (to.meta.requiresAuth || to.meta.guest || to.meta.customerAuth || to.meta.guestShop)) {
+    const isShopPath = to.path.startsWith('/shop')
+    if (user.value === null && (to.meta.requiresAuth || to.meta.guest || to.meta.customerAuth || to.meta.guestShop || isShopPath)) {
         await fetchUser()
     }
+
     if (to.meta.requiresAuth && !user.value) return '/app/login'
     if (to.meta.guest && user.value) return '/app/dashboard'
+
+    // บังคับเปลี่ยนรหัสผ่านครั้งแรก (สำหรับบัญชีผู้ขายที่แอดมินสร้างให้)
+    if (
+        user.value &&
+        mustChangePassword.value &&
+        to.meta.requiresAuth &&
+        !to.meta.skipForcePasswordCheck &&
+        to.path !== '/app/change-password'
+    ) {
+        return '/app/change-password'
+    }
+
+    // ร้านค้า (staff/admin/superadmin) ห้ามเข้า /shop — ต้อง logout ก่อน
+    if (isShopPath && user.value && user.value.role !== 'customer') {
+        return '/app/market'
+    }
 
     // Storefront customer guards
     if (to.meta.customerAuth && !user.value) {

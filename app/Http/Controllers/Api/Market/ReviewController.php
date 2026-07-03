@@ -20,8 +20,13 @@ class ReviewController extends Controller
         $query = ProductReview::query()
             ->with(['product:id,name,slug,seller_group_id', 'user:id,name'])
             ->whereHas('product', function ($q) use ($user, $request) {
-                if ($scope = $user->sellerGroupScope()) $q->where('seller_group_id', $scope);
-                elseif ($request->filled('group_id'))   $q->where('seller_group_id', $request->input('group_id'));
+                if (($personal = $user->sellerPersonalScope()) !== null) {
+                    $q->where('seller_user_id', $personal);
+                } elseif ($scope = $user->sellerGroupScope()) {
+                    $q->where('seller_group_id', $scope);
+                } elseif ($request->filled('group_id')) {
+                    $q->where('seller_group_id', $request->input('group_id'));
+                }
             });
 
         if ($request->filled('status')) $query->where('status', $request->input('status'));
@@ -54,5 +59,8 @@ class ReviewController extends Controller
         $user = $request->user();
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
         abort_unless($user->canActInGroup($review->product?->seller_group_id), 403, 'รีวิวนี้อยู่นอกกลุ่มที่คุณดูแล');
+        if (!$user->isAdmin()) {
+            abort_unless((int) $review->product?->seller_user_id === $user->id, 403, 'รีวิวนี้ไม่ใช่สินค้าของคุณ');
+        }
     }
 }

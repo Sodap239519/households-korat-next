@@ -15,6 +15,7 @@ class Product extends Model
 
     protected $fillable = [
         'seller_group_id',
+        'seller_user_id',
         'category_id',
         'name',
         'slug',
@@ -71,6 +72,11 @@ class Product extends Model
         return $this->belongsTo(SellerGroup::class);
     }
 
+    public function sellerUser()
+    {
+        return $this->belongsTo(User::class, 'seller_user_id');
+    }
+
     public function category()
     {
         return $this->belongsTo(ProductCategory::class, 'category_id');
@@ -81,9 +87,19 @@ class Product extends Model
         return $this->hasMany(ProductImage::class)->orderBy('sort_order');
     }
 
+    public function options()
+    {
+        return $this->hasMany(ProductOption::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function reviews()
     {
         return $this->hasMany(ProductReview::class);
+    }
+
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
     }
 
     public function comments()

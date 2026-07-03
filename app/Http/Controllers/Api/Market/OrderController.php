@@ -33,8 +33,13 @@ class OrderController extends Controller
             ->with(['user:id,name', 'items', 'latestPayment', 'sellerGroup:id,name', 'shipment'])
             ->withCount('items');
 
-        if (($scope = $user->sellerGroupScope()) !== null) $query->where('seller_group_id', $scope);
-        elseif ($request->filled('group_id'))              $query->where('seller_group_id', $request->input('group_id'));
+        if (($personal = $user->sellerPersonalScope()) !== null) {
+            $query->whereHas('items.product', fn ($q) => $q->where('seller_user_id', $personal));
+        } elseif (($scope = $user->sellerGroupScope()) !== null) {
+            $query->where('seller_group_id', $scope);
+        } elseif ($request->filled('group_id')) {
+            $query->where('seller_group_id', $request->input('group_id'));
+        }
 
         if ($g = $request->input('status_group')) {
             $query->whereIn('status', self::GROUPS[$g] ?? []);
@@ -112,9 +117,10 @@ class OrderController extends Controller
             'is_read'     => false,
         ]);
         $conversation->update([
-            'last_message_at'     => now(),
-            'is_read_by_customer' => false,
-            'is_read_by_seller'   => true,
+            'last_message_at'      => now(),
+            'last_message_preview' => mb_substr($chatBody, 0, 80),
+            'is_read_by_customer'  => false,
+            'is_read_by_seller'    => true,
         ]);
 
         return response()->json(['message' => 'บันทึกการจัดส่งแล้ว', 'order' => $fresh]);
@@ -151,5 +157,9 @@ class OrderController extends Controller
         $user = $request->user();
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
         abort_unless($user->canActInGroup($order->seller_group_id), 403, 'ออเดอร์นี้อยู่นอกกลุ่มที่คุณดูแล');
+        if (!$user->isAdmin()) {
+            $hasItem = $order->items()->whereHas('product', fn ($q) => $q->where('seller_user_id', $user->id))->exists();
+            abort_unless($hasItem, 403, 'ออเดอร์นี้ไม่มีสินค้าของคุณ');
+        }
     }
 }

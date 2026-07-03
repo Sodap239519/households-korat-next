@@ -280,7 +280,7 @@ const vTooltip = Tooltip
 
 const route = useRoute()
 const router = useRouter()
-const { user, logout, isAdmin, isAreaStaff, isMarketStaff, canManageUsers, roleLabel: roleLabelFn } = useAuth()
+const { user, logout, isAdmin, isAreaStaff, isMarketStaff, canManageUsers, sellerGroupId, roleLabel: roleLabelFn } = useAuth()
 const toast = useToast()
 
 const collapsed    = ref(false)
@@ -357,8 +357,9 @@ const allNavItems = [
       { to: '/app/market/shipping',    icon: 'fi fi-rr-settings-sliders', label: 'บริการจัดส่ง' },
       { divider: true },
       // — ผู้ขาย —
-      { to: '/app/market/seller-groups',       icon: 'fi fi-rr-users-alt',  label: 'กลุ่มผู้ขาย' },
-      { to: '/app/market/seller-applications', icon: 'fi fi-rr-user-check', label: 'คำขอสมัครขาย', badgeKey: 'seller_apps' },
+      { to: '/app/market/my-shop',             icon: 'fi fi-rr-store-alt',  label: 'ตั้งค่าร้านค้า', show: () => !!sellerGroupId.value },
+      { to: '/app/market/seller-groups',       icon: 'fi fi-rr-users-alt',  label: 'กลุ่มผู้ขาย',   show: () => isAdmin.value },
+      { to: '/app/market/seller-applications', icon: 'fi fi-rr-user-check', label: 'คำขอสมัครขาย',  badgeKey: 'seller_apps', show: () => isAdmin.value },
       { divider: true },
       // — การตลาด —
       { to: '/app/market/banners', icon: 'fi fi-rr-picture', label: 'แบนเนอร์ Hero', show: () => isAdmin.value },
@@ -371,11 +372,20 @@ const allNavItems = [
 const navItems = computed(() => allNavItems.filter(item => item.show()))
 
 const openGroups = reactive({})
-navItems.value.forEach((item, idx) => {
-  if (item.children && item.matchPrefix && route.path.startsWith(item.matchPrefix)) {
-    openGroups[idx] = true
-  }
-})
+
+function syncOpenGroups(items) {
+  items.forEach((item, idx) => {
+    if (item.children && item.matchPrefix && route.path.startsWith(item.matchPrefix)) {
+      openGroups[idx] = true
+    }
+  })
+}
+
+syncOpenGroups(navItems.value)
+
+// เมื่อ navItems เปลี่ยน (เช่น user โหลดเสร็จแล้ว isMarketStaff กลายเป็น true)
+// ให้ auto-open กลุ่มที่ตรงกับ route ปัจจุบัน
+watch(navItems, (items) => syncOpenGroups(items))
 
 function toggleGroup(idx) {
   openGroups[idx] = !openGroups[idx]
@@ -648,7 +658,7 @@ onMounted(() => {
   lastUpdatedTimer = setInterval(fetchLastUpdated, 60_000)
   // Market badges — poll every 30s for market staff
   fetchMarketBadges()
-  marketBadgeTimer = setInterval(fetchMarketBadges, 30_000)
+  marketBadgeTimer = setInterval(fetchMarketBadges, 15_000)
 })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
@@ -657,5 +667,8 @@ onUnmounted(() => {
 })
 
 // Re-fetch on every route change (any navigation may have edited data)
-watch(() => route.fullPath, () => fetchLastUpdated())
+watch(() => route.fullPath, () => {
+  fetchLastUpdated()
+  fetchMarketBadges()
+})
 </script>

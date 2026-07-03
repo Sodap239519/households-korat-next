@@ -24,7 +24,8 @@ const isCustomer  = computed(() => role.value === 'customer')
 const sellerGroupId = computed(() => user.value?.seller_group_id ?? null)
 // เจ้าหน้าที่ที่ทำงานหลังบ้านตลาด: admin หรือ staff ที่สังกัดกลุ่ม
 const isMarketStaff = computed(() => isAdmin.value || (isStaff.value && !isCustomer.value && !!sellerGroupId.value))
-const canManageSellerGroups = isAdmin
+const canManageSellerGroups  = isAdmin
+const mustChangePassword     = computed(() => user.value?.must_change_password === true)
 
 function canActInGroup(groupId) {
   if (isAdmin.value) return true
@@ -98,6 +99,7 @@ export function useAuth() {
         isMarketStaff,
         sellerGroupId,
         canManageSellerGroups,
+        mustChangePassword,
         canActInGroup,
         // districts
         assignedDistricts,

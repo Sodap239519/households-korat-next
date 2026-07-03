@@ -7,32 +7,47 @@ function read() {
 }
 
 export function useBuyNow() {
-    function set(item) { sessionStorage.setItem(KEY, JSON.stringify(item)) }
-    function clear() { sessionStorage.removeItem(KEY) }
-    function has() { return !!read() }
+    /** สำหรับซื้อทันที (1 รายการ) */
+    function set(item) {
+        sessionStorage.setItem(KEY, JSON.stringify([item]))
+    }
 
-    // computed ที่ mimic โครงสร้าง useCart
+    /** สำหรับ reorder (หลายรายการ) */
+    function setAll(itemsArray) {
+        sessionStorage.setItem(KEY, JSON.stringify(itemsArray))
+    }
+
+    function clear() { sessionStorage.removeItem(KEY) }
+    function has()   { const d = read(); return !!(d && (Array.isArray(d) ? d.length : true)) }
+
     const items = computed(() => {
         const d = read()
-        return d ? [d] : []
+        if (!d) return []
+        return Array.isArray(d) ? d : [d]
     })
 
     const groups = computed(() => {
-        const d = read()
-        if (!d) return []
-        return [{
-            group_id:   d.group_id,
-            group_name: d.group_name,
-            group_slug: d.group_slug ?? '',
-            items:      [d],
-            subtotal:   d.price * d.qty,
-        }]
+        const list = items.value
+        if (!list.length) return []
+        const map = {}
+        for (const i of list) {
+            const key = (i.group_id ?? 'x') + ':' + (i.seller_id ?? '')
+            if (!map[key]) {
+                map[key] = {
+                    key, group_id: i.group_id, group_name: i.group_name, group_slug: i.group_slug ?? '',
+                    seller_id: i.seller_id ?? null, seller_name: i.seller_name ?? null,
+                    items: [], subtotal: 0,
+                }
+            }
+            map[key].items.push(i)
+            map[key].subtotal += i.price * i.qty
+        }
+        return Object.values(map)
     })
 
-    const subtotal = computed(() => {
-        const d = read()
-        return d ? d.price * d.qty : 0
-    })
+    const subtotal = computed(() =>
+        items.value.reduce((s, i) => s + i.price * i.qty, 0)
+    )
 
-    return { set, clear, has, items, groups, subtotal }
+    return { set, setAll, clear, has, items, groups, subtotal }
 }

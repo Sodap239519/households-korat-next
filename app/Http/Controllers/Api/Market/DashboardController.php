@@ -29,36 +29,64 @@ class DashboardController extends Controller
         $user = $request->user();
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
 
-        $scope = $user->sellerGroupScope();
-        $groupId = $scope ?: ($user->isAdmin() ? $request->input('group_id') : null);
+        $personal = $user->sellerPersonalScope();
+        $scope    = $user->sellerGroupScope();
+        $groupId  = ($personal === null && $scope === null) ? $request->input('group_id') : null;
 
-        $orderScope  = fn ($q) => $groupId ? $q->where('seller_group_id', $groupId) : $q;
-        $productScope = fn ($q) => $groupId ? $q->where('seller_group_id', $groupId) : $q;
+        // staff ทั่วไปเห็นเฉพาะข้อมูลตัวเอง, admin เห็นทั้งกลุ่ม, superadmin เห็นทั้งหมด
+        $orderScope = function ($q) use ($personal, $scope, $groupId) {
+            if ($personal !== null) {
+                $q->whereHas('items.product', fn ($p) => $p->where('seller_user_id', $personal));
+            } elseif ($scope !== null) {
+                $q->where('seller_group_id', $scope);
+            } elseif ($groupId) {
+                $q->where('seller_group_id', $groupId);
+            }
+        };
+        $productScope = function ($q) use ($personal, $scope, $groupId) {
+            if ($personal !== null) {
+                $q->where('seller_user_id', $personal);
+            } elseif ($scope !== null) {
+                $q->where('seller_group_id', $scope);
+            } elseif ($groupId) {
+                $q->where('seller_group_id', $groupId);
+            }
+        };
 
         // ===== KPI =====
-        $salesTotal = $orderScope(Order::query())->whereIn('status', self::PAID)->sum('total');
-        $ordersTotal = $orderScope(Order::query())->count();
-        $awaiting   = $orderScope(Order::query())->where('status', 'awaiting_confirm')->count();
-        $toShip     = $orderScope(Order::query())->whereIn('status', ['confirmed', 'processing'])->count();
-        $productsCount = $productScope(Product::query())->count();
-        $lowStock   = $productScope(Product::query())->where('stock_qty', '<', 10)->count();
+        $salesTotal    = Order::query()->tap($orderScope)->whereIn('status', self::PAID)->sum('total');
+        $ordersTotal   = Order::query()->tap($orderScope)->count();
+        $awaiting      = Order::query()->tap($orderScope)->where('status', 'awaiting_confirm')->count();
+        $toShip        = Order::query()->tap($orderScope)->whereIn('status', ['confirmed', 'processing'])->count();
+        $productsCount = Product::query()->tap($productScope)->count();
+        $lowStock      = Product::query()->tap($productScope)->where('stock_qty', '<', 10)->count();
 
         // ===== สถานะออเดอร์ (สำหรับ donut) =====
-        $statusCounts = $orderScope(Order::query())
+        $statusCounts = Order::query()->tap($orderScope)
             ->select('status', DB::raw('count(*) as c'))
             ->groupBy('status')->pluck('c', 'status');
 
-        // ===== ยอดขาย 14 วันล่าสุด =====
-        $from = Carbon::today()->subDays(13);
-        $rows = $orderScope(Order::query())
+        // ===== ยอดขายตามช่วงวัน =====
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            // กำหนดเองจาก date picker
+            $from = Carbon::parse($request->input('from_date'))->startOfDay();
+            $to   = Carbon::parse($request->input('to_date'))->endOfDay();
+            $days = max(1, min(180, (int) $from->diffInDays($to) + 1));
+        } else {
+            $days = max(7, min(90, (int) $request->input('days', 14)));
+            $from = Carbon::today()->subDays($days - 1)->startOfDay();
+            $to   = Carbon::today()->endOfDay();
+        }
+
+        $rows = Order::query()->tap($orderScope)
             ->whereIn('status', self::PAID)
-            ->where('created_at', '>=', $from)
+            ->whereBetween('created_at', [$from, $to])
             ->select(DB::raw('DATE(created_at) as d'), DB::raw('SUM(total) as t'))
             ->groupBy('d')->pluck('t', 'd');
 
         $salesByDay = [];
-        for ($i = 0; $i < 14; $i++) {
-            $day = $from->copy()->addDays($i);
+        for ($i = 0; $i < $days; $i++) {
+            $day = $from->copy()->startOfDay()->addDays($i);
             $key = $day->toDateString();
             $salesByDay[] = [
                 'date'  => $day->format('d/m'),
@@ -69,7 +97,11 @@ class DashboardController extends Controller
         // ===== สินค้าขายดี (top 5 ตามจำนวนที่ขาย) =====
         $topProducts = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->when($groupId, fn ($q) => $q->where('orders.seller_group_id', $groupId))
+            ->when($personal !== null, fn ($q) => $q
+                ->join('products', 'products.id', '=', 'order_items.product_id')
+                ->where('products.seller_user_id', $personal))
+            ->when($personal === null && $scope !== null, fn ($q) => $q->where('orders.seller_group_id', $scope))
+            ->when($personal === null && $scope === null && $groupId, fn ($q) => $q->where('orders.seller_group_id', $groupId))
             ->whereIn('orders.status', self::PAID)
             ->select('order_items.product_name', DB::raw('SUM(order_items.qty) as qty'), DB::raw('SUM(order_items.line_total) as revenue'))
             ->groupBy('order_items.product_name')
@@ -98,10 +130,23 @@ class DashboardController extends Controller
         $user = $request->user();
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
 
-        $scope = $user->sellerGroupScope();
+        $personal = $user->sellerPersonalScope();
+        $scope    = $user->sellerGroupScope();
 
-        $orderScope   = fn ($q) => $scope ? $q->where('seller_group_id', $scope) : $q;
-        $productScope = fn ($q) => $scope ? $q->where('seller_group_id', $scope) : $q;
+        $orderScope = function ($q) use ($personal, $scope) {
+            if ($personal !== null) {
+                $q->whereHas('items.product', fn ($p) => $p->where('seller_user_id', $personal));
+            } elseif ($scope !== null) {
+                $q->where('seller_group_id', $scope);
+            }
+        };
+        $productScope = function ($q) use ($personal, $scope) {
+            if ($personal !== null) {
+                $q->where('seller_user_id', $personal);
+            } elseif ($scope !== null) {
+                $q->where('seller_group_id', $scope);
+            }
+        };
 
         $orders = Order::query()->tap($orderScope)
             ->whereIn('status', ['pending_payment', 'awaiting_confirm'])->count();

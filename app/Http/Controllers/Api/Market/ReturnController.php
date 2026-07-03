@@ -21,8 +21,13 @@ class ReturnController extends Controller
         $query = ReturnRequest::query()
             ->with(['order:id,order_no,total,seller_group_id', 'user:id,name'])
             ->whereHas('order', function ($q) use ($user, $request) {
-                if ($scope = $user->sellerGroupScope()) $q->where('seller_group_id', $scope);
-                elseif ($request->filled('group_id'))   $q->where('seller_group_id', $request->input('group_id'));
+                if (($personal = $user->sellerPersonalScope()) !== null) {
+                    $q->whereHas('items.product', fn ($p) => $p->where('seller_user_id', $personal));
+                } elseif ($scope = $user->sellerGroupScope()) {
+                    $q->where('seller_group_id', $scope);
+                } elseif ($request->filled('group_id')) {
+                    $q->where('seller_group_id', $request->input('group_id'));
+                }
             });
 
         if ($request->filled('status')) $query->where('status', $request->input('status'));

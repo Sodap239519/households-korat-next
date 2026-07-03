@@ -34,18 +34,18 @@
           </div>
 
           <div>
-            <label class="form-label">ราคาปกติ (บาท) *</label>
-            <InputNumber v-model="form.price" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" :invalid="!!errors.price" />
+            <label class="form-label">ราคาปกติ (บาท) <span v-if="!hasOptions">*</span></label>
+            <InputNumber v-model="form.price" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" :invalid="!!errors.price" :disabled="hasOptions" :placeholder="hasOptions ? 'คำนวณจากตัวเลือก' : ''" />
             <small v-if="errors.price" class="text-rose-500">{{ errors.price }}</small>
           </div>
           <div>
             <label class="form-label">ราคาลด (บาท)</label>
-            <InputNumber v-model="form.sale_price" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" placeholder="เว้นว่าง = ไม่ลด" />
+            <InputNumber v-model="form.sale_price" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" placeholder="เว้นว่าง = ไม่ลด" :disabled="hasOptions" />
           </div>
 
           <div>
             <label class="form-label">จำนวนคงเหลือ</label>
-            <InputNumber v-model="form.stock_qty" :min="0" class="w-full" />
+            <InputNumber v-model="form.stock_qty" :min="0" class="w-full" :disabled="hasOptions" :placeholder="hasOptions ? 'รวมจากตัวเลือก' : ''" />
           </div>
           <div>
             <label class="form-label">อำเภอแหล่งผลิต</label>
@@ -121,6 +121,38 @@
         </div>
       </FormSection>
 
+      <!-- ตัวเลือกสินค้า -->
+      <FormSection title="ตัวเลือกสินค้า (ถ้ามี)" icon="fi fi-rr-list-check" tone="violet">
+        <p class="text-[11px] text-slate-400 mb-2.5">
+          เช่น ขนาด/น้ำหนักต่างกัน — แต่ละตัวเลือกมีราคาและสต๊อกแยกกัน ตัวเลือกไหนหมดจะปิดเฉพาะตัวนั้น
+          <span class="text-slate-300">(เว้นว่าง = สินค้าราคาเดียว)</span>
+        </p>
+        <div v-if="form.options.length" class="space-y-2 mb-3">
+          <div v-for="(opt, i) in form.options" :key="i" class="flex items-end gap-2 bg-slate-50 rounded-xl p-2.5">
+            <div class="flex-1 min-w-0">
+              <label class="text-[11px] text-slate-500 block mb-0.5">ชื่อตัวเลือก</label>
+              <InputText v-model="opt.name" class="w-full" placeholder="เช่น 3 กก." />
+            </div>
+            <div class="w-24 shrink-0">
+              <label class="text-[11px] text-slate-500 block mb-0.5">ราคา (฿)</label>
+              <InputNumber v-model="opt.price" :min="0" mode="decimal" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" />
+            </div>
+            <div class="w-20 shrink-0">
+              <label class="text-[11px] text-slate-500 block mb-0.5">สต๊อก</label>
+              <InputNumber v-model="opt.stock_qty" :min="0" class="w-full" />
+            </div>
+            <button type="button" @click="removeOption(i)"
+              class="w-9 h-9 rounded-lg bg-rose-100 text-rose-500 hover:bg-rose-200 flex items-center justify-center shrink-0 transition">
+              <i class="fi fi-rr-trash text-sm"></i>
+            </button>
+          </div>
+        </div>
+        <Button label="เพิ่มตัวเลือก" icon="fi fi-rr-plus" outlined size="small" @click="addOption" />
+        <p v-if="hasOptions" class="text-[11px] text-violet-600 mt-2 flex items-center gap-1">
+          <i class="fi fi-rr-info"></i> มีตัวเลือกแล้ว — ราคาปกติ/จำนวนคงเหลือด้านบนจะคำนวณอัตโนมัติ (ราคาต่ำสุด · สต๊อกรวม)
+        </p>
+      </FormSection>
+
       <!-- Images -->
       <FormSection title="รูปสินค้า" icon="fi fi-rr-picture" tone="fuchsia">
         <div v-if="!form.id" class="text-sm text-slate-400 py-3 text-center">
@@ -184,8 +216,16 @@ const blank = () => ({
   id: null, name: '', seller_group_id: sellerGroupId.value, category_id: null,
   sku: '', unit: 'ชิ้น', price: null, sale_price: null, stock_qty: 0,
   district: null, short_description: '', description: '', status: 'draft', is_featured: false,
-  shipping_option_ids: [],
+  shipping_option_ids: [], options: [],
 })
+
+const hasOptions = computed(() => form.options.length > 0)
+function addOption() {
+  form.options.push({ id: null, name: '', price: null, stock_qty: 0 })
+}
+function removeOption(i) {
+  form.options.splice(i, 1)
+}
 const form = reactive(blank())
 const images = ref([])
 const errors = reactive({})
@@ -239,6 +279,7 @@ async function loadProduct(id) {
     stock_qty: data.stock_qty, district: data.district, short_description: data.short_description,
     description: data.description, status: data.status, is_featured: !!data.is_featured,
     shipping_option_ids: data.shipping_option_ids || [],
+    options: (data.options || []).map(o => ({ id: o.id, name: o.name, price: Number(o.price), stock_qty: o.stock_qty })),
   })
   images.value = data.images || []
 }
@@ -254,6 +295,14 @@ async function save() {
     errorMsg.value = 'กรุณาเลือกบริการจัดส่งอย่างน้อย 1 รายการ'
     saving.value = false
     return
+  }
+
+  // ถ้ามีตัวเลือก → ราคาสินค้า = ต่ำสุด, สต๊อก = รวม (ให้ผ่าน validation + roll-up ตรงกับ backend)
+  if (form.options.length) {
+    const prices = form.options.map(o => Number(o.price) || 0)
+    form.price = Math.min(...prices)
+    form.sale_price = null
+    form.stock_qty = form.options.reduce((s, o) => s + (Number(o.stock_qty) || 0), 0)
   }
 
   try {

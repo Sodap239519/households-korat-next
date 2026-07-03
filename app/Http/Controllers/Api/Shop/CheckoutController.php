@@ -24,6 +24,7 @@ class CheckoutController extends Controller
         $data = $request->validate([
             'items'                  => ['required', 'array', 'min:1'],
             'items.*.product_id'     => ['required', 'integer'],
+            'items.*.option_id'      => ['nullable', 'integer'],
             'items.*.qty'            => ['required', 'integer', 'min:1'],
             'shipping_name'          => ['required', 'string', 'max:255'],
             'shipping_phone'         => ['required', 'string', 'max:30'],
@@ -36,6 +37,7 @@ class CheckoutController extends Controller
             // per-group shipping (ใหม่) — ถ้าไม่ส่งจะ fallback ไป shipping_option_id เดิม
             'group_shippings'                       => ['nullable', 'array'],
             'group_shippings.*.group_id'            => ['required_with:group_shippings', 'integer'],
+            'group_shippings.*.seller_user_id'      => ['nullable', 'integer'],
             'group_shippings.*.shipping_option_id'  => ['nullable', 'integer', 'exists:seller_shipping_options,id'],
             // legacy fallback
             'shipping_option_id' => ['nullable', 'integer', 'exists:seller_shipping_options,id'],
@@ -47,17 +49,25 @@ class CheckoutController extends Controller
         ]);
 
         $user    = $request->user();
-        $qtyById = collect($data['items'])->pluck('qty', 'product_id');
+        // รวมรายการซ้ำ (product+option เดียวกัน) และเก็บ qty ต่อ (product_id, option_id)
+        $rawItems = collect($data['items'])
+            ->groupBy(fn ($i) => $i['product_id'] . ':' . ($i['option_id'] ?? ''))
+            ->map(fn ($grp) => [
+                'product_id' => (int) $grp[0]['product_id'],
+                'option_id'  => $grp[0]['option_id'] ?? null,
+                'qty'        => (int) $grp->sum('qty'),
+            ])->values();
+        $productIds = $rawItems->pluck('product_id')->unique();
 
-        // สร้าง map {group_id → SellerShippingOption} จาก group_shippings หรือ legacy shipping_option_id
-        $groupShippingMap = [];   // group_id (int) → SellerShippingOption|null
+        // สร้าง map {"group_id:seller_user_id" → SellerShippingOption} — จัดส่งแยกตามร้านย่อย
+        $groupShippingMap = [];   // key "gid:sid" → SellerShippingOption|null
 
         if (!empty($data['group_shippings'])) {
             $optIds = array_filter(array_column($data['group_shippings'], 'shipping_option_id'));
             $opts   = SellerShippingOption::whereIn('id', $optIds)->where('is_active', true)->get()->keyBy('id');
             foreach ($data['group_shippings'] as $gs) {
-                $gid = (int) $gs['group_id'];
-                $groupShippingMap[$gid] = $opts->get($gs['shipping_option_id'] ?? 0);
+                $key = (int) $gs['group_id'] . ':' . ($gs['seller_user_id'] ?? '');
+                $groupShippingMap[$key] = $opts->get($gs['shipping_option_id'] ?? 0);
             }
         }
 
@@ -86,19 +96,34 @@ class CheckoutController extends Controller
         }
 
         // โหลดสินค้าที่เผยแพร่จริง พร้อมล็อกแถวกันสต็อกชน
-        $created = DB::transaction(function () use ($qtyById, $data, $user, $groupShippingMap, $legacyOpt, $paymentMethod) {
+        $created = DB::transaction(function () use ($rawItems, $productIds, $data, $user, $groupShippingMap, $legacyOpt, $paymentMethod) {
             $products = Product::where('status', Product::STATUS_PUBLISHED)
-                ->whereIn('id', $qtyById->keys())
+                ->whereIn('id', $productIds)
+                ->with('options')
                 ->lockForUpdate()
-                ->get();
+                ->get()
+                ->keyBy('id');
 
             abort_if($products->isEmpty(), 422, 'ไม่พบสินค้าในตะกร้า');
 
+            // สร้าง line items: ผูกสินค้า + ตัวเลือก (ถ้ามี)
+            $lines = [];
+            foreach ($rawItems as $it) {
+                $product = $products->get($it['product_id']);
+                if (!$product) continue;
+                $option = $it['option_id'] ? $product->options->firstWhere('id', (int) $it['option_id']) : null;
+                $lines[] = ['product' => $product, 'option' => $option, 'qty' => $it['qty']];
+            }
+            abort_if(empty($lines), 422, 'ไม่พบสินค้าในตะกร้า');
+
             $orders = [];
-            // แตกตามกลุ่มผู้ขาย
-            foreach ($products->groupBy('seller_group_id') as $groupId => $groupProducts) {
-                // หา shipping option ของกลุ่มนี้ (per-group ก่อน → legacy fallback)
-                $shipOpt = $groupShippingMap[(int) $groupId] ?? $legacyOpt;
+            // แตกออเดอร์ตาม "ร้านย่อย" (โซน + seller_user) → จ่ายเงินแยกกันแต่ละร้าน
+            foreach (collect($lines)->groupBy(fn ($l) => $l['product']->seller_group_id . ':' . ($l['product']->seller_user_id ?? '')) as $groupKey => $groupLines) {
+                $groupId  = (int) $groupLines->first()['product']->seller_group_id;
+                $sellerId = $groupLines->first()['product']->seller_user_id;  // อาจ null (สินค้าระดับโซน)
+
+                // หา shipping option ของร้านย่อยนี้ (per-substore ก่อน → legacy fallback)
+                $shipOpt = $groupShippingMap[$groupKey] ?? $legacyOpt;
 
                 // COD: ข้ามขั้นตอนชำระเงินออนไลน์ → เริ่มต้นที่ confirmed ทันที
                 $initialStatus = $paymentMethod === 'cod'
@@ -109,6 +134,7 @@ class CheckoutController extends Controller
                     'order_no'              => self::makeOrderNo(),
                     'user_id'               => $user->id,
                     'seller_group_id'       => $groupId,
+                    'seller_user_id'        => $sellerId,
                     'status'                => $initialStatus,
                     'payment_method'        => $paymentMethod,
                     'shipping_name'         => $data['shipping_name'],
@@ -126,27 +152,37 @@ class CheckoutController extends Controller
                 $order->save();
 
                 $subtotal = 0;
-                foreach ($groupProducts as $product) {
-                    $qty = (int) $qtyById[$product->id];
-                    abort_if($product->stock_qty < $qty, 422, "สินค้า \"{$product->name}\" คงเหลือไม่พอ (เหลือ {$product->stock_qty})");
+                $discount = 0;
+                foreach ($groupLines as $line) {
+                    $product = $line['product'];
+                    $option  = $line['option'];
+                    $qty     = (int) $line['qty'];
 
-                    $unit = (float) ($product->sale_price ?? $product->price);
+                    if ($option) {
+                        // สินค้ามีตัวเลือก → ตรวจ/ตัดสต๊อกของตัวเลือกนั้น
+                        abort_if($option->stock_qty < $qty, 422, "สินค้า \"{$product->name} ({$option->name})\" คงเหลือไม่พอ (เหลือ {$option->stock_qty})");
+                        $unit = (float) $option->price;
+                        $name = "{$product->name} ({$option->name})";
+                    } else {
+                        abort_if($product->stock_qty < $qty, 422, "สินค้า \"{$product->name}\" คงเหลือไม่พอ (เหลือ {$product->stock_qty})");
+                        $unit = (float) ($product->sale_price ?? $product->price);
+                        $name = $product->name;
+                        // ส่วนลด: เฉพาะสินค้าที่ไม่มีตัวเลือก (ตัวเลือกไม่มีราคาลดแยก)
+                        $discount += max(0, ((float) $product->price - $unit) * $qty);
+                    }
+
                     $order->items()->create([
-                        'product_id'   => $product->id,
-                        'product_name' => $product->name,
-                        'unit_price'   => $unit,
-                        'qty'          => $qty,
+                        'product_id'        => $product->id,
+                        'product_option_id' => $option?->id,
+                        'product_name'      => $name,
+                        'unit_price'        => $unit,
+                        'qty'               => $qty,
                     ]);
                     $subtotal += $unit * $qty;
 
+                    // ตัดสต๊อก: ตัวเลือก (ถ้ามี) + สต๊อกรวมของสินค้า ให้ตรงกัน
+                    if ($option) $option->decrement('stock_qty', $qty);
                     $product->decrement('stock_qty', $qty);
-                }
-
-                // คำนวณส่วนลดรวม (จาก effective_price vs price ของแต่ละสินค้า)
-                $discount = 0;
-                foreach ($groupProducts as $product) {
-                    $qty = (int) $qtyById[$product->id];
-                    $discount += max(0, ((float)$product->price - (float)($product->sale_price ?? $product->price)) * $qty);
                 }
 
                 $shippingFee = $shipOpt ? (float) $shipOpt->fee : 0;

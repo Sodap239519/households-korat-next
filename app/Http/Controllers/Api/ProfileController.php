@@ -61,7 +61,8 @@ class ProfileController extends Controller
         }
 
         $user->update([
-            'password' => Hash::make($request->input('new_password')),
+            'password'             => Hash::make($request->input('new_password')),
+            'must_change_password' => false,
         ]);
 
         return response()->json(['message' => 'เปลี่ยนรหัสผ่านสำเร็จ']);

@@ -25,6 +25,7 @@ class Order extends Model
         'order_no',
         'user_id',
         'seller_group_id',
+        'seller_user_id',
         'status',
         'subtotal',
         'shipping_fee',
@@ -63,6 +64,11 @@ class Order extends Model
     public function sellerGroup()
     {
         return $this->belongsTo(SellerGroup::class);
+    }
+
+    public function sellerUser()
+    {
+        return $this->belongsTo(User::class, 'seller_user_id');
     }
 
     public function items()

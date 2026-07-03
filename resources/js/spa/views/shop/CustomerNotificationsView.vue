@@ -39,11 +39,10 @@
 
     <!-- Notification list -->
     <div v-else class="space-y-1">
-      <RouterLink v-for="n in items" :key="n.id"
-        :to="n.link || '/shop/account/orders'"
-        class="flex gap-3 box-card px-4 py-3 transition hover:shadow-md"
+      <button v-for="n in items" :key="n.id" type="button"
+        class="w-full flex gap-3 box-card px-4 py-3 transition hover:shadow-md text-left"
         :class="!n.read_at ? 'border-l-4 border-violet-400 bg-violet-50/60' : ''"
-        @click="markRead(n)">
+        @click="handleNotifClick(n)">
 
         <!-- Icon bubble -->
         <span class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center mt-0.5 text-base"
@@ -66,7 +65,7 @@
 
         <!-- Unread dot -->
         <span v-if="!n.read_at" class="shrink-0 w-2.5 h-2.5 rounded-full bg-orange-400 mt-1.5"></span>
-      </RouterLink>
+      </button>
     </div>
 
     <!-- Load more -->
@@ -83,7 +82,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../../api/index.js'
+
+const router = useRouter()
 
 const tabs = [
   { key: 'all',    label: 'ทั้งหมด' },
@@ -145,6 +147,28 @@ function setTab(key) {
 function loadMore() {
   page.value++
   fetchNotifications(false)
+}
+
+function notifLink(n) {
+  // Reconstruct from data first — more reliable than stored n.link
+  const orderTypes = ['shipped', 'order_confirmed', 'shipping_reminder', 'payment_rejected', 'payment_confirmed', 'order_cancelled']
+  if (orderTypes.includes(n.type) && n.data?.order_no) return `/shop/account/orders/${n.data.order_no}`
+  if (n.type === 'promotion' && n.data?.product_slug) return `/shop/products/${n.data.product_slug}`
+  if (['abandoned_cart', 'flash_sale'].includes(n.type)) return '/shop/cart'
+  if (n.link) return n.link
+  return '/shop/account/orders'
+}
+
+function handleNotifClick(n) {
+  router.push(notifLink(n))
+  if (!n.read_at) {
+    api.post(`/shop/my/customer-notifications/${n.id}/read`)
+      .then(() => {
+        n.read_at = new Date().toISOString()
+        unreadCount.value = Math.max(0, unreadCount.value - 1)
+      })
+      .catch(() => {})
+  }
 }
 
 function iconStyle(type) {

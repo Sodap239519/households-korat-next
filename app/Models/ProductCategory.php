@@ -14,6 +14,7 @@ class ProductCategory extends Model
         'parent_id',
         'name',
         'code',
+        'category_key',
         'slug',
         'image_path',
         'sort_order',

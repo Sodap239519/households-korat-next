@@ -19,10 +19,19 @@ class PaymentController extends Controller
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
 
         $query = Payment::query()
-            ->with(['order:id,order_no,total,status,seller_group_id,user_id,shipping_name', 'order.user:id,name'])
+            ->with([
+                'order:id,order_no,total,status,seller_group_id,user_id,shipping_name',
+                'order.user:id,name',
+                'order.sellerGroup:id,bank_account_name,promptpay_id',
+            ])
             ->whereHas('order', function ($q) use ($user, $request) {
-                if ($scope = $user->sellerGroupScope()) $q->where('seller_group_id', $scope);
-                elseif ($request->filled('group_id'))   $q->where('seller_group_id', $request->input('group_id'));
+                if (($personal = $user->sellerPersonalScope()) !== null) {
+                    $q->whereHas('items.product', fn ($p) => $p->where('seller_user_id', $personal));
+                } elseif ($scope = $user->sellerGroupScope()) {
+                    $q->where('seller_group_id', $scope);
+                } elseif ($request->filled('group_id')) {
+                    $q->where('seller_group_id', $request->input('group_id'));
+                }
             });
 
         if ($request->filled('status')) $query->where('status', $request->input('status'));

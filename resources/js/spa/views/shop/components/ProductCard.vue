@@ -30,18 +30,13 @@
 
       <!-- ราคา + stats row -->
       <div class="mt-1.5 flex items-center gap-2 flex-wrap">
-        <span class="text-base font-bold text-fuchsia-700 leading-none">฿{{ fmt(effectivePrice) }}</span>
+        <span class="text-base font-bold text-fuchsia-700 leading-none">{{ priceLabel }}</span>
         <span v-if="onSale" class="text-[10px] text-slate-400 line-through leading-none">฿{{ fmt(product.price) }}</span>
         <span class="flex-1 min-w-0"></span>
-        <!-- ขายแล้ว (ใช้ rating_count เป็น proxy) -->
-        <span v-if="product.rating_count" class="text-[10px] text-slate-400 flex items-center gap-0.5">
+        <!-- ขายแล้ว (จำนวนชิ้นที่ขายได้จริง) -->
+        <span class="text-[10px] text-slate-400 flex items-center gap-0.5 shrink-0">
           <i class="fi fi-rr-shopping-cart-check" style="font-size:9px;line-height:1"></i>
-          {{ product.rating_count }}
-        </span>
-        <!-- ดู -->
-        <span v-if="product.view_count" class="text-[10px] text-slate-400 flex items-center gap-0.5">
-          <i class="fi fi-rr-eye" style="font-size:9px;line-height:1"></i>
-          {{ fmtShort(product.view_count) }}
+          ขายแล้ว {{ fmtShort(product.total_sold || 0) }}
         </span>
       </div>
 
@@ -66,7 +61,14 @@
           <i class="fi fi-rr-shop text-[10px]"></i> {{ groupName }}
         </RouterLink>
         <div v-else class="flex-1"></div>
-        <button
+        <button v-if="outOfStock" disabled
+          class="shrink-0 w-9 h-9 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center cursor-not-allowed"
+          title="สินค้าหมด"
+          @click.prevent
+        >
+          <i class="fi fi-rr-cross-circle text-sm"></i>
+        </button>
+        <button v-else
           class="shrink-0 w-9 h-9 rounded-full bg-violet-600 hover:bg-violet-700 active:scale-95 text-white flex items-center justify-center shadow-md shadow-violet-500/30 transition"
           title="เพิ่มลงตะกร้า"
           @click.prevent="showSheet = true"
@@ -116,8 +118,19 @@ const groupName = computed(() =>
 const effectivePrice = computed(() =>
   Number(props.product.effective_price ?? props.product.sale_price ?? props.product.price)
 )
+const options = computed(() => props.product.options || [])
+const hasOptions = computed(() => options.value.length > 0)
+// ป้ายราคา: ถ้ามีตัวเลือก → ช่วงราคา, ไม่งั้นราคาปกติ
+const priceLabel = computed(() => {
+  if (hasOptions.value) {
+    const prices = options.value.map(o => Number(o.price))
+    const min = Math.min(...prices), max = Math.max(...prices)
+    return min === max ? `฿${fmt(min)}` : `฿${fmt(min)}–${fmt(max)}`
+  }
+  return `฿${fmt(effectivePrice.value)}`
+})
 const onSale = computed(() =>
-  props.product.sale_price != null && Number(props.product.sale_price) < Number(props.product.price)
+  !hasOptions.value && props.product.sale_price != null && Number(props.product.sale_price) < Number(props.product.price)
 )
 const discountPct = computed(() => {
   const p = Number(props.product.price), s = Number(props.product.sale_price)
@@ -129,6 +142,7 @@ const soldPct = computed(() => {
   if (sold + stock === 0) return Math.max(Math.min(Math.floor((props.product.view_count || 0) / 1.5), 85), 12)
   return Math.min(Math.round(sold / (sold + stock) * 100), 95)
 })
+const outOfStock = computed(() => Number(props.product.stock_qty ?? 0) <= 0)
 
 function fmt(v) {
   return Number(v || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })

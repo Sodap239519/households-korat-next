@@ -23,13 +23,25 @@
           <RouterLink to="/shop/products" class="shrink-0 text-xs text-violet-600 hover:underline font-medium">ดูสินค้าอื่น</RouterLink>
         </div>
 
-        <div v-for="g in cart.groups.value" :key="g.group_id" class="box-card p-4">
-          <p class="text-sm font-semibold text-violet-700 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-            <i class="fi fi-rr-shop"></i> {{ g.group_name || 'กลุ่มผู้ขาย' }}
-          </p>
-          <div v-for="item in g.items" :key="item.product_id"
+        <div v-for="g in cart.groups.value" :key="g.key" class="box-card p-4">
+          <div class="flex items-center gap-2 border-b border-slate-100 pb-2 mb-3">
+            <input type="checkbox" :checked="g.items.every(i => cart.isSel(i))"
+              @change="cart.setGroupSelected(g.key, $event.target.checked)"
+              class="w-4 h-4 accent-violet-600 shrink-0 cursor-pointer" title="เลือกทั้งร้าน" />
+            <i class="fi fi-rr-shop text-violet-600 text-sm"></i>
+            <span class="text-sm font-semibold text-violet-700">{{ g.seller_name || g.group_name || 'ร้านค้า' }}</span>
+            <template v-if="g.seller_name">
+              <span class="text-slate-300">·</span>
+              <span class="text-xs text-slate-500">{{ g.group_name }}</span>
+            </template>
+          </div>
+          <div v-for="item in g.items" :key="item.product_id + ':' + (item.option_id ?? '')"
             class="flex gap-3 py-3 border-b border-slate-50 last:border-0 transition-colors"
             :class="stockStatus(item) === 'out' ? 'bg-rose-50/60 -mx-4 px-4 rounded-xl' : ''">
+            <!-- เลือกรายการ -->
+            <input type="checkbox" :checked="cart.isSel(item)"
+              @change="cart.toggleSelected(item.product_id, item.option_id)"
+              class="w-4 h-4 accent-violet-600 shrink-0 cursor-pointer self-center" />
             <!-- รูปสินค้า -->
             <div class="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center relative">
               <img v-if="item.image" :src="item.image" class="w-full h-full object-cover" :class="stockStatus(item) === 'out' ? 'opacity-40' : ''" />
@@ -45,6 +57,7 @@
               <div class="flex items-start gap-1.5 mb-0.5">
                 <p class="font-medium text-sm leading-snug" :class="stockStatus(item) === 'out' ? 'text-rose-600' : 'text-slate-700'">
                   {{ item.name }}
+                  <span v-if="item.option_name" class="text-xs text-violet-500 font-normal">· {{ item.option_name }}</span>
                 </p>
                 <span v-if="item.original_price > item.price"
                   class="shrink-0 text-[10px] font-bold px-1 py-0.5 rounded-full bg-rose-500 text-white leading-none mt-0.5">
@@ -70,7 +83,7 @@
                 <div class="flex items-center border border-slate-200 rounded-full overflow-hidden bg-white"
                   :class="stockStatus(item) === 'out' ? 'opacity-50 pointer-events-none' : ''">
                   <button class="w-8 h-8 flex items-center justify-center hover:bg-slate-50 text-slate-500 active:bg-slate-100"
-                    @click="cart.updateQty(item.product_id, item.qty - 1)">
+                    @click="cart.updateQty(item.product_id, item.qty - 1, item.option_id)">
                     <i class="fi fi-rr-minus-small text-base"></i>
                   </button>
                   <span class="w-7 text-center text-sm font-medium">{{ item.qty }}</span>
@@ -84,7 +97,7 @@
                   <span v-if="item.original_price > item.price" class="text-xs text-slate-400 line-through font-normal block">฿{{ fmt(item.original_price * item.qty) }}</span>
                 </span>
                 <button class="text-rose-400 hover:text-rose-600 p-1.5 rounded-full hover:bg-rose-50 transition self-end"
-                  @click="cart.remove(item.product_id)">
+                  @click="cart.remove(item.product_id, item.option_id)">
                   <i class="fi fi-rr-trash text-sm"></i>
                 </button>
               </div>
@@ -105,12 +118,12 @@
           </h3>
           <div class="space-y-2 mb-4">
             <div class="flex justify-between text-sm">
-              <span class="text-white/60">จำนวนสินค้า</span>
-              <span class="text-white font-medium">{{ cart.totalQty.value }} ชิ้น</span>
+              <span class="text-white/60">เลือกไว้</span>
+              <span class="text-white font-medium">{{ cart.selectedCount.value }}/{{ cart.count.value }} รายการ · {{ cart.totalQty.value }} ชิ้น</span>
             </div>
             <div class="flex justify-between text-sm">
-              <span class="text-white/60">จำนวนกลุ่มผู้ขาย</span>
-              <span class="text-white font-medium">{{ cart.groups.value.length }} กลุ่ม</span>
+              <span class="text-white/60">แยกจ่ายเป็น</span>
+              <span class="text-white font-medium">{{ cart.selectedGroups.value.length }} ออเดอร์</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-white/60">ราคาเต็ม</span>
@@ -130,10 +143,10 @@
           </div>
           <button
             class="btn-sheen w-full h-12 rounded-xl text-white font-semibold transition shadow-lg"
-            :class="hasOutOfStock ? 'bg-slate-600 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/30'"
-            :disabled="hasOutOfStock"
+            :class="(hasOutOfStock || nothingSelected) ? 'bg-slate-600 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/30'"
+            :disabled="hasOutOfStock || nothingSelected"
             @click="goCheckout">
-            ดำเนินการสั่งซื้อ <i class="fi fi-rr-arrow-right ml-1"></i>
+            {{ nothingSelected ? 'เลือกรายการก่อน' : 'ดำเนินการสั่งซื้อ' }} <i v-if="!nothingSelected" class="fi fi-rr-arrow-right ml-1"></i>
           </button>
           <RouterLink to="/shop/products" class="block text-center text-xs text-white/40 hover:text-white/70 mt-3 transition">เลือกซื้อสินค้าต่อ</RouterLink>
         </div>
@@ -199,13 +212,13 @@
           <!-- button -->
           <div class="px-3 pb-3">
             <button @click="goCheckout"
-              :disabled="hasOutOfStock"
+              :disabled="hasOutOfStock || nothingSelected"
               class="w-full h-11 rounded-xl text-white font-semibold text-sm transition shadow-lg flex items-center justify-center gap-2"
-              :class="hasOutOfStock
+              :class="(hasOutOfStock || nothingSelected)
                 ? 'bg-slate-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/25'">
-              {{ hasOutOfStock ? 'มีสินค้าหมด — แก้ไขก่อน' : 'ดำเนินการสั่งซื้อ' }}
-              <i v-if="!hasOutOfStock" class="fi fi-rr-arrow-right text-xs"></i>
+              {{ nothingSelected ? 'เลือกรายการก่อน' : (hasOutOfStock ? 'มีสินค้าหมด — แก้ไขก่อน' : 'ดำเนินการสั่งซื้อ') }}
+              <i v-if="!hasOutOfStock && !nothingSelected" class="fi fi-rr-arrow-right text-xs"></i>
             </button>
           </div>
         </div>
@@ -237,8 +250,9 @@ let stockTimer = null
 
 function fmt(v) { return Number(v).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
 
-// ดึงจำนวน stock จาก stockMap (ซึ่งอาจเป็น object หรือ number)
+// ดึงจำนวน stock: รายการที่มีตัวเลือก → ใช้สต๊อกของตัวเลือก (snapshot); ไม่งั้นใช้ stockMap
 function getAvailable(item) {
+  if (item.option_id) return item.stock_qty ?? null
   const d = stockMap.value[item.slug]
   if (d === undefined) return null
   return typeof d === 'object' ? (d.stock ?? null) : d
@@ -246,6 +260,13 @@ function getAvailable(item) {
 
 // 'ok' | 'over' (qty > stock แต่ยังมี) | 'out' (stock = 0)
 function stockStatus(item) {
+  if (item.option_id) {
+    const avail = item.stock_qty
+    if (avail === null || avail === undefined) return 'ok'
+    if (avail <= 0) return 'out'
+    if (item.qty > avail) return 'over'
+    return 'ok'
+  }
   const d = stockMap.value[item.slug]
   if (!d) return 'ok'
   const available = typeof d === 'object' ? d.stock : d
@@ -255,16 +276,17 @@ function stockStatus(item) {
   return 'ok'
 }
 
+// เช็คเฉพาะรายการที่เลือกไว้ (ที่จะ checkout)
 const hasOutOfStock = computed(() =>
-  cart.items.value.some(item => stockStatus(item) !== 'ok')
+  cart.selectedItems.value.some(item => stockStatus(item) !== 'ok')
 )
+const nothingSelected = computed(() => cart.selectedCount.value === 0)
 
 // เพิ่มจำนวน — จำกัดไม่ให้เกิน stock
 function incQty(item) {
-  const d = stockMap.value[item.slug]
-  const available = d && typeof d === 'object' ? d.stock : d
-  if (available !== undefined && available >= 0 && item.qty >= available) return
-  cart.updateQty(item.product_id, item.qty + 1)
+  const available = getAvailable(item)
+  if (available !== null && available >= 0 && item.qty >= available) return
+  cart.updateQty(item.product_id, item.qty + 1, item.option_id)
 }
 
 async function refreshStock() {

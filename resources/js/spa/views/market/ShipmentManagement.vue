@@ -223,9 +223,18 @@ const carrierDropdownOptions = computed(() => {
   return opts
 })
 
+// ตรวจว่าเป็นการจัดส่งเอง/รับเอง (ไม่ต้องมีเลขพัสดุ) — รองรับ option ที่ carrier ไม่ใช่ null
+// แต่ชื่อสื่อถึงการจัดส่งเอง เช่น "ส่งเอง/พิกอัพ"
+function isSelfCarrier(carrier) {
+  if (!carrier || carrier === '__self__') return true
+  const s = String(carrier).toLowerCase()
+  return ['ส่งเอง', 'พิกอัพ', 'รับเอง', 'จัดส่งเอง', 'จัดส่งโดยผู้ขาย', 'ผู้ขายจัดส่ง', 'มารับ', 'pickup', 'self']
+    .some(k => s.includes(k.toLowerCase()))
+}
+
 function onCarrierChange(e) {
   const val = typeof e === 'object' && e !== null ? e.value : e
-  ship.self = val === '__self__'
+  ship.self = isSelfCarrier(val)
 }
 
 function fmt(v) { return Number(v).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
@@ -250,12 +259,13 @@ async function openShip(o) {
   const customerCarrier = o.shipping_carrier || null
   const isSelf = !customerCarrier
 
+  const resolvedCarrier = o.shipment?.carrier ? o.shipment.carrier : (isSelf ? '__self__' : (customerCarrier || ''))
   Object.assign(ship, {
     id:          o.id,
-    carrier:     o.shipment?.carrier ? o.shipment.carrier : (isSelf ? '__self__' : (customerCarrier || '')),
+    carrier:     resolvedCarrier,
     tracking_no: o.shipment?.tracking_no || '',
     note:        o.shipment?.note || '',
-    self:        isSelf || !!(o.shipment && !o.shipment.carrier),
+    self:        isSelf || isSelfCarrier(resolvedCarrier) || !!(o.shipment && !o.shipment.carrier),
     method:      o.shipping_method || '',
     prefilled:   !!(o.shipment?.carrier || o.shipment?.tracking_no),
   })
@@ -276,7 +286,7 @@ async function openShip(o) {
         )
         if (matched) {
           ship.carrier = matched.carrier || '__self__'
-          ship.self = !matched.carrier
+          ship.self = !matched.carrier || isSelfCarrier(matched.carrier)
         }
       }
     } catch { /* ignore */ }

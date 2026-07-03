@@ -61,17 +61,26 @@ class CustomerNotificationService
      */
     public static function shipped(Order $order): void
     {
-        $order->loadMissing(['shipment', 'sellerGroup:id,name']);
-        $tracking = $order->shipment?->tracking_no;
-        $carrier  = $order->shipment?->carrier;
-        $detail   = $carrier ? " ผ่าน {$carrier}" : '';
-        $trackInfo = $tracking ? " เลขพัสดุ: {$tracking}" : '';
+        $order->loadMissing(['shipment', 'sellerGroup:id,name', 'items']);
+        $tracking   = $order->shipment?->tracking_no;
+        $carrier    = $order->shipment?->carrier;
+        $itemNames  = $order->items->pluck('product_name')->filter()->values();
+
+        $message = "ออเดอร์ #{$order->order_no}";
+        if ($itemNames->isNotEmpty()) {
+            $shown    = $itemNames->take(2)->implode(', ');
+            $extra    = $itemNames->count() - 2;
+            $more     = $extra > 0 ? " +{$extra} รายการ" : '';
+            $message .= "\n{$shown}{$more}";
+        }
+        if ($carrier)  $message .= "\nผ่าน {$carrier}";
+        if ($tracking) $message .= " เลขพัสดุ: {$tracking}";
 
         self::create(
             userId:  $order->user_id,
             type:    'shipped',
             title:   'ออเดอร์ถูกจัดส่งแล้ว!',
-            message: "ออเดอร์ #{$order->order_no}{$detail}{$trackInfo}",
+            message: $message,
             link:    "/shop/account/orders/{$order->order_no}",
             data:    [
                 'order_id'    => $order->id,

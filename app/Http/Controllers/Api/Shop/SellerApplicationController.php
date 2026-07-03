@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -185,6 +186,7 @@ class SellerApplicationController extends Controller
         $tempPassword      = null;
         $passwordExpiresAt = null;
         $passwordAvailable = false;
+        $tempPasswordHint  = null;
 
         if ($app->status === 'approved' && $app->created_user_id) {
             $createdUserEmail = \App\Models\User::find($app->created_user_id)?->email;
@@ -197,6 +199,8 @@ class SellerApplicationController extends Controller
             } else {
                 $passwordAvailable = Cache::has('seller_temp_pw_' . $app->token);
             }
+            // hint (3 ตัวท้ายของรหัสผ่านชั่วคราว) — ใช้แสดงเมื่อหมดอายุแล้ว
+            $tempPasswordHint = Cache::get('seller_temp_pw_hint_' . $app->token);
         }
 
         return response()->json([
@@ -214,6 +218,7 @@ class SellerApplicationController extends Controller
             'password_available'  => $passwordAvailable,
             'temp_password'       => $tempPassword,
             'password_expires_at' => $passwordExpiresAt,
+            'temp_password_hint'  => $tempPasswordHint,
         ]);
     }
 
@@ -249,9 +254,44 @@ class SellerApplicationController extends Controller
         ], $expiresAt);
         Cache::forget('seller_temp_pw_' . $token);
 
+        // เก็บ hint (3 ตัวท้าย) ไว้นานๆ เผื่อรหัสผ่านหมดอายุแล้ว ยังดู hint ได้
+        Cache::put('seller_temp_pw_hint_' . $token, substr($plainPw, -3), now()->addDays(365));
+
         return response()->json([
             'temp_password'       => $plainPw,
             'password_expires_at' => $expiresAt->toIso8601String(),
         ]);
+    }
+
+    /**
+     * POST /seller/apply/{token}/reset-password
+     * ตั้งรหัสผ่านใหม่ด้วยตัวเอง โดยใช้ token ของใบสมัครเป็นหลักฐาน (ไม่ต้องพึ่งอีเมล)
+     */
+    public function resetPassword(Request $request, string $token): JsonResponse
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ], [], ['password' => 'รหัสผ่านใหม่']);
+
+        $app = SellerApplication::where('token', $token)
+            ->where('status', SellerApplication::STATUS_APPROVED)
+            ->firstOrFail();
+
+        abort_unless($app->created_user_id, 422, 'ยังไม่มีบัญชีผู้ใช้สำหรับใบสมัครนี้');
+
+        $user = \App\Models\User::find($app->created_user_id);
+        abort_unless($user, 404, 'ไม่พบบัญชีผู้ใช้');
+
+        $user->update([
+            'password'             => Hash::make($data['password']),
+            'must_change_password' => false,
+        ]);
+
+        // เคลียร์รหัสชั่วคราวทั้งหมด (ไม่จำเป็นแล้ว)
+        Cache::forget('seller_temp_pw_' . $token);
+        Cache::forget('seller_temp_pw_active_' . $token);
+        Cache::forget('seller_temp_pw_hint_' . $token);
+
+        return response()->json(['message' => 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว เข้าสู่ระบบด้วยรหัสใหม่ได้เลย']);
     }
 }

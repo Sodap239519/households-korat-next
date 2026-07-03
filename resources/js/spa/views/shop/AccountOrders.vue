@@ -3,10 +3,11 @@
     <h1 class="text-xl font-bold text-slate-800 mb-3 px-1">การซื้อของฉัน</h1>
 
     <!-- Status tabs -->
-    <div class="flex gap-1 overflow-x-auto pb-2 -mx-1 px-1 sticky top-14 z-10 bg-white/90 backdrop-blur-sm">
+    <div ref="tabBar" class="flex gap-1 overflow-x-auto pb-2 -mx-1 px-1 sticky top-14 z-10 scrollbar-none">
       <button
         v-for="t in tabs"
         :key="t.key"
+        :ref="el => { if (el) tabEls[t.key] = el }"
         class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap"
         :class="tab === t.key ? 'btn-orange' : 'box-card text-slate-600'"
         @click="setTab(t.key)"
@@ -30,13 +31,21 @@
           <RouterLink
             v-if="o.seller_group?.slug"
             :to="`/shop/sellers/${o.seller_group.slug}`"
-            class="flex items-center gap-1.5 text-sm font-semibold text-slate-700 hover:text-violet-600 transition"
+            class="flex items-start gap-1.5 hover:text-violet-600 transition group"
             @click.stop
           >
-            <i class="fi fi-rr-shop text-violet-600"></i> {{ o.seller_group?.name }}
+            <i class="fi fi-rr-shop text-violet-600 mt-0.5 text-sm shrink-0"></i>
+            <div>
+              <span class="text-sm font-semibold text-slate-700 group-hover:text-violet-600">{{ o.seller_group?.name }}</span>
+              <span v-if="orderSellerNames(o).length" class="block text-xs text-slate-400">{{ orderSellerNames(o).join(', ') }}</span>
+            </div>
           </RouterLink>
-          <span v-else class="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-            <i class="fi fi-rr-shop text-violet-600"></i> {{ o.seller_group?.name }}
+          <span v-else class="flex items-start gap-1.5 text-slate-700">
+            <i class="fi fi-rr-shop text-violet-600 mt-0.5 text-sm shrink-0"></i>
+            <div>
+              <span class="text-sm font-semibold">{{ o.seller_group?.name }}</span>
+              <span v-if="orderSellerNames(o).length" class="block text-xs text-slate-400">{{ orderSellerNames(o).join(', ') }}</span>
+            </div>
           </span>
           <OrderStatusChip :status="o.status" />
         </div>
@@ -77,7 +86,7 @@
               @click="receive(o)"
             >ฉันได้รับสินค้าแล้ว</button>
             <button
-              v-if="o.status === 'completed'"
+              v-if="['completed', 'cancelled', 'refunded'].includes(o.status)"
               :disabled="reordering === o.id"
               class="px-4 py-2 rounded-full text-sm font-medium border border-violet-300 text-violet-700 hover:bg-violet-50 disabled:opacity-50 flex items-center gap-1.5"
               @click.stop="reorder(o)"
@@ -117,11 +126,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, nextTick, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useCart } from '../../composables/useCart.js'
+import { useBuyNow } from '../../composables/useBuyNow.js'
 import api from '../../api/index.js'
 import OrderStatusChip from './components/OrderStatusChip.vue'
 import Pagination from '../components/Pagination.vue'
@@ -133,6 +143,7 @@ const route   = useRoute()
 const confirm = useConfirm()
 const toast   = useToast()
 const cart    = useCart()
+const buyNow  = useBuyNow()
 
 const orders     = ref([])
 const meta       = ref({})
@@ -140,6 +151,7 @@ const loading    = ref(true)
 const page       = ref(1)
 const tab        = ref('history')
 const reordering = ref(null)
+const tabEls     = {}
 
 const tabs = [
   { key: 'history',    label: 'ประวัติการซื้อ' },
@@ -150,7 +162,36 @@ const tabs = [
 ]
 
 function fmt(v) { return Number(v).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
+
+function orderSellerNames(order) {
+  const names = new Set()
+  for (const item of order.items ?? []) {
+    const n = item.product?.seller_user?.shop_name || item.product?.seller_user?.name
+    if (n) names.add(n)
+  }
+  return [...names]
+}
 function goDetail(o) { router.push(`/shop/account/orders/${o.order_no}`) }
+
+function scrollTabIntoView(key) {
+  nextTick(() => {
+    tabEls[key]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  })
+}
+
+async function autoReceive(orderList) {
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+  const now = Date.now()
+  const expired = orderList.filter(o =>
+    ['shipped', 'delivered'].includes(o.status) &&
+    o.shipped_at &&
+    now - new Date(o.shipped_at).getTime() > sevenDaysMs
+  )
+  for (const o of expired) {
+    try { await api.post(`/shop/orders/${o.order_no}/receive`) } catch { /* ignore */ }
+  }
+  return expired.length > 0
+}
 
 async function load() {
   loading.value = true
@@ -160,9 +201,15 @@ async function load() {
     const { data } = await api.get('/shop/my/orders', { params })
     orders.value = data.data || []
     meta.value = data
+    const didReceive = await autoReceive(orders.value)
+    if (didReceive) {
+      const { data: data2 } = await api.get('/shop/my/orders', { params })
+      orders.value = data2.data || []
+      meta.value = data2
+    }
   } finally { loading.value = false }
 }
-function setTab(k) { tab.value = k; page.value = 1; load() }
+function setTab(k) { tab.value = k; page.value = 1; load(); scrollTabIntoView(k) }
 function goPage(p) { page.value = p; load() }
 
 function receive(o) {
@@ -183,18 +230,32 @@ function receive(o) {
 
 async function reorder(o) {
   reordering.value = o.id
-  let added = 0
+  const fetched = []
   try {
     for (const item of o.items) {
       if (!item.product?.slug) continue
       try {
         const { data } = await api.get(`/shop/products/${item.product.slug}`)
-        cart.add(data.product ?? data, item.qty)
-        added++
+        const p = data.product ?? data
+        fetched.push({
+          product_id:     p.id,
+          slug:           p.slug,
+          name:           p.name,
+          price:          Number(p.effective_price ?? p.sale_price ?? p.price),
+          original_price: Number(p.price),
+          unit:           p.unit,
+          image:          p.primary_image_url || null,
+          group_id:       p.seller_group_id ?? p.seller_group?.id,
+          group_name:     p.seller_group?.name ?? '',
+          group_slug:     p.seller_group?.slug ?? '',
+          stock_qty:      p.stock_qty ?? null,
+          qty:            item.qty,
+        })
       } catch { /* สินค้าอาจหมดหรือถูกลบ */ }
     }
-    if (added) {
-      router.push('/shop/checkout')
+    if (fetched.length) {
+      buyNow.setAll(fetched)
+      router.push('/shop/checkout?buynow=1')
     } else {
       toast.add({ severity: 'warn', summary: 'ไม่สามารถสั่งซื้อได้', detail: 'สินค้าอาจหมดหรือถูกลบแล้ว', life: 3000 })
     }
@@ -205,6 +266,7 @@ onMounted(() => {
   const s = route.query.status
   if (s && tabs.some(t => t.key === s)) tab.value = s
   load()
+  scrollTabIntoView(tab.value)
 })
 
 watch(() => route.query.status, (s) => {

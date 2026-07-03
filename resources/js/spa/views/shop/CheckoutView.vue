@@ -55,18 +55,22 @@
           <i class="fi fi-rr-spinner animate-spin text-[11px]"></i> โหลดบริการจัดส่ง...
         </div>
         <template v-else>
-          <div v-for="g in activeGroups" :key="`ship-${g.group_id}`" class="box-card p-4">
-            <h3 class="font-semibold text-slate-800 flex items-center gap-1.5 mb-2 text-sm">
+          <div v-for="g in activeGroups" :key="`ship-${g.key}`" class="box-card p-4">
+            <h3 class="font-semibold text-slate-800 flex items-center gap-1.5 mb-2 text-sm flex-wrap">
               <i class="fi fi-rr-truck-side text-violet-600 text-xs"></i>
               <span>จัดส่ง —</span>
-              <span class="text-violet-600">{{ g.group_name }}</span>
+              <span class="text-violet-600">{{ g.seller_name || g.group_name }}</span>
+              <template v-if="g.seller_name">
+                <span class="text-slate-300 font-normal">·</span>
+                <span class="text-xs text-slate-500 font-normal">{{ g.group_name }}</span>
+              </template>
             </h3>
 
             <template v-if="(groupShipMap[g.group_id] || []).length">
               <label v-for="opt in (groupShipMap[g.group_id] || [])" :key="opt.id"
                 class="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-violet-50/30 -mx-1 px-1 rounded-lg transition">
-                <input type="radio" :name="`ship-group-${g.group_id}`" :value="opt.id"
-                  v-model="selectedGroupShips[g.group_id]"
+                <input type="radio" :name="`ship-group-${g.key}`" :value="opt.id"
+                  v-model="selectedGroupShips[g.key]"
                   class="mt-0.5 accent-violet-600 shrink-0" />
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-slate-800 flex items-center gap-1.5 flex-wrap">
@@ -129,13 +133,17 @@
       <div class="lg:col-span-1 hidden lg:block">
         <div class="box-card p-5 sticky top-20">
           <h3 class="font-bold text-slate-800 mb-3">สรุปคำสั่งซื้อ</h3>
-          <div v-for="g in activeGroups" :key="g.group_id" class="mb-2 pb-2 border-b border-slate-100 last:border-0">
-            <p class="text-xs font-semibold text-violet-700 mb-1.5 flex items-center gap-1">
-              <i class="fi fi-rr-shop"></i> {{ g.group_name }}
+          <div v-for="g in activeGroups" :key="g.key" class="mb-2 pb-2 border-b border-slate-100 last:border-0">
+            <p class="text-xs font-semibold text-violet-700 mb-1.5 flex items-center gap-1 flex-wrap">
+              <i class="fi fi-rr-shop"></i> {{ g.seller_name || g.group_name }}
+              <template v-if="g.seller_name">
+                <span class="text-slate-300">·</span>
+                <span class="font-normal text-slate-500">{{ g.group_name }}</span>
+              </template>
             </p>
-            <div v-for="item in g.items" :key="item.product_id" class="flex justify-between text-sm text-slate-600 gap-2">
+            <div v-for="item in g.items" :key="item.product_id + ':' + (item.option_id ?? '')" class="flex justify-between text-sm text-slate-600 gap-2">
               <span class="truncate flex-1 min-w-0">
-                {{ item.name }}
+                {{ item.name }}<span v-if="item.option_name" class="text-violet-500"> ({{ item.option_name }})</span>
                 <span class="text-slate-400 font-normal"> จำนวน {{ item.qty }} {{ item.unit || 'ชิ้น' }}</span>
                 <span v-if="item.original_price > item.price"
                   class="ml-1 text-[10px] font-bold px-1 py-0.5 rounded-full bg-rose-500 text-white align-middle">
@@ -148,14 +156,14 @@
               </span>
             </div>
             <!-- ค่าจัดส่งของกลุ่มนี้ -->
-            <div v-if="getGroupShipOpt(g.group_id)" class="flex justify-between text-xs mt-1 pt-1 border-t border-slate-100">
+            <div v-if="getGroupShipOpt(g)" class="flex justify-between text-xs mt-1 pt-1 border-t border-slate-100">
               <span class="text-slate-400 flex items-center gap-1 flex-wrap">
                 <i class="fi fi-rr-truck-side text-[9px]"></i>
-                {{ getGroupShipOpt(g.group_id).name }}
-                <span v-if="getGroupShipOpt(g.group_id).carrier" class="text-sky-400">({{ getGroupShipOpt(g.group_id).carrier }})</span>
+                {{ getGroupShipOpt(g).name }}
+                <span v-if="getGroupShipOpt(g).carrier" class="text-sky-400">({{ getGroupShipOpt(g).carrier }})</span>
               </span>
-              <span :class="Number(getGroupShipOpt(g.group_id).fee) === 0 ? 'text-emerald-600 font-medium' : 'text-slate-600'">
-                {{ Number(getGroupShipOpt(g.group_id).fee) === 0 ? 'ฟรี' : `+฿${fmt(getGroupShipOpt(g.group_id).fee)}` }}
+              <span :class="Number(getGroupShipOpt(g).fee) === 0 ? 'text-emerald-600 font-medium' : 'text-slate-600'">
+                {{ Number(getGroupShipOpt(g).fee) === 0 ? 'ฟรี' : `+฿${fmt(getGroupShipOpt(g).fee)}` }}
               </span>
             </div>
           </div>
@@ -306,14 +314,18 @@
         <div v-show="!hasManyItems || summaryExpanded" class="overflow-hidden">
           <div class="px-4 pt-3 pb-1.5 border-b border-slate-100"
                :class="hasManyItems ? 'max-h-48 overflow-y-auto' : ''">
-            <div v-for="g in activeGroups" :key="g.group_id" class="mb-1.5">
-              <p class="text-[10px] font-semibold text-violet-600 flex items-center gap-0.5 mb-0.5">
-                <i class="fi fi-rr-shop text-[9px]"></i> {{ g.group_name }}
+            <div v-for="g in activeGroups" :key="g.key" class="mb-1.5">
+              <p class="text-[10px] font-semibold text-violet-600 flex items-center gap-0.5 mb-0.5 flex-wrap">
+                <i class="fi fi-rr-shop text-[9px]"></i> {{ g.seller_name || g.group_name }}
+                <template v-if="g.seller_name">
+                  <span class="text-slate-300">·</span>
+                  <span class="font-normal text-slate-500">{{ g.group_name }}</span>
+                </template>
               </p>
-              <div v-for="item in g.items" :key="item.product_id"
+              <div v-for="item in g.items" :key="item.product_id + ':' + (item.option_id ?? '')"
                 class="flex justify-between text-xs text-slate-600 py-0.5">
                 <span class="truncate flex-1 mr-2">
-                  {{ item.name }}
+                  {{ item.name }}<span v-if="item.option_name" class="text-violet-500"> ({{ item.option_name }})</span>
                   <span class="text-slate-400"> จำนวน {{ item.qty }} {{ item.unit || 'ชิ้น' }}</span>
                   <span v-if="item.original_price > item.price"
                     class="ml-1 text-[9px] font-bold px-1 rounded-full bg-rose-500 text-white align-middle">
@@ -323,13 +335,13 @@
                 <span class="shrink-0 font-medium">฿{{ fmt(item.price * item.qty) }}</span>
               </div>
               <!-- ค่าจัดส่งกลุ่มนี้ -->
-              <div v-if="getGroupShipOpt(g.group_id)" class="flex justify-between text-[11px] border-t border-slate-100 pt-1 mt-0.5">
+              <div v-if="getGroupShipOpt(g)" class="flex justify-between text-[11px] border-t border-slate-100 pt-1 mt-0.5">
                 <span class="text-slate-400 flex items-center gap-1">
-                  <i class="fi fi-rr-truck-side text-[9px]"></i> {{ getGroupShipOpt(g.group_id).name }}
-                  <span v-if="getGroupShipOpt(g.group_id).carrier" class="text-sky-400">({{ getGroupShipOpt(g.group_id).carrier }})</span>
+                  <i class="fi fi-rr-truck-side text-[9px]"></i> {{ getGroupShipOpt(g).name }}
+                  <span v-if="getGroupShipOpt(g).carrier" class="text-sky-400">({{ getGroupShipOpt(g).carrier }})</span>
                 </span>
-                <span :class="Number(getGroupShipOpt(g.group_id).fee) === 0 ? 'text-emerald-500 font-medium' : 'text-slate-500'">
-                  {{ Number(getGroupShipOpt(g.group_id).fee) === 0 ? 'ฟรี' : `+฿${fmt(getGroupShipOpt(g.group_id).fee)}` }}
+                <span :class="Number(getGroupShipOpt(g).fee) === 0 ? 'text-emerald-500 font-medium' : 'text-slate-500'">
+                  {{ Number(getGroupShipOpt(g).fee) === 0 ? 'ฟรี' : `+฿${fmt(getGroupShipOpt(g).fee)}` }}
                 </span>
               </div>
             </div>
@@ -378,8 +390,8 @@ const buyNow  = useBuyNow()
 const { user } = useAuth()
 
 const isBuyNow    = computed(() => route.query.buynow === '1')
-const activeItems  = computed(() => isBuyNow.value ? buyNow.items.value  : cart.items.value)
-const activeGroups   = computed(() => isBuyNow.value ? buyNow.groups.value : cart.groups.value)
+const activeItems  = computed(() => isBuyNow.value ? buyNow.items.value  : cart.selectedItems.value)
+const activeGroups   = computed(() => isBuyNow.value ? buyNow.groups.value : cart.selectedGroups.value)
 const activeDiscount = computed(() => {
   const items = activeGroups.value.flatMap(g => g.items)
   return items.reduce((s, i) => {
@@ -401,22 +413,23 @@ const hasManyItems = computed(() => {
   return totalItems > 2 || activeGroups.value.length > 1
 })
 
-function getGroupShipOpt(gid) {
-  const optId = selectedGroupShips[gid]
-  const opts  = groupShipMap.value[gid] || []
+// เลือกจัดส่งตาม "ร้านย่อย" (g.key) แต่ตัวเลือกโหลดตามโซน (g.group_id — ร้านในโซนเดียวกันใช้ตัวเลือกร่วมกัน)
+function getGroupShipOpt(g) {
+  const optId = selectedGroupShips[g.key]
+  const opts  = groupShipMap.value[g.group_id] || []
   return opts.find(o => o.id === optId) || null
 }
 
 const allGroupsHaveShipping = computed(() =>
   activeGroups.value.every(g => {
     const opts = groupShipMap.value[g.group_id] || []
-    return !opts.length || selectedGroupShips[g.group_id] != null
+    return !opts.length || selectedGroupShips[g.key] != null
   })
 )
 
 const allowedPayments = computed(() => {
   const perGroup = activeGroups.value.map(g => {
-    const opt = getGroupShipOpt(g.group_id)
+    const opt = getGroupShipOpt(g)
     return opt?.allowed_payment_methods?.length ? opt.allowed_payment_methods : ['online', 'cod']
   })
   if (!perGroup.length) return ['online', 'cod']
@@ -431,7 +444,7 @@ watch(allowedPayments, (methods) => {
 
 const shippingTotal = computed(() =>
   activeGroups.value.reduce((sum, g) => {
-    const opt = getGroupShipOpt(g.group_id)
+    const opt = getGroupShipOpt(g)
     return sum + (opt ? Number(opt.fee) : 0)
   }, 0)
 )
@@ -442,7 +455,7 @@ const grandTotal = computed(() => {
 })
 
 async function loadShipping() {
-  const gids = activeGroups.value.map(g => g.group_id).filter(Boolean)
+  const gids = [...new Set(activeGroups.value.map(g => g.group_id).filter(Boolean))]
   if (!gids.length) return
   loadingShipping.value = true
   try {
@@ -450,12 +463,12 @@ async function loadShipping() {
     gids.forEach(id => params.append('groups[]', id))
     const { data } = await api.get(`/shop/shipping/by-groups?${params}`)
     groupShipMap.value = data || {}
-    // auto-select default per group
-    for (const gid of gids) {
-      const opts = groupShipMap.value[gid] || []
-      if (selectedGroupShips[gid] == null && opts.length) {
+    // auto-select default ต่อร้านย่อย (ตาม g.key)
+    for (const g of activeGroups.value) {
+      const opts = groupShipMap.value[g.group_id] || []
+      if (selectedGroupShips[g.key] == null && opts.length) {
         const def = opts.find(o => o.is_default) || opts[0]
-        if (def) selectedGroupShips[gid] = def.id
+        if (def) selectedGroupShips[g.key] = def.id
       }
     }
   } catch {
@@ -568,10 +581,11 @@ async function placeOrder() {
   error.value = ''
   try {
     const a = selectedAddr.value
-    const items = activeItems.value.map(i => ({ product_id: i.product_id, qty: i.qty }))
+    const items = activeItems.value.map(i => ({ product_id: i.product_id, option_id: i.option_id ?? null, qty: i.qty }))
     const group_shippings = activeGroups.value.map(g => ({
       group_id: g.group_id,
-      shipping_option_id: selectedGroupShips[g.group_id] ?? null,
+      seller_user_id: g.seller_id ?? null,
+      shipping_option_id: selectedGroupShips[g.key] ?? null,
     }))
     const { data } = await api.post('/shop/checkout', {
       shipping_name: a.name, shipping_phone: a.phone, shipping_address: a.address,
@@ -582,7 +596,8 @@ async function placeOrder() {
       payment_method: selectedPayment.value,
     })
     orderPlaced = true
-    isBuyNow.value ? buyNow.clear() : cart.clear()
+    // ลบเฉพาะรายการที่เพิ่งสั่งซื้อ (เลือกไว้) — รายการที่ไม่ได้เลือกยังอยู่ในตะกร้า
+    isBuyNow.value ? buyNow.clear() : cart.clearSelected()
     toast.add({ severity: 'success', summary: 'สั่งซื้อสำเร็จ', detail: `สร้าง ${data.order_nos.length} คำสั่งซื้อ`, life: 2500 })
     router.push(`/shop/account/orders/${data.order_nos[0]}`)
   } catch (e) {

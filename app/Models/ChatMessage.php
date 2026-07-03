@@ -9,7 +9,7 @@ use App\Models\Product;
 
 class ChatMessage extends Model
 {
-    protected $fillable = ['conversation_id', 'sender_id', 'sender_type', 'body', 'is_read', 'product_id', 'image_path'];
+    protected $fillable = ['conversation_id', 'sender_id', 'sender_type', 'body', 'is_read', 'product_id', 'image_path', 'reply_to_id'];
     protected $casts    = ['is_read' => 'boolean'];
     protected $appends  = ['image_url'];
 
@@ -21,4 +21,5 @@ class ChatMessage extends Model
     public function conversation(): BelongsTo { return $this->belongsTo(Conversation::class); }
     public function sender(): BelongsTo       { return $this->belongsTo(User::class, 'sender_id'); }
     public function product(): BelongsTo      { return $this->belongsTo(Product::class)->select(['id', 'name', 'slug', 'price', 'sale_price', 'rating_avg', 'rating_count']); }
+    public function replyTo(): BelongsTo      { return $this->belongsTo(ChatMessage::class, 'reply_to_id')->select(['id', 'sender_type', 'body', 'image_path']); }
 }

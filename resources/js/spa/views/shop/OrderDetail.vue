@@ -12,7 +12,12 @@
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 class="text-base font-bold text-slate-800">{{ order.order_no }}</h1>
-            <p class="text-xs text-slate-400 mt-0.5">{{ order.seller_group?.name }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              {{ order.seller_group?.name }}
+              <template v-if="sellerNames.length">
+                <span class="mx-1">·</span>{{ sellerNames.join(', ') }}
+              </template>
+            </p>
           </div>
           <OrderStatusChip :status="order.status" />
         </div>
@@ -43,24 +48,83 @@
       <div class="box-card p-5">
         <h3 class="font-semibold text-slate-700 text-sm mb-2 flex items-center gap-2">
           <i class="fi fi-rr-marker text-violet-600"></i> ที่อยู่จัดส่ง
+          <button v-if="canEdit" type="button"
+            class="ml-auto text-xs text-violet-600 hover:text-violet-800 flex items-center gap-1 font-medium transition"
+            @click="openEdit">
+            <i class="fi fi-rr-edit"></i> แก้ไข
+          </button>
         </h3>
         <p class="text-sm text-slate-600">{{ order.shipping_name }} · {{ order.shipping_phone }}</p>
         <p class="text-sm text-slate-500 mt-0.5 leading-relaxed">
           {{ [order.shipping_address, order.shipping_sub_district, order.shipping_district, order.shipping_province, order.shipping_zipcode].filter(Boolean).join(' ') }}
         </p>
-        <div v-if="order.shipment?.tracking_no"
-          class="mt-3 px-3 py-2.5 rounded-xl bg-indigo-50 border border-indigo-100 text-sm text-indigo-700 flex items-center gap-2">
+        <!-- วิธีการจัดส่ง — แสดงเสมอถ้ามีค่า หรือถ้ายังแก้ไขได้ให้แสดงข้อความชี้นำ -->
+        <p v-if="order.shipping_method || canEdit"
+          class="text-xs mt-1 flex items-center gap-1.5"
+          :class="order.shipping_method ? 'text-slate-400' : 'text-violet-400'">
           <i class="fi fi-rr-truck-side"></i>
-          <span class="font-medium shrink-0">{{ order.shipment.carrier }}</span>
-          <span class="font-mono text-indigo-800 break-all">{{ order.shipment.tracking_no }}</span>
+          {{ order.shipping_method || 'ยังไม่ได้เลือกวิธีจัดส่ง — กดแก้ไขเพื่อเลือก' }}
+        </p>
+      </div>
+
+      <!-- Shipment card (แสดงเมื่อผู้ขายกดจัดส่งแล้ว — ทั้งแบบมีเลขพัสดุและจัดส่งเอง) -->
+      <div v-if="order.shipment" class="box-card p-5">
+        <h3 class="font-semibold text-slate-700 text-sm mb-3 flex items-center gap-2">
+          <i class="fi fi-rr-truck-side text-indigo-500"></i> ข้อมูลการจัดส่ง
+        </h3>
+        <div class="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 space-y-2">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-2">
+              <i class="fi fi-rr-box-alt text-indigo-400 text-sm"></i>
+              <span class="text-xs text-slate-500">{{ order.shipment.tracking_no ? 'ขนส่ง' : 'วิธีจัดส่ง' }}</span>
+              <span class="text-sm font-semibold text-slate-700">
+                {{ order.shipment.tracking_no ? (order.shipment.carrier || '—') : (order.shipment.carrier || 'จัดส่งโดยผู้ขายโดยตรง') }}
+              </span>
+            </div>
+            <span v-if="order.shipment.shipped_at" class="text-[11px] text-slate-400">
+              ส่งเมื่อ {{ formatDate(order.shipment.shipped_at) }}
+            </span>
+          </div>
+          <!-- มีเลขพัสดุ (ขนส่งเอกชน) -->
+          <div v-if="order.shipment.tracking_no" class="flex items-center gap-2">
+            <i class="fi fi-rr-barcode text-indigo-400 text-sm"></i>
+            <span class="text-xs text-slate-500 shrink-0">เลขพัสดุ</span>
+            <span class="text-sm font-mono font-bold text-indigo-800 break-all flex-1">{{ order.shipment.tracking_no }}</span>
+            <button
+              @click="copyTracking(order.shipment.tracking_no)"
+              class="shrink-0 text-indigo-500 hover:text-indigo-700 text-xs flex items-center gap-1 transition px-2 py-1 rounded-lg hover:bg-indigo-100"
+              title="คัดลอกเลขพัสดุ">
+              <i class="fi fi-rr-copy-alt text-xs"></i>
+              <span>คัดลอก</span>
+            </button>
+          </div>
+          <!-- จัดส่งเอง (ไม่มีเลขพัสดุ) -->
+          <p v-else class="text-xs text-emerald-600 flex items-center gap-1.5">
+            <i class="fi fi-rr-check-circle"></i> ผู้ขายจัดส่งเอง — ไม่มีเลขพัสดุติดตาม
+          </p>
+          <p v-if="order.shipment.note" class="text-xs text-slate-500 pt-1 border-t border-indigo-100">
+            {{ order.shipment.note }}
+          </p>
         </div>
       </div>
 
       <!-- ===== Payment section ===== -->
       <div class="box-card p-5">
-        <h3 class="font-semibold text-slate-700 text-sm mb-3 flex items-center gap-2">
+        <h3 class="font-semibold text-slate-700 text-sm flex items-center gap-2"
+          :class="canEditPayment ? 'mb-1' : 'mb-3'">
           <i class="fi fi-rr-receipt text-violet-600"></i> การชำระเงิน
+          <span class="font-normal text-slate-400 text-xs">
+            ({{ order.payment_method === 'cod' ? 'ชำระปลายทาง' : 'โอนเงิน' }})
+          </span>
+          <button v-if="canEditPayment" type="button"
+            class="ml-auto text-xs text-violet-600 hover:text-violet-800 flex items-center gap-1 font-medium transition"
+            @click="openEdit">
+            <i class="fi fi-rr-edit"></i> แก้ไข
+          </button>
         </h3>
+        <p v-if="canEditPayment" class="text-[11px] text-slate-400 mb-3">
+          วิธีชำระเงินและการจัดส่งสามารถแก้ไขได้ก่อนผู้ขายยืนยัน
+        </p>
 
         <!-- Existing payment status -->
         <div v-if="latestPayment" class="rounded-xl p-4 mb-4 flex gap-3"
@@ -105,9 +169,24 @@
             <p class="text-xs font-semibold text-violet-500 uppercase tracking-wider mb-2">โอนเงินมาที่</p>
             <template v-if="order.seller_group?.bank_account_no || order.seller_group?.promptpay_id">
               <p v-if="order.seller_group?.bank_name" class="text-sm text-slate-600 font-medium">{{ order.seller_group.bank_name }}</p>
-              <p v-if="order.seller_group?.bank_account_no" class="text-base font-bold text-slate-800 font-mono tracking-wide mt-1 break-all">{{ order.seller_group.bank_account_no }}</p>
+              <div v-if="order.seller_group?.bank_account_no" class="flex items-center gap-2 mt-1">
+                <p class="text-base font-bold text-slate-800 font-mono tracking-wide break-all">{{ order.seller_group.bank_account_no }}</p>
+                <button type="button" @click="copyText(order.seller_group.bank_account_no, 'คัดลอกเลขบัญชีแล้ว')"
+                  class="shrink-0 flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 px-2 py-1 rounded-lg hover:bg-violet-100 transition"
+                  title="คัดลอกเลขบัญชี">
+                  <i class="fi fi-rr-copy-alt text-xs"></i> คัดลอก
+                </button>
+              </div>
               <p v-if="order.seller_group?.bank_account_name" class="text-sm text-slate-600 mt-0.5">{{ order.seller_group.bank_account_name }}</p>
-              <p v-if="order.seller_group?.promptpay_id" class="text-sm text-violet-600 mt-1.5 flex items-start gap-1.5"><i class="fi fi-rr-smartphone shrink-0 mt-0.5"></i> <span class="break-all">พร้อมเพย์: {{ order.seller_group.promptpay_id }}</span></p>
+              <div v-if="order.seller_group?.promptpay_id" class="text-sm text-violet-600 mt-1.5 flex items-center gap-1.5">
+                <i class="fi fi-rr-smartphone shrink-0"></i>
+                <span class="break-all">พร้อมเพย์: {{ order.seller_group.promptpay_id }}</span>
+                <button type="button" @click="copyText(order.seller_group.promptpay_id, 'คัดลอกพร้อมเพย์แล้ว')"
+                  class="shrink-0 flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 px-1.5 py-0.5 rounded-lg hover:bg-violet-100 transition"
+                  title="คัดลอกพร้อมเพย์">
+                  <i class="fi fi-rr-copy-alt text-xs"></i>
+                </button>
+              </div>
             </template>
             <p v-else class="text-sm text-slate-500">ติดต่อผู้ขาย: {{ order.seller_group?.contact_phone || '-' }}</p>
             <div class="mt-3 pt-3 border-t border-violet-100 flex items-center justify-between">
@@ -154,7 +233,7 @@
       </div>
 
       <!-- Actions -->
-      <div v-if="canReceive || canReturn || order.status === 'completed'" class="box-card p-5 space-y-2">
+      <div v-if="canReceive || canReturn || ['completed', 'cancelled', 'refunded'].includes(order.status)" class="box-card p-5 space-y-2">
         <button v-if="canReceive"
           class="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition"
           @click="receive">
@@ -165,7 +244,7 @@
           @click="returnOpen = true">
           <i class="fi fi-rr-undo"></i> ขอคืน / เคลมสินค้า
         </button>
-        <button v-if="order.status === 'completed'"
+        <button v-if="['completed', 'cancelled', 'refunded'].includes(order.status)"
           :disabled="reordering"
           class="w-full h-12 rounded-2xl border-2 border-violet-300 text-violet-700 hover:bg-violet-50 font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
           @click="reorder">
@@ -238,6 +317,125 @@
       </div>
     </template>
 
+    <!-- Edit order dialog -->
+    <Dialog v-model:visible="editMode" modal header="แก้ไขคำสั่งซื้อ"
+      :style="{ width: '95vw', maxWidth: '30rem' }">
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="form-label">ชื่อผู้รับ *</label>
+            <input v-model="editForm.shipping_name" class="inp" placeholder="ชื่อ-นามสกุล" />
+          </div>
+          <div>
+            <label class="form-label">เบอร์โทรศัพท์ *</label>
+            <input v-model="editForm.shipping_phone" class="inp" type="tel" placeholder="08x-xxx-xxxx" />
+          </div>
+        </div>
+        <div>
+          <label class="form-label">ที่อยู่ *</label>
+          <input v-model="editForm.shipping_address" class="inp" placeholder="บ้านเลขที่ ถนน หมู่บ้าน" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="form-label">ตำบล/แขวง</label>
+            <input v-model="editForm.shipping_sub_district" class="inp" placeholder="ตำบล" />
+          </div>
+          <div>
+            <label class="form-label">อำเภอ/เขต</label>
+            <input v-model="editForm.shipping_district" class="inp" placeholder="อำเภอ" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="form-label">จังหวัด</label>
+            <input v-model="editForm.shipping_province" class="inp" placeholder="จังหวัด" />
+          </div>
+          <div>
+            <label class="form-label">รหัสไปรษณีย์</label>
+            <input v-model="editForm.shipping_zipcode" class="inp" placeholder="XXXXX" maxlength="5" />
+          </div>
+        </div>
+        <!-- วิธีการจัดส่ง — style เดียวกับหน้า Checkout -->
+        <div class="pt-2 border-t border-slate-100">
+          <p class="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
+            <i class="fi fi-rr-truck-side text-violet-600 text-[11px]"></i> วิธีการจัดส่ง
+          </p>
+          <div v-if="loadingShipping" class="flex items-center gap-2 text-slate-400 text-xs py-2">
+            <i class="fi fi-rr-spinner animate-spin text-[11px]"></i> กำลังโหลดตัวเลือก...
+          </div>
+          <template v-else-if="shippingOptions.length">
+            <label v-for="opt in shippingOptions" :key="opt.id"
+              class="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-violet-50/30 -mx-1 px-1 rounded-lg transition">
+              <input type="radio" :value="opt.id" v-model="editForm.shipping_option_id"
+                class="mt-0.5 accent-violet-600 shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-800">{{ opt.name }}</p>
+                <p class="text-xs text-slate-400 mt-0 flex items-center gap-1">
+                  <i class="fi fi-rr-clock text-[10px]"></i>
+                  {{ opt.days_min === opt.days_max ? `${opt.days_min} วัน` : `${opt.days_min}–${opt.days_max} วัน` }}
+                </p>
+              </div>
+              <span class="shrink-0 text-sm font-semibold"
+                :class="Number(opt.fee) === 0 ? 'text-emerald-600' : 'text-slate-700'">
+                {{ Number(opt.fee) === 0 ? 'ฟรี' : `฿${Number(opt.fee).toLocaleString()}` }}
+              </span>
+            </label>
+          </template>
+          <p v-else class="text-xs text-slate-400 py-1 flex items-center gap-2">
+            <i class="fi fi-rr-info text-slate-300"></i> ยังไม่มีบริการจัดส่ง (ติดต่อผู้ขายโดยตรง)
+          </p>
+        </div>
+
+        <div>
+          <label class="form-label">หมายเหตุการจัดส่ง</label>
+          <input v-model="editForm.shipping_note" class="inp" placeholder="เช่น ฝากไว้ที่นิติฯ" />
+        </div>
+
+        <!-- ช่องทางชำระเงิน — style เดียวกับหน้า Checkout -->
+        <template v-if="canEditPayment">
+          <div class="pt-2 border-t border-slate-100">
+            <p class="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
+              <i class="fi fi-rr-credit-card text-violet-600 text-[11px]"></i> ช่องทางชำระเงิน
+            </p>
+            <label v-if="allowedPayments.online"
+              class="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-violet-50/30 -mx-1 px-1 rounded-lg transition">
+              <input type="radio" name="edit-pay" value="bank_transfer" v-model="editForm.payment_method"
+                class="mt-0.5 accent-violet-600 shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-800 flex items-center gap-1.5">
+                  <i class="fi fi-rr-bank text-violet-500 text-xs"></i>
+                  ชำระเงินในระบบ (โอนเงิน + สลิป)
+                </p>
+                <p class="text-xs text-slate-400 mt-0">โอนเงินเข้าบัญชี แล้วแนบสลิปยืนยัน</p>
+              </div>
+            </label>
+            <label v-if="allowedPayments.cod"
+              class="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-violet-50/30 -mx-1 px-1 rounded-lg transition">
+              <input type="radio" name="edit-pay" value="cod" v-model="editForm.payment_method"
+                class="mt-0.5 accent-violet-600 shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-800 flex items-center gap-1.5">
+                  <i class="fi fi-rr-money-bill-wave text-emerald-500 text-xs"></i>
+                  ชำระเงินปลายทาง (COD)
+                </p>
+                <p class="text-xs text-slate-400 mt-0">เตรียมเงินสดชำระเมื่อรับสินค้า</p>
+              </div>
+            </label>
+            <p v-if="!allowedPayments.online && !allowedPayments.cod" class="text-xs text-slate-400 mt-1">
+              ตัวเลือกจัดส่งนี้ไม่รองรับวิธีชำระเงินที่เปิดใช้
+            </p>
+          </div>
+        </template>
+        <p v-if="editError" class="text-sm text-rose-500 flex items-center gap-1">
+          <i class="fi fi-rr-exclamation"></i> {{ editError }}
+        </p>
+      </div>
+      <template #footer>
+        <Button label="ยกเลิก" text @click="editMode = false" />
+        <Button label="บันทึก" :loading="saving" @click="saveEdit" />
+      </template>
+    </Dialog>
+
     <!-- Return dialog -->
     <Dialog v-model:visible="returnOpen" modal header="ขอคืน / เคลมสินค้า"
       :style="{ width: '95vw', maxWidth: '26rem' }">
@@ -297,7 +495,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCart } from '../../composables/useCart.js'
 import { useToast } from 'primevue/usetoast'
@@ -320,6 +518,15 @@ const orderNo = route.params.orderNo
 
 const order      = ref(null)
 const loading    = ref(true)
+
+const sellerNames = computed(() => {
+  const names = new Set()
+  for (const it of order.value?.items ?? []) {
+    const n = it.product?.seller_user?.shop_name || it.product?.seller_user?.name
+    if (n) names.add(n)
+  }
+  return [...names]
+})
 const submitting = ref(false)
 const payError   = ref('')
 const fullscreenSlip = ref(null)
@@ -330,6 +537,75 @@ const pay = reactive({ file: null, amount: null })
 function onSlipChange({ file, amount }) {
   pay.file   = file
   pay.amount = amount
+}
+
+const editMode       = ref(false)
+const saving         = ref(false)
+const editError      = ref('')
+const shippingOptions   = ref([])
+const loadingShipping   = ref(false)
+const editForm  = reactive({
+  shipping_name: '', shipping_phone: '', shipping_address: '',
+  shipping_sub_district: '', shipping_district: '', shipping_province: '',
+  shipping_zipcode: '', shipping_note: '', payment_method: 'bank_transfer',
+  shipping_option_id: null,
+})
+
+const selectedShippingOpt = computed(() =>
+  shippingOptions.value.find(o => o.id === editForm.shipping_option_id) ?? null
+)
+const allowedPayments = computed(() => {
+  const methods = selectedShippingOpt.value?.allowed_payment_methods ?? ['online', 'cod']
+  return {
+    online: methods.includes('online') || methods.includes('bank_transfer'),
+    cod:    methods.includes('cod'),
+  }
+})
+
+watch(() => editForm.shipping_option_id, () => {
+  const ap = allowedPayments.value
+  if (!ap.online && editForm.payment_method === 'bank_transfer') editForm.payment_method = 'cod'
+  if (!ap.cod   && editForm.payment_method === 'cod')           editForm.payment_method = 'bank_transfer'
+})
+
+async function openEdit() {
+  const o = order.value
+  editForm.shipping_name         = o.shipping_name         || ''
+  editForm.shipping_phone        = o.shipping_phone        || ''
+  editForm.shipping_address      = o.shipping_address      || ''
+  editForm.shipping_sub_district = o.shipping_sub_district || ''
+  editForm.shipping_district     = o.shipping_district     || ''
+  editForm.shipping_province     = o.shipping_province     || ''
+  editForm.shipping_zipcode      = o.shipping_zipcode      || ''
+  editForm.shipping_note         = o.shipping_note         || ''
+  editForm.payment_method        = o.payment_method        || 'bank_transfer'
+  editForm.shipping_option_id    = o.shipping_option_id    ?? null
+  editError.value = ''
+  editMode.value  = true
+
+  // โหลดตัวเลือกจัดส่งของกลุ่มผู้ขาย
+  const gid = o.seller_group_id || o.seller_group?.id
+  if (gid) {
+    loadingShipping.value = true
+    try {
+      const { data } = await api.get(`/shop/shipping/by-groups?groups[]=${gid}`)
+      shippingOptions.value = data[gid] ?? []
+    } catch { shippingOptions.value = [] }
+    finally { loadingShipping.value = false }
+  }
+}
+
+async function saveEdit() {
+  saving.value = true
+  editError.value = ''
+  try {
+    await api.patch(`/shop/orders/${orderNo}`, { ...editForm })
+    toast.add({ severity: 'success', summary: 'บันทึกแล้ว', detail: 'อัปเดตคำสั่งซื้อเรียบร้อย', life: 2500 })
+    editMode.value = false
+    await load()
+  } catch (e) {
+    editError.value = e.response?.data?.message || 'บันทึกไม่สำเร็จ'
+  } finally { saving.value = false }
 }
 
 const returnOpen   = ref(false)
@@ -348,9 +624,11 @@ const canPay = computed(() => {
   if (latestPayment.value?.status === 'rejected') return true
   return false
 })
-const canReceive  = computed(() => ['shipped', 'delivered'].includes(order.value?.status))
-const canReturn   = computed(() => ['shipped', 'delivered'].includes(order.value?.status))
-const canCancel   = computed(() => order.value?.status === 'pending_payment')
+const canReceive     = computed(() => ['shipped', 'delivered'].includes(order.value?.status))
+const canReturn      = computed(() => ['shipped', 'delivered'].includes(order.value?.status))
+const canCancel      = computed(() => order.value?.status === 'pending_payment')
+const canEdit        = computed(() => ['pending_payment', 'awaiting_confirm'].includes(order.value?.status))
+const canEditPayment = computed(() => order.value?.status === 'pending_payment')
 const reordering  = ref(false)
 const cancelling  = ref(false)
 
@@ -387,6 +665,24 @@ async function submitPayment() {
   } catch (e) {
     payError.value = e.response?.data?.message || e.response?.data?.errors?.slip?.[0] || 'แจ้งชำระไม่สำเร็จ'
   } finally { submitting.value = false }
+}
+
+async function copyText(text, label = 'คัดลอกแล้ว') {
+  try {
+    await navigator.clipboard.writeText(String(text))
+    toast.add({ severity: 'success', summary: label, detail: text, life: 2000 })
+  } catch {
+    toast.add({ severity: 'info', summary: label, detail: text, life: 3000 })
+  }
+}
+
+async function copyTracking(no) {
+  try {
+    await navigator.clipboard.writeText(no)
+    toast.add({ severity: 'success', summary: 'คัดลอกแล้ว', detail: no, life: 2000 })
+  } catch {
+    toast.add({ severity: 'info', summary: 'เลขพัสดุ', detail: no, life: 3000 })
+  }
 }
 
 function receive() {

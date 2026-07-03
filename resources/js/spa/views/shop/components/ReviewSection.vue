@@ -72,9 +72,7 @@
       <div v-for="r in reviews" :key="r.id" class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
         <div class="flex items-start justify-between gap-2">
           <div class="flex items-center gap-2.5">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
-              {{ (r.user?.name || '?').charAt(0).toUpperCase() }}
-            </div>
+            <UserAvatar :avatar-path="r.user?.avatar_path" :name="r.user?.name || ''" size="md" />
             <div>
               <p class="text-sm font-semibold text-slate-700">{{ r.user?.name || 'ไม่ระบุชื่อ' }}</p>
               <StarRating :rating="r.rating" size="xs" :show-count="false" class="mt-0.5" />
@@ -163,6 +161,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '../../../api/index.js'
 import { useAuth } from '../../../composables/useAuth.js'
 import StarRating from './StarRating.vue'
+import UserAvatar from './UserAvatar.vue'
 
 const { user } = useAuth()
 

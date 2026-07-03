@@ -21,14 +21,15 @@ class ProductController extends Controller
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
 
         $query = Product::query()
-            ->with(['images', 'category:id,name', 'sellerGroup:id,name'])
+            ->with(['images', 'category:id,name', 'sellerGroup:id,name', 'options'])
             ->withCount('reviews');
 
-        // scope กลุ่ม
-        if (($scope = $user->sellerGroupScope()) !== null) {
+        // scope: ผู้ขายทั่วไปเห็นเฉพาะสินค้าตัวเอง, admin/superadmin เห็นทั้งกลุ่ม/ทั้งหมด
+        if (($personal = $user->sellerPersonalScope()) !== null) {
+            $query->where('seller_user_id', $personal);
+        } elseif (($scope = $user->sellerGroupScope()) !== null) {
             $query->where('seller_group_id', $scope);
         } elseif ($request->filled('group_id')) {
-            // superadmin กรองตาม group_id ที่เลือก
             $query->where('seller_group_id', $request->input('group_id'));
         }
 
@@ -55,16 +56,19 @@ class ProductController extends Controller
 
         $product = new Product($validated);
         $product->seller_group_id = $groupId;
+        $product->seller_user_id  = $user->isAdmin() ? null : $user->id;
         $product->slug = $this->uniqueSlug($validated['name']);
         $product->save();
 
-        return response()->json($product->load('images'), 201);
+        $this->syncOptions($product, $request->input('options'));
+
+        return response()->json($product->load(['images', 'options']), 201);
     }
 
     public function show(Request $request, Product $product): JsonResponse
     {
         $this->authorizeProduct($request, $product);
-        return response()->json($product->load(['images', 'category:id,name', 'sellerGroup:id,name']));
+        return response()->json($product->load(['images', 'category:id,name', 'sellerGroup:id,name', 'options']));
     }
 
     public function update(Request $request, Product $product): JsonResponse
@@ -83,13 +87,15 @@ class ProductController extends Controller
         }
         $product->save();
 
+        $this->syncOptions($product, $request->input('options'));
+
         // แจ้งเตือนโปรโมชั่นเมื่อราคาลด
         $newPrice = (float) $product->fresh()->effective_price;
         if ($newPrice < $oldPrice) {
             CustomerNotificationService::promotion($product, $oldPrice, $newPrice);
         }
 
-        return response()->json($product->load('images'));
+        return response()->json($product->load(['images', 'options']));
     }
 
     public function destroy(Request $request, Product $product): JsonResponse
@@ -151,7 +157,9 @@ class ProductController extends Controller
             ->with(['images' => fn($q) => $q->where('is_primary', true)])
             ->orderBy('flash_sale_end');
 
-        if (!$user->isAdmin()) {
+        if (($personal = $user->sellerPersonalScope()) !== null) {
+            $q->where('seller_user_id', $personal);
+        } elseif (!$user->isSuperAdmin() && $user->seller_group_id) {
             $q->where('seller_group_id', $user->seller_group_id);
         }
 
@@ -171,7 +179,9 @@ class ProductController extends Controller
         ]);
 
         $q = Product::whereIn('id', $data['product_ids']);
-        if (!$user->isAdmin()) {
+        if (($personal = $user->sellerPersonalScope()) !== null) {
+            $q->where('seller_user_id', $personal);
+        } elseif (!$user->isSuperAdmin() && $user->seller_group_id) {
             $q->where('seller_group_id', $user->seller_group_id);
         }
 
@@ -211,7 +221,53 @@ class ProductController extends Controller
             'is_featured'         => ['boolean'],
             'shipping_option_ids' => ['required', 'array', 'min:1'],
             'shipping_option_ids.*' => ['integer', 'exists:seller_shipping_options,id'],
+            // ตัวเลือกสินค้า (ไม่บังคับ) — ถ้ามี แต่ละตัวต้องมีชื่อ/ราคา/สต๊อก
+            'options'             => ['nullable', 'array'],
+            'options.*.id'        => ['nullable', 'integer'],
+            'options.*.name'      => ['required_with:options', 'string', 'max:100'],
+            'options.*.price'     => ['required_with:options', 'numeric', 'min:0'],
+            'options.*.stock_qty' => ['required_with:options', 'integer', 'min:0'],
         ]);
+    }
+
+    /**
+     * ซิงค์ตัวเลือกสินค้า + roll-up ราคา(ต่ำสุด)/สต๊อก(รวม) ขึ้นระดับสินค้า
+     * เพื่อให้ logic แคตตาล็อก/สต๊อก/สินค้าหมด เดิมทำงานต่อได้
+     * - $options = null  → ไม่แตะ (partial update)
+     * - $options = []    → ลบตัวเลือกทั้งหมด (กลับเป็นสินค้าธรรมดา)
+     */
+    private function syncOptions(Product $product, ?array $options): void
+    {
+        if ($options === null) return;
+
+        $keepIds = [];
+        foreach (array_values($options) as $i => $opt) {
+            $attrs = [
+                'name'       => $opt['name'],
+                'price'      => $opt['price'],
+                'stock_qty'  => $opt['stock_qty'],
+                'sort_order' => $i,
+                'is_active'  => $opt['is_active'] ?? true,
+            ];
+            $existing = !empty($opt['id']) ? $product->options()->whereKey($opt['id'])->first() : null;
+            if ($existing) {
+                $existing->update($attrs);
+                $keepIds[] = $existing->id;
+            } else {
+                $keepIds[] = $product->options()->create($attrs)->id;
+            }
+        }
+        $product->options()->whereNotIn('id', $keepIds ?: [0])->delete();
+
+        // roll-up: ถ้ามีตัวเลือก → ราคาสินค้า = ต่ำสุด, สต๊อก = รวม, ยกเลิกราคาลดระดับสินค้า
+        $product->refresh()->loadMissing('options');
+        if ($product->options->isNotEmpty()) {
+            $product->update([
+                'price'      => $product->options->min('price'),
+                'sale_price' => null,
+                'stock_qty'  => $product->options->sum('stock_qty'),
+            ]);
+        }
     }
 
     private function resolveGroupId(Request $request, $user): int
@@ -227,6 +283,10 @@ class ProductController extends Controller
         $user = $request->user();
         abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
         abort_unless($user->canActInGroup($product->seller_group_id), 403, 'สินค้านี้อยู่นอกกลุ่มที่คุณดูแล');
+        // staff ทั่วไปแก้เฉพาะสินค้าตัวเอง
+        if (!$user->isAdmin()) {
+            abort_unless((int) $product->seller_user_id === $user->id, 403, 'คุณไม่ใช่เจ้าของสินค้านี้');
+        }
     }
 
     private function uniqueSlug(string $name): string

@@ -32,9 +32,12 @@
         <!-- Info -->
         <div class="flex-1 min-w-0">
           <p class="font-semibold text-slate-800 text-sm">{{ row.name }}</p>
-          <div class="flex items-center gap-2 mt-0.5">
+          <div class="flex items-center gap-2 mt-0.5 flex-wrap">
             <span v-if="!row.seller_group_id" class="text-[11px] px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100 font-medium">กลาง</span>
             <span v-else class="text-[11px] text-slate-400">{{ row.seller_group?.name }}</span>
+            <span v-if="row.category_key" class="text-[11px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100 font-medium">
+              {{ CATEGORY_LABELS[row.category_key] || row.category_key }}
+            </span>
             <span class="text-[11px] text-slate-400">{{ row.products_count || 0 }} สินค้า</span>
           </div>
         </div>
@@ -72,6 +75,12 @@
           <InputText v-model="form.code" class="w-full uppercase" placeholder="เช่น MUSH, VEG, HERB" maxlength="20" />
           <small class="text-slate-400 text-xs">ตัวอักษร A-Z ไม่เกิน 20 ตัว — ถ้าไม่ระบุจะใช้ PRD</small>
         </div>
+        <div v-if="isAdmin">
+          <label class="form-label">ประเภทผู้ขายที่ใช้ได้</label>
+          <Select v-model="form.category_key" :options="CATEGORY_OPTIONS" optionLabel="label" optionValue="key"
+            placeholder="ไม่จำกัด (ทุกร้านใช้ได้)" class="w-full" showClear />
+          <small class="text-slate-400 text-xs">ถ้าเลือก — เฉพาะร้านที่สมัครประเภทนี้จึงเห็นหมวดนี้</small>
+        </div>
         <div class="flex items-center gap-2">
           <ToggleSwitch v-model="form.is_active" inputId="catact" />
           <label for="catact" class="text-sm text-slate-600">ใช้งาน</label>
@@ -101,10 +110,28 @@ import { useAuth } from '../../composables/useAuth.js'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Toast from 'primevue/toast'
+
+const CATEGORY_OPTIONS = [
+  { key: 'vegetable_fruit',  label: 'สินค้าเกษตร (พืช-ผัก-ผลไม้)' },
+  { key: 'fresh_food',       label: 'อาหารสด (เนื้อ ปลา ไข่)' },
+  { key: 'processed_food',   label: 'อาหารแปรรูป' },
+  { key: 'ready_to_eat',     label: 'อาหารพร้อมทาน' },
+  { key: 'bakery',           label: 'เบเกอรี่-ขนม' },
+  { key: 'beverage',         label: 'เครื่องดื่ม' },
+  { key: 'mushroom',         label: 'เห็ด' },
+  { key: 'herb',             label: 'สมุนไพร-ยาสมุนไพร' },
+  { key: 'household',        label: 'ของใช้ในบ้าน' },
+  { key: 'handicraft',       label: 'หัตถกรรม-ของฝาก' },
+  { key: 'clothing',         label: 'เสื้อผ้า-สิ่งทอ' },
+  { key: 'agriculture',      label: 'เกษตรกรรม-เมล็ดพันธุ์' },
+  { key: 'service',          label: 'บริการ (ซ่อม-สอน-ดูแล)' },
+]
+const CATEGORY_LABELS = Object.fromEntries(CATEGORY_OPTIONS.map(o => [o.key, o.label]))
 
 const { isAdmin, canActInGroup } = useAuth()
 const confirm = useConfirm()
@@ -116,7 +143,7 @@ const dialogOpen = ref(false)
 const saving = ref(false)
 const err = reactive({})
 const errorMsg = ref('')
-const form = reactive({ id: null, name: '', code: '', is_active: true, is_global: false })
+const form = reactive({ id: null, name: '', code: '', category_key: null, is_active: true, is_global: false })
 
 function canEdit(cat) {
   if (!cat.seller_group_id) return isAdmin.value
@@ -129,16 +156,17 @@ async function reload() {
   finally { loading.value = false }
 }
 
-function openCreate() { Object.assign(form, { id: null, name: '', code: '', is_active: true, is_global: false }); clearErr(); dialogOpen.value = true }
-function openEdit(c) { Object.assign(form, { id: c.id, name: c.name, code: c.code ?? '', is_active: !!c.is_active, is_global: !c.seller_group_id }); clearErr(); dialogOpen.value = true }
+function openCreate() { Object.assign(form, { id: null, name: '', code: '', category_key: null, is_active: true, is_global: false }); clearErr(); dialogOpen.value = true }
+function openEdit(c) { Object.assign(form, { id: c.id, name: c.name, code: c.code ?? '', category_key: c.category_key ?? null, is_active: !!c.is_active, is_global: !c.seller_group_id }); clearErr(); dialogOpen.value = true }
 function clearErr() { Object.keys(err).forEach(k => delete err[k]); errorMsg.value = '' }
 
 async function save() {
   saving.value = true; clearErr()
   try {
     const code = form.code.trim().toUpperCase() || null
-    if (form.id) await api.put(`/market/categories/${form.id}`, { name: form.name, code, is_active: form.is_active })
-    else await api.post('/market/categories', { name: form.name, code, is_active: form.is_active, is_global: form.is_global })
+    const category_key = form.category_key || null
+    if (form.id) await api.put(`/market/categories/${form.id}`, { name: form.name, code, category_key, is_active: form.is_active })
+    else await api.post('/market/categories', { name: form.name, code, category_key, is_active: form.is_active, is_global: form.is_global })
     toast.add({ severity: 'success', summary: 'บันทึกแล้ว', life: 2000 })
     dialogOpen.value = false; reload()
   } catch (e) {

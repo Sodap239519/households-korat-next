@@ -4,6 +4,7 @@
     <div class="box-card p-4">
       <p class="text-sm font-semibold text-slate-700 mb-2"><i class="fi fi-rr-comment mr-1 text-violet-600"></i> ถาม-ตอบ / ความคิดเห็น</p>
       <div v-if="user" class="flex gap-2">
+        <UserAvatar :avatar-path="user.avatar_path" :name="user.name || ''" size="sm" class="mt-1" />
         <textarea v-model="newBody" rows="2" placeholder="ถามหรือแสดงความคิดเห็น..." class="inp flex-1 resize-none"></textarea>
         <button class="btn-orange self-end px-4 py-2 rounded-full text-sm font-semibold shrink-0" :disabled="postBusy || !newBody.trim()" @click="postComment(null, newBody)">
           ส่ง
@@ -17,29 +18,38 @@
     <!-- รายการคอมเมนต์ -->
     <div v-if="!comments.length && !loading" class="text-sm text-slate-400 text-center py-3">ยังไม่มีความคิดเห็น</div>
     <div v-for="c in comments" :key="c.id" class="box-card p-4 space-y-2">
-      <div class="flex items-start justify-between gap-2">
-        <div>
-          <span class="text-sm font-semibold text-slate-700">{{ c.user?.name }}</span>
-          <span class="text-xs text-slate-400 ml-2">{{ fmtDate(c.created_at) }}</span>
+      <div class="flex items-start gap-2.5">
+        <UserAvatar :avatar-path="c.user?.avatar_path" :name="c.user?.name || ''" size="sm" />
+        <div class="flex-1 min-w-0">
+          <div class="flex items-baseline gap-2">
+            <span class="text-sm font-semibold text-slate-700">{{ c.user?.name }}</span>
+            <span class="text-xs text-slate-400">{{ fmtDate(c.created_at) }}</span>
+          </div>
+          <p class="text-sm text-slate-600 mt-0.5">{{ c.body }}</p>
         </div>
       </div>
-      <p class="text-sm text-slate-600">{{ c.body }}</p>
 
       <!-- replies -->
-      <div v-if="c.replies?.length" class="pl-3 border-l-2 border-violet-200 space-y-2 mt-1">
-        <div v-for="rep in c.replies" :key="rep.id">
-          <span class="text-xs font-semibold text-violet-700">{{ rep.user?.name }}</span>
-          <span class="text-xs text-slate-400 ml-2">{{ fmtDate(rep.created_at) }}</span>
-          <p class="text-sm text-slate-600">{{ rep.body }}</p>
+      <div v-if="c.replies?.length" class="pl-3 border-l-2 border-violet-200 space-y-2 mt-1 ml-10">
+        <div v-for="rep in c.replies" :key="rep.id" class="flex items-start gap-2">
+          <UserAvatar :avatar-path="rep.user?.avatar_path" :name="rep.user?.name || ''" size="xs" />
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline gap-2">
+              <span class="text-xs font-semibold text-violet-700">{{ rep.user?.name }}</span>
+              <span class="text-xs text-slate-400">{{ fmtDate(rep.created_at) }}</span>
+            </div>
+            <p class="text-sm text-slate-600">{{ rep.body }}</p>
+          </div>
         </div>
       </div>
 
       <!-- ตอบกลับ -->
-      <div v-if="user">
+      <div v-if="user" class="ml-10">
         <button v-if="replyTo !== c.id" class="text-xs text-violet-600 hover:underline" @click="replyTo = c.id; replyBody = ''">
           <i class="fi fi-rr-reply mr-0.5"></i> ตอบกลับ
         </button>
         <div v-else class="flex gap-2 mt-1">
+          <UserAvatar :avatar-path="user.avatar_path" :name="user.name || ''" size="xs" class="mt-1" />
           <textarea v-model="replyBody" rows="2" placeholder="ตอบกลับ..." class="inp flex-1 resize-none text-xs"></textarea>
           <div class="flex flex-col gap-1 self-end">
             <button class="btn-orange px-3 py-1.5 rounded-full text-xs font-semibold" :disabled="postBusy || !replyBody.trim()" @click="postComment(c.id, replyBody)">ส่ง</button>
@@ -60,6 +70,7 @@ import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuth } from '../../../composables/useAuth.js'
 import api from '../../../api/index.js'
+import UserAvatar from './UserAvatar.vue'
 
 const props = defineProps({
   slug: { type: String, required: true },

@@ -62,7 +62,8 @@
             <div>
               <span class="font-bold text-fuchsia-700">฿{{ fmt(row.sale_price ?? row.price) }}</span>
               <span v-if="row.sale_price != null" class="text-xs text-slate-400 line-through ml-1">฿{{ fmt(row.price) }}</span>
-              <span class="text-[11px] text-slate-400 ml-2">สต็อก: {{ row.stock_qty }} {{ row.unit }}</span>
+              <span v-if="Number(row.stock_qty) <= 0" class="text-[11px] font-semibold text-rose-600 ml-2">สินค้าหมด</span>
+              <span v-else class="text-[11px] text-slate-400 ml-2">สต็อก: {{ row.stock_qty }} {{ row.unit }}</span>
             </div>
             <div class="flex gap-1.5">
               <button class="w-8 h-8 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-600 flex items-center justify-center transition"

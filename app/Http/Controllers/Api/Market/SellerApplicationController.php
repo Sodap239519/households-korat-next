@@ -185,19 +185,46 @@ class SellerApplicationController extends Controller
                 $group = SellerGroup::find($sellerApplication->requested_group_id);
             }
 
-            // 2. สร้าง user account ให้ผู้สมัคร
+            // 2. ใช้ user เดิม (ถ้ามีเมลนี้แล้ว) หรือสร้างใหม่
+            $email = $sellerApplication->applicant_email
+                ?? Str::slug($sellerApplication->business_name) . '@seller.local';
             $tempPassword = $data['temp_password'] ?? Str::random(10);
-            $newUser = User::create([
-                'name'            => $sellerApplication->applicant_name,
-                'email'           => $sellerApplication->applicant_email
-                    ?? Str::slug($sellerApplication->business_name) . '@seller.local',
-                'password'        => Hash::make($tempPassword),
-                'role'            => User::ROLE_STAFF,
-                'seller_group_id' => $group?->id,
-                'is_approved'     => true,
-                'approved_at'     => now(),
-                'approved_by'     => $user->id,
-            ]);
+
+            $existingUser = User::where('email', $email)->first();
+            if ($existingUser) {
+                $updateData = [
+                    'name'                 => $sellerApplication->applicant_name,
+                    'shop_name'            => $sellerApplication->business_name,
+                    'role'                 => User::ROLE_STAFF,
+                    'seller_group_id'      => $group?->id,
+                    'is_approved'          => true,
+                    'approved_at'          => now(),
+                    'approved_by'          => $user->id,
+                    'must_change_password' => true,
+                ];
+                if ($sellerApplication->logo_path && !$existingUser->avatar_path) {
+                    $updateData['avatar_path'] = $sellerApplication->logo_path;
+                }
+                $existingUser->update($updateData);
+                if (!empty($data['temp_password'])) {
+                    $existingUser->update(['password' => Hash::make($tempPassword)]);
+                }
+                $newUser = $existingUser;
+            } else {
+                $newUser = User::create([
+                    'name'                 => $sellerApplication->applicant_name,
+                    'shop_name'            => $sellerApplication->business_name,
+                    'avatar_path'          => $sellerApplication->logo_path,
+                    'email'                => $email,
+                    'password'             => Hash::make($tempPassword),
+                    'role'                 => User::ROLE_STAFF,
+                    'seller_group_id'      => $group?->id,
+                    'is_approved'          => true,
+                    'approved_at'          => now(),
+                    'approved_by'          => $user->id,
+                    'must_change_password' => true,
+                ]);
+            }
 
             // 3. อัปเดตคำขอ
             $sellerApplication->update([
@@ -211,6 +238,8 @@ class SellerApplicationController extends Controller
 
             // เก็บ temp password ไว้ 7 วัน (ยังไม่เริ่มนับ 30 นาที — เริ่มเมื่อผู้สมัครกดเปิดดูเอง)
             Cache::put('seller_temp_pw_' . $sellerApplication->token, $tempPassword, now()->addDays(7));
+            // hint (3 ตัวท้าย) เก็บไว้นาน 1 ปี — แสดงหลังรหัสหมดอายุ เผื่อไม่เคยกดปุ่ม "เปิดดูรหัสผ่าน" เลย
+            Cache::put('seller_temp_pw_hint_' . $sellerApplication->token, substr($tempPassword, -3), now()->addDays(365));
 
             return response()->json([
                 'message'       => 'อนุมัติสำเร็จ สร้างบัญชีผู้ขายแล้ว',

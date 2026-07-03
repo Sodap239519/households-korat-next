@@ -17,7 +17,9 @@ function persist() {
 
 function apply() {
     const html = document.documentElement
-    html.style.fontSize = FONT_STEPS[fontIndex.value] + '%'
+    // บนมือถือ (จอ < 640px) ลด base ลง ~8% ให้ทุกอย่างกะทัดรัดพอดีตา
+    const mobileScale = (typeof window !== 'undefined' && window.innerWidth < 640) ? 0.92 : 1
+    html.style.fontSize = (FONT_STEPS[fontIndex.value] * mobileScale) + '%'
     html.classList.toggle('shop-dark', mode.value === 'dark')
     // Soft Purple mode มีพื้นหลังอ่อน — คง PrimeVue ไว้ในโหมด light ตลอด
     html.classList.remove('app-dark')
@@ -36,6 +38,14 @@ export function useDisplaySettings() {
         initialized = true
         load()
         apply()
+        // re-apply เมื่อหมุนจอ/เปลี่ยนขนาด (สลับ scale มือถือ↔เดสก์ท็อป)
+        if (typeof window !== 'undefined') {
+            let t = null
+            window.addEventListener('resize', () => {
+                clearTimeout(t)
+                t = setTimeout(apply, 200)
+            })
+        }
     }
 
     function increaseFont() { if (fontIndex.value < FONT_STEPS.length - 1) { fontIndex.value++; apply(); persist() } }

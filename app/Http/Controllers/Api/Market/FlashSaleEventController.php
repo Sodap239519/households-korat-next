@@ -9,21 +9,115 @@ use App\Models\Product;
 use App\Services\CustomerNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class FlashSaleEventController extends Controller
 {
-    /** GET /market/flash-sale-events */
+    private const PAID = ['confirmed', 'processing', 'shipped', 'delivered', 'completed'];
+
+    /** GET /market/flash-sale-events?tab=active|history|calendar&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD */
     public function index(Request $request): JsonResponse
     {
-        abort_unless($request->user()->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
+        $user = $request->user();
+        abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
 
+        $tab      = $request->input('tab', 'active');
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to') ? $request->input('date_to') . ' 23:59:59' : null;
+
+        if ($tab === 'history') {
+            // เฉพาะ admin/superadmin: ประวัติ event ที่จบแล้ว + สถิติ
+            abort_unless($user->isAdmin(), 403, 'เฉพาะผู้ดูแลระบบเท่านั้น');
+
+            $events = FlashSaleEvent::withCount('items')
+                ->with('creator:id,name')
+                ->where('ends_at', '<', now())
+                ->when($dateFrom, fn ($q) => $q->where('ends_at', '>=', $dateFrom))
+                ->when($dateTo,   fn ($q) => $q->where('starts_at', '<=', $dateTo))
+                ->orderByDesc('ends_at')
+                ->get()
+                ->map(function (FlashSaleEvent $ev) {
+                    $stats = DB::table('order_items')
+                        ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                        ->join('flash_sale_event_items', 'flash_sale_event_items.product_id', '=', 'order_items.product_id')
+                        ->where('flash_sale_event_items.event_id', $ev->id)
+                        ->whereIn('orders.status', self::PAID)
+                        ->whereBetween('orders.created_at', [$ev->starts_at, $ev->ends_at])
+                        ->selectRaw('COALESCE(SUM(order_items.qty), 0) as sold_qty, COALESCE(SUM(order_items.line_total), 0) as revenue')
+                        ->first();
+
+                    $ev->sold_qty = (int)   ($stats->sold_qty ?? 0);
+                    $ev->revenue  = (float) ($stats->revenue  ?? 0);
+                    return $ev;
+                });
+
+            return response()->json($events);
+        }
+
+        if ($tab === 'calendar') {
+            // ปฏิทิน: event ทั้งหมดที่ overlap กับช่วงวันที่ (ทั้งอดีต/ปัจจุบัน/อนาคต)
+            $events = FlashSaleEvent::withCount('items')
+                ->when($dateFrom, fn ($q) => $q->where('ends_at', '>=', $dateFrom))
+                ->when($dateTo,   fn ($q) => $q->where('starts_at', '<=', $dateTo))
+                ->orderBy('starts_at')
+                ->get();
+
+            return response()->json($events);
+        }
+
+        // tab=active (default): กำลังดำเนินการหรือกำลังจะมาถึง
         $events = FlashSaleEvent::withCount('items')
             ->with('creator:id,name')
-            ->orderByDesc('starts_at')
+            ->where(fn ($q) => $q->where('ends_at', '>=', now())->orWhere('starts_at', '>', now()))
+            ->when($dateFrom, fn ($q) => $q->where('ends_at', '>=', $dateFrom))
+            ->when($dateTo,   fn ($q) => $q->where('starts_at', '<=', $dateTo))
+            ->orderBy('starts_at')
             ->get();
 
         return response()->json($events);
+    }
+
+    /** GET /market/flash-sale-events/seller-history — ประวัติสินค้ากลุ่มที่เคยเข้าร่วม flash sale */
+    public function sellerHistory(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->isMarketStaff(), 403, 'ไม่มีสิทธิ์เข้าถึงระบบตลาด');
+
+        $personal = $user->sellerPersonalScope(); // null=admin/superadmin, user_id=staff ทั่วไป
+        $scope    = $user->sellerGroupScope();    // null=superadmin, group_id=ทุกคนอื่น
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to') ? $request->input('date_to') . ' 23:59:59' : null;
+
+        $items = FlashSaleEventItem::with([
+                'event:id,title,starts_at,ends_at',
+                'product:id,name,price,seller_user_id,seller_group_id',
+            ])
+            ->whereHas('event', function ($q) use ($dateFrom, $dateTo) {
+                $q->where('ends_at', '<', now());
+                if ($dateFrom) $q->where('ends_at', '>=', $dateFrom);
+                if ($dateTo)   $q->where('starts_at', '<=', $dateTo);
+            })
+            // staff ทั่วไป: เฉพาะสินค้าของตัวเอง | admin กลุ่ม: ทุกสินค้าในกลุ่ม
+            ->when($personal !== null, fn ($q) => $q->whereHas('product', fn ($p) => $p->where('seller_user_id', $personal)))
+            ->when($personal === null && $scope !== null, fn ($q) => $q->where('seller_group_id', $scope))
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (FlashSaleEventItem $item) {
+                $stats = DB::table('order_items')
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->where('order_items.product_id', $item->product_id)
+                    ->whereIn('orders.status', self::PAID)
+                    ->whereBetween('orders.created_at', [$item->event->starts_at, $item->event->ends_at])
+                    ->selectRaw('COALESCE(SUM(order_items.qty), 0) as sold_qty, COALESCE(SUM(order_items.line_total), 0) as revenue')
+                    ->first();
+
+                $item->sold_qty = (int)   ($stats->sold_qty ?? 0);
+                $item->revenue  = (float) ($stats->revenue  ?? 0);
+                return $item;
+            });
+
+        return response()->json($items);
     }
 
     /** POST /market/flash-sale-events */

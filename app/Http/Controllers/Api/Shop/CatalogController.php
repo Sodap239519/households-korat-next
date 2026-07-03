@@ -7,6 +7,8 @@ use App\Models\FlashSaleEvent;
 use App\Models\FlashSaleEventItem;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductReview;
+use App\Models\SellerApplication;
 use App\Models\SellerGroup;
 use App\Models\SellerShippingOption;
 use Illuminate\Http\JsonResponse;
@@ -52,7 +54,13 @@ class CatalogController extends Controller
     {
         $query = Product::query()
             ->where('status', Product::STATUS_PUBLISHED)
-            ->with(['images', 'sellerGroup:id,name,slug', 'category:id,name,slug']);
+            ->with([
+                'images', 'sellerGroup:id,name,slug', 'category:id,name,slug',
+                'options' => fn ($q) => $q->where('is_active', true),
+            ])
+            // ยอดขายสะสม (จำนวนชิ้นที่ขายได้จริง จากออเดอร์ที่จัดส่ง/เสร็จแล้ว)
+            ->withSum(['orderItems as total_sold' => fn ($q) => $q
+                ->whereHas('order', fn ($o) => $o->whereIn('status', ['shipped', 'delivered', 'completed']))], 'qty');
 
         if ($q = trim((string) $request->input('q'))) {
             $query->where(function ($sub) use ($q) {
@@ -74,6 +82,10 @@ class CatalogController extends Controller
             $query->where('district', $district);
         }
 
+        if ($member = $request->input('member')) {
+            $query->where('seller_user_id', $member);
+        }
+
         if (($min = $request->input('min_price')) !== null && $min !== '') {
             $query->where('price', '>=', (float) $min);
         }
@@ -91,12 +103,13 @@ class CatalogController extends Controller
                   ->whereColumn('sale_price', '<', 'price');
         }
 
-        switch ($request->input('sort', 'newest')) {
+        switch ($request->input('sort')) {
             case 'price_asc':  $query->orderBy('price');               break;
             case 'price_desc': $query->orderByDesc('price');           break;
             case 'popular':    $query->orderByDesc('view_count');      break;
             case 'rating':     $query->orderByDesc('rating_avg');      break;
-            default:           $query->orderByDesc('created_at');      break;
+            case 'newest':     $query->orderByDesc('created_at');      break;
+            default:           $query->inRandomOrder();                 break;
         }
 
         return response()->json(
@@ -111,8 +124,10 @@ class CatalogController extends Controller
             ->where('slug', $slug)
             ->with([
                 'images',
-                'sellerGroup:id,name,slug,description,contact_phone,contact_address',
+                'sellerGroup:id,name,slug,description,contact_phone,contact_address,districts,logo_path',
+                'sellerUser:id,name,shop_name,avatar_path',
                 'category:id,name,slug',
+                'options' => fn ($q) => $q->where('is_active', true),
             ])
             ->firstOrFail();
 
@@ -129,7 +144,7 @@ class CatalogController extends Controller
 
         $reviews = $product->reviews()
             ->where('status', 'published')
-            ->with('user:id,name')
+            ->with('user:id,name,avatar_path')
             ->latest()
             ->limit(20)
             ->get();
@@ -137,27 +152,34 @@ class CatalogController extends Controller
         $comments = $product->comments()
             ->where('status', 'published')
             ->whereNull('parent_id')
-            ->with(['user:id,name', 'replies.user:id,name'])
+            ->with(['user:id,name,avatar_path', 'replies.user:id,name,avatar_path'])
             ->latest()
             ->limit(20)
             ->get();
 
-        // สินค้าใกล้เคียง (หมวดเดียวกัน)
+        // สินค้าจากร้านเดียวกัน — ถ้ามี seller_user ใช้ user นั้น ไม่งั้นใช้ทั้งกลุ่ม
+        $fromStoreQuery = Product::where('status', Product::STATUS_PUBLISHED)
+            ->where('id', '!=', $product->id)
+            ->with('images')
+            ->inRandomOrder()
+            ->limit(10);
+
+        if ($product->seller_user_id) {
+            $fromStoreQuery->where('seller_user_id', $product->seller_user_id);
+        } else {
+            $fromStoreQuery->where('seller_group_id', $product->seller_group_id);
+        }
+
+        $fromStore = $fromStoreQuery->get();
+
+        // สินค้าใกล้เคียง (หมวดเดียวกัน) — ไม่ซ้ำกับสินค้าในร้านเดียวกัน
         $related = Product::where('status', Product::STATUS_PUBLISHED)
             ->where('id', '!=', $product->id)
             ->where('category_id', $product->category_id)
+            ->whereNotIn('id', $fromStore->pluck('id'))
             ->with('images')
             ->inRandomOrder()
             ->limit(8)
-            ->get();
-
-        // สินค้าจากร้านเดียวกัน
-        $fromStore = Product::where('status', Product::STATUS_PUBLISHED)
-            ->where('id', '!=', $product->id)
-            ->where('seller_group_id', $product->seller_group_id)
-            ->with('images')
-            ->inRandomOrder()
-            ->limit(10)
             ->get();
 
         // สินค้าที่คุณอาจชอบ (ยอดนิยม/ใหม่ จากทั้งร้าน ไม่ซ้ำกับ related/fromStore)
@@ -183,30 +205,97 @@ class CatalogController extends Controller
         ]);
     }
 
-    /** หน้าร้านผู้ขาย — ข้อมูลกลุ่ม + สินค้า */
+    /** หน้าร้านผู้ขาย — ข้อมูลกลุ่ม + สินค้า (รองรับ ?member=user_id สำหรับร้านค้าย่อย) */
     public function seller(Request $request, string $slug): JsonResponse
     {
-        $group = SellerGroup::where('slug', $slug)->where('is_active', true)->firstOrFail();
+        $group     = SellerGroup::where('slug', $slug)->where('is_active', true)->firstOrFail();
+        $memberId  = $request->input('member'); // seller_user_id
+        $seller    = null;
 
-        $products = Product::where('seller_group_id', $group->id)
-            ->where('status', Product::STATUS_PUBLISHED)
-            ->with(['images', 'category:id,name,slug'])
+        $baseQuery = Product::where('seller_group_id', $group->id)
+            ->where('status', Product::STATUS_PUBLISHED);
+
+        if ($memberId) {
+            $seller = \App\Models\User::where('id', $memberId)
+                ->where('seller_group_id', $group->id)
+                ->select('id', 'name', 'shop_name', 'avatar_path')
+                ->first();
+            if ($seller) {
+                $baseQuery->where('seller_user_id', $memberId);
+                // โหลดข้อมูลใบสมัครของผู้ขายรายย่อย (คำอธิบาย/ที่อยู่ร้านค้า)
+                $application = SellerApplication::where('created_user_id', $seller->id)
+                    ->latest()
+                    ->first(['products_description', 'business_address', 'district', 'sub_district']);
+                if ($application) {
+                    $seller->products_description = $application->products_description;
+                    $seller->business_address     = $application->business_address;
+                    $seller->district             = $application->district;
+                    $seller->sub_district         = $application->sub_district;
+                }
+            }
+        }
+
+        $products = $baseQuery->clone()
+            ->with(['images', 'category:id,name,slug', 'options' => fn ($q) => $q->where('is_active', true)])
+            ->withSum(['orderItems as total_sold' => fn ($q) => $q
+                ->whereHas('order', fn ($o) => $o->whereIn('status', ['shipped', 'delivered', 'completed']))], 'qty')
             ->orderByDesc('is_featured')
             ->orderByDesc('created_at')
             ->paginate(12);
 
-        $stats = Product::where('seller_group_id', $group->id)
-            ->where('status', Product::STATUS_PUBLISHED)
-            ->selectRaw('AVG(rating_avg) as avg_rating, SUM(rating_count) as total_reviews')
+        // คะแนนเฉลี่ยแบบถ่วงน้ำหนักด้วยจำนวนรีวิวจริง (สินค้าที่ยังไม่มีรีวิวไม่ถ่วงคะแนนลง)
+        // = ผลรวม(คะแนนเฉลี่ย × จำนวนรีวิว) ÷ ผลรวมจำนวนรีวิว
+        $stats = $baseQuery->clone()
+            ->selectRaw('SUM(rating_avg * rating_count) / NULLIF(SUM(rating_count), 0) as avg_rating, SUM(rating_count) as total_reviews')
             ->first();
+
+        // รายชื่อร้านค้าย่อยในโซน (เฉพาะ zone view ที่ไม่ได้ระบุ member)
+        $members = null;
+        if (!$memberId) {
+            $members = \App\Models\User::where('seller_group_id', $group->id)
+                ->where('is_approved', true)
+                ->select('id', 'name', 'shop_name', 'avatar_path')
+                ->withCount(['products as products_count' => fn ($q) => $q
+                    ->where('status', Product::STATUS_PUBLISHED)
+                    ->where('seller_group_id', $group->id)])
+                ->orderByDesc('products_count')
+                ->get()
+                ->filter(fn ($u) => $u->products_count > 0)
+                ->values();
+        }
 
         return response()->json([
             'group'    => array_merge($group->toArray(), [
                 'avg_rating'    => round($stats->avg_rating ?? 0, 1),
                 'total_reviews' => (int) ($stats->total_reviews ?? 0),
             ]),
+            'seller'   => $seller,
+            'members'  => $members,
             'products' => $products,
         ]);
+    }
+
+    /** รีวิวทั้งหมดของร้านค้า/กลุ่มผู้ขาย (สำหรับ SellerStorefront) */
+    public function sellerReviews(Request $request, string $slug): JsonResponse
+    {
+        $group = SellerGroup::where('slug', $slug)->where('is_active', true)->firstOrFail();
+
+        $query = ProductReview::where('status', 'published')
+            ->whereHas('product', fn ($q) => $q
+                ->where('seller_group_id', $group->id)
+                ->where('status', Product::STATUS_PUBLISHED)
+            )
+            ->with([
+                'user:id,name,avatar_path',
+                'product:id,name,slug,seller_group_id,seller_user_id',
+            ])
+            ->latest();
+
+        if ($memberId = $request->input('member')) {
+            $query->whereHas('product', fn ($q) => $q->where('seller_user_id', $memberId));
+        }
+
+        return response()->json($query->paginate($request->input('per_page', 10)));
     }
 
     /** รีวิวสินค้า (paginated, สำหรับ lazy-load ในหน้ารายละเอียด) */
@@ -215,7 +304,7 @@ class CatalogController extends Controller
         $product = Product::where('slug', $slug)->firstOrFail();
         $reviews = $product->reviews()
             ->where('status', 'published')
-            ->with('user:id,name')
+            ->with('user:id,name,avatar_path')
             ->latest()
             ->paginate($request->input('per_page', 10));
 
@@ -250,7 +339,7 @@ class CatalogController extends Controller
         $comments = $product->comments()
             ->where('status', 'published')
             ->whereNull('parent_id')
-            ->with(['user:id,name', 'replies.user:id,name'])
+            ->with(['user:id,name,avatar_path', 'replies.user:id,name,avatar_path'])
             ->latest()
             ->paginate($request->input('per_page', 10));
 

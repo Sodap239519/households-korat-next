@@ -35,7 +35,7 @@
 
     <!-- Map -->
     <div class="box-card overflow-hidden">
-      <div ref="mapEl" class="w-full" style="height: 420px;"></div>
+      <div ref="mapEl" class="w-full h-[220px] sm:h-[350px]"></div>
     </div>
 
     <!-- Distance cards -->
