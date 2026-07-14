@@ -2,10 +2,10 @@
   <Teleport to="body">
     <Transition name="pwa-pop">
       <div v-if="visible"
-        class="fixed inset-x-0 z-[70] bottom-16 lg:bottom-5 lg:left-auto lg:right-5 lg:inset-x-auto lg:max-w-md"
+        class="fixed inset-x-3 z-[70] bottom-[4.75rem] lg:bottom-5 lg:left-auto lg:right-5 lg:inset-x-auto lg:max-w-md"
         role="dialog" aria-label="ติดตั้งแอปตลาดชุมชนโคราช">
 
-        <div class="overflow-hidden shadow-[0_-6px_20px_-6px_rgba(76,29,149,0.18)] lg:rounded-2xl lg:shadow-2xl lg:shadow-violet-900/20 lg:border lg:border-slate-100" style="background:#ffffff">
+        <div class="rounded-2xl overflow-hidden shadow-2xl shadow-violet-900/25" style="background:#ffffff">
           <!-- ===== banner แถวเดียว (เหมือนกันทั้ง Android / iOS) ===== -->
           <div class="px-4 py-2.5 flex items-center gap-2.5">
             <div class="w-11 h-11 rounded-xl bg-white shadow-sm border border-violet-100 shrink-0 overflow-hidden flex items-center justify-center">
