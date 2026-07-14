@@ -218,7 +218,7 @@ const slides = computed(() => {
 
 const heroAspectRatio = computed(() => {
   const r = slides.value[current.value]?.aspect_ratio
-  if (!r) return smUp.value ? '16/9' : '4/3'
+  if (!r) return '16/9'
   if (!smUp.value) {
     // mobile: ทำให้สูงขึ้นนิดหน่อย (denominator × 0.75 = สูงขึ้น 25%)
     const [w, h] = r.split('/').map(Number)
