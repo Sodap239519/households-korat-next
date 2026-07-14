@@ -109,7 +109,7 @@
     <FlashSaleStrip />
 
     <!-- ===== สินค้าทั้งหมด (infinite scroll) ===== -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 max-lg:pb-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5">
       <!-- Loading initial skeleton -->
       <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <div v-for="n in 12" :key="n" class="box-card aspect-[3/4] skeleton"></div>
