@@ -53,7 +53,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 const DISMISS_KEY  = 'pwa_install_dismissed_at'
-const SNOOZE_DAYS  = 7          // ปิดแล้วเว้น 7 วันค่อยเด้งใหม่
+const SNOOZE_DAYS  = 1          // กด "ไว้ก่อน" แล้วเว้น 1 วัน (วันต่อวัน) ค่อยเด้งใหม่
 const SHOW_DELAY   = 2500       // หน่วง 2.5 วิ ค่อยโผล่ (ไม่รบกวนตอนเข้าเว็บ)
 
 const visible = ref(false)
