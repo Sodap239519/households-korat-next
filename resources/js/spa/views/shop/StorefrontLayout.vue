@@ -9,8 +9,8 @@
 
           <!-- Logo: Desktop only -->
           <RouterLink to="/shop" class="hidden md:flex items-center gap-2 shrink-0">
-            <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white/15 text-white text-lg shadow backdrop-blur">
-              <i class="fi fi-rr-shop"></i>
+            <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white overflow-hidden shadow shrink-0">
+              <img :src="logoUrl" alt="ตลาดชุมชนโคราช" class="w-full h-full object-contain" />
             </span>
             <span>
               <span class="block font-bold text-white leading-tight">ตลาดชุมชนโคราช</span>
@@ -308,8 +308,8 @@
       <footer class="shop-footer" style="background:linear-gradient(to right,#2e1065,#4c1d95);color:rgba(196,181,253,0.70)">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div class="flex items-center gap-2">
-            <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-white/20 text-white text-[11px]">
-              <i class="fi fi-rr-shop"></i>
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-white overflow-hidden shrink-0">
+              <img :src="logoUrl" alt="ตลาดชุมชนโคราช" class="w-full h-full object-contain" />
             </span>
             <span class="font-medium" style="color:rgba(233,213,255,0.90)">ตลาดชุมชนโคราช</span>
           </div>
@@ -339,6 +339,7 @@ import SearchPanel from './components/SearchPanel.vue'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import SplashScreen from './components/SplashScreen.vue'
 import Toast from 'primevue/toast'
+import logoUrl from '../../assets/logo.png'
 
 const router = useRouter()
 const route  = useRoute()

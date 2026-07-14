@@ -9,7 +9,7 @@
           <!-- ===== banner แถวเดียว (เหมือนกันทั้ง Android / iOS) ===== -->
           <div class="px-4 py-2.5 flex items-center gap-2.5">
             <div class="w-11 h-11 rounded-xl bg-white shadow-sm border border-violet-100 shrink-0 overflow-hidden flex items-center justify-center">
-              <img :src="'/icons/icon-192.png'" alt="ตลาดชุมชนโคราช" class="w-full h-full object-contain" />
+              <img :src="logoUrl" alt="ตลาดชุมชนโคราช" class="w-full h-full object-contain" />
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-[13.5px] font-bold text-slate-800 leading-tight truncate">ติดตั้งตลาดชุมชนโคราช</p>
@@ -49,6 +49,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
+import logoUrl from '../../../assets/logo.png'
 
 const route = useRoute()
 
