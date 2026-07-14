@@ -289,6 +289,9 @@
 
     <Toast position="top-center" />
 
+    <!-- ===== PWA: ชวนติดตั้งลงหน้าจอหลัก (มือถือที่ยังไม่ได้ติดตั้ง) ===== -->
+    <PwaInstallPrompt />
+
     <!-- ===== Scroll-to-top button (ซ่อนในหน้าแชท + หน้า product detail) ===== -->
     <Transition name="fade-up">
       <button v-if="showScrollTop && !route.path.includes('/chat') && !isProductDetail" @click="scrollToTop"
@@ -330,6 +333,7 @@ import { useDisplaySettings } from '../../composables/useDisplaySettings.js'
 import { useWishlist } from '../../composables/useWishlist.js'
 import api from '../../api/index.js'
 import SearchPanel from './components/SearchPanel.vue'
+import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import Toast from 'primevue/toast'
 
 const router = useRouter()
