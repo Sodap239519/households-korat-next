@@ -292,6 +292,9 @@
     <!-- ===== PWA: ชวนติดตั้งลงหน้าจอหลัก (มือถือที่ยังไม่ได้ติดตั้ง) ===== -->
     <PwaInstallPrompt />
 
+    <!-- ===== Splash screen ต้อนรับ (โชว์ครั้งเดียวต่อ session) ===== -->
+    <SplashScreen />
+
     <!-- ===== Scroll-to-top button (ซ่อนในหน้าแชท + หน้า product detail) ===== -->
     <Transition name="fade-up">
       <button v-if="showScrollTop && !route.path.includes('/chat') && !isProductDetail" @click="scrollToTop"
@@ -334,6 +337,7 @@ import { useWishlist } from '../../composables/useWishlist.js'
 import api from '../../api/index.js'
 import SearchPanel from './components/SearchPanel.vue'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
+import SplashScreen from './components/SplashScreen.vue'
 import Toast from 'primevue/toast'
 
 const router = useRouter()

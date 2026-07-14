@@ -19,13 +19,13 @@
             </button>
           </div>
 
-          <!-- Android/Chrome: ปุ่มติดตั้งจริง -->
+          <!-- Android/Chrome: ปุ่มติดตั้งจริง (ปุ่มหลักอยู่ขวา — ถนัดมือขวา) -->
           <div v-if="mode === 'android'" class="px-4 py-3 flex gap-2">
+            <button @click="dismiss" class="h-10 px-4 rounded-xl text-slate-500 hover:bg-slate-100 font-medium text-sm transition shrink-0">ไว้ก่อน</button>
             <button @click="install"
               class="flex-1 h-10 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-[.98] text-white font-semibold text-sm transition shadow-md shadow-violet-500/30 flex items-center justify-center gap-2">
               <i class="fi fi-rr-download"></i> ติดตั้งเลย
             </button>
-            <button @click="dismiss" class="h-10 px-4 rounded-xl text-slate-500 hover:bg-slate-100 font-medium text-sm transition">ไว้ก่อน</button>
           </div>
 
           <!-- iOS Safari: บอกวิธี (ไม่มีปุ่มติดตั้งอัตโนมัติ) -->
