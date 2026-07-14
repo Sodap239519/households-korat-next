@@ -20,18 +20,25 @@ class User extends Authenticatable
     public const ROLE_SUPERADMIN  = 'superadmin';
     public const ROLES_ALL        = [self::ROLE_STAFF, self::ROLE_AREA_STAFF, self::ROLE_ADMIN, self::ROLE_SUPERADMIN];
 
+    /** Customer role — ลูกค้าหน้าร้าน (แยกจากเจ้าหน้าที่ ไม่อยู่ใน ROLES_ALL) */
+    public const ROLE_CUSTOMER    = 'customer';
+
     /** Maximum number of districts an area_staff user can be assigned. */
     public const MAX_ASSIGNED_DISTRICTS = 4;
 
     protected $fillable = [
         'name',
         'email',
+        'avatar_path',
         'password',
         'role',
         'assigned_districts',
+        'seller_group_id',
+        'shop_name',
         'is_approved',
         'approved_at',
         'approved_by',
+        'must_change_password',
     ];
 
     protected $hidden = [
@@ -44,9 +51,10 @@ class User extends Authenticatable
         return [
             'email_verified_at'   => 'datetime',
             'password'            => 'hashed',
-            'is_approved'         => 'boolean',
-            'approved_at'         => 'datetime',
-            'assigned_districts'  => 'array',
+            'is_approved'          => 'boolean',
+            'approved_at'          => 'datetime',
+            'assigned_districts'   => 'array',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -100,6 +108,60 @@ class User extends Authenticatable
     public function canCreateAllocation(): bool { return $this->isAreaStaff(); }
     public function canCreateFollowup(): bool   { return $this->isAreaStaff(); }
     public function canEditHouseholds(): bool   { return $this->isStaff(); }
+
+    // ===== Marketplace helpers =====
+
+    public function isCustomer(): bool
+    {
+        return $this->role === self::ROLE_CUSTOMER;
+    }
+
+    /** สมาชิกเจ้าหน้าที่ที่ทำงานหลังบ้านตลาด (สังกัดกลุ่ม หรือเป็น admin) */
+    public function isMarketStaff(): bool
+    {
+        return $this->isAdmin() || ($this->isStaff() && !is_null($this->seller_group_id));
+    }
+
+    /** สินค้าของผู้ขายรายย่อย (seller_user_id) */
+    public function products()
+    {
+        return $this->hasMany(\App\Models\Product::class, 'seller_user_id');
+    }
+
+    /** กลุ่มผู้ขายที่ผู้ใช้สังกัด */
+    public function sellerGroup()
+    {
+        return $this->belongsTo(SellerGroup::class, 'seller_group_id');
+    }
+
+    /** กลุ่มที่ผู้ใช้จัดการได้ (superadmin = null คือไม่จำกัด, อื่นๆ = กลุ่มตัวเอง) */
+    public function sellerGroupScope(): ?int
+    {
+        if ($this->isSuperAdmin()) return null;   // null = ไม่จำกัด เห็นทุกกลุ่ม
+        return $this->seller_group_id;            // admin/staff → เห็นเฉพาะกลุ่มตัวเอง
+    }
+
+    /** ผู้ใช้จัดการข้อมูลตลาดของกลุ่มนี้ได้หรือไม่ */
+    public function canActInGroup(?int $groupId): bool
+    {
+        if ($this->isAdmin()) return true;
+        if (!$this->isMarketStaff()) return false;
+        if (!$groupId) return false;
+        return (int) $this->seller_group_id === (int) $groupId;
+    }
+
+    public function canManageSellerGroups(): bool { return $this->isAdmin(); }
+
+    /**
+     * Personal scope สำหรับข้อมูลตลาด
+     * admin/superadmin → null (เห็นทั้งกลุ่ม)
+     * staff ทั่วไป → user_id ตัวเอง (เห็นเฉพาะข้อมูลร้านค้าตัวเอง)
+     */
+    public function sellerPersonalScope(): ?int
+    {
+        if ($this->isAdmin()) return null;
+        return $this->id;
+    }
 
     public function approver()
     {

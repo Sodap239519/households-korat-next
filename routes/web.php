@@ -11,3 +11,8 @@ Route::get('/app/{any?}', [SpaController::class, 'index'])
     ->where('any', '.*')
     ->name('spa');
 
+// Serve the same Vue SPA at /shop (public storefront) and any sub-path
+Route::get('/shop/{any?}', [SpaController::class, 'index'])
+    ->where('any', '.*')
+    ->name('shop');
+

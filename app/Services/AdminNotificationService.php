@@ -7,6 +7,11 @@ use App\Models\Household;
 use App\Models\MushroomAllocation;
 use App\Models\MushroomFollowup;
 use App\Models\MushroomQuotaDistrict;
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\ProductComment;
+use App\Models\ProductReview;
+use App\Models\ReturnRequest;
 use App\Models\User;
 
 class AdminNotificationService
@@ -92,6 +97,84 @@ class AdminNotificationService
             link:    '/app/mushroom/followups',
             meta:    ['followup_id' => $f->id],
             actorId: $actor?->id,
+        );
+    }
+
+    // ===== ตลาด (marketplace) =====
+
+    public static function orderPlaced(Order $order): void
+    {
+        $order->loadMissing(['user:id,name', 'sellerGroup:id,name']);
+        $buyer = $order->user?->name ?? 'ลูกค้า';
+        $group = $order->sellerGroup?->name;
+        self::notify(
+            type:    'order_placed',
+            title:   'คำสั่งซื้อใหม่',
+            message: "#{$order->order_no} · {$buyer}" . ($group ? " · {$group}" : '') . ' · ฿' . number_format((float) $order->total, 0),
+            link:    '/app/market/orders',
+            meta:    ['order_id' => $order->id, 'order_no' => $order->order_no],
+            actorId: $order->user_id,
+        );
+    }
+
+    public static function paymentSubmitted(Payment $payment): void
+    {
+        $payment->loadMissing(['order:id,order_no,seller_group_id,user_id', 'order.sellerGroup:id,name']);
+        $orderNo = $payment->order?->order_no ?? '';
+        $group   = $payment->order?->sellerGroup?->name;
+        self::notify(
+            type:    'payment_submitted',
+            title:   'แจ้งชำระเงินใหม่',
+            message: "#{$orderNo}" . ($group ? " · {$group}" : '') . ' · ฿' . number_format((float) $payment->amount, 0),
+            link:    '/app/market/payments',
+            meta:    ['payment_id' => $payment->id, 'order_id' => $payment->order_id],
+            actorId: $payment->order?->user_id,
+        );
+    }
+
+    public static function returnRequested(ReturnRequest $ret): void
+    {
+        $ret->loadMissing(['order:id,order_no,seller_group_id', 'order.sellerGroup:id,name']);
+        $orderNo  = $ret->order?->order_no ?? '';
+        $typeMap  = ['return' => 'คืนสินค้า', 'refund' => 'คืนเงิน', 'claim' => 'เคลม'];
+        $typeLabel = $typeMap[$ret->type] ?? $ret->type;
+        self::notify(
+            type:    'return_requested',
+            title:   'คำขอคืน/เคลมใหม่',
+            message: "#{$orderNo} · {$typeLabel}: {$ret->reason}",
+            link:    '/app/market/returns',
+            meta:    ['return_id' => $ret->id, 'order_id' => $ret->order_id],
+            actorId: $ret->user_id,
+        );
+    }
+
+    public static function newReview(ProductReview $review): void
+    {
+        $review->loadMissing(['product:id,name', 'user:id,name']);
+        $product = $review->product?->name ?? 'สินค้า';
+        $stars   = str_repeat('★', (int) $review->rating) . str_repeat('☆', 5 - (int) $review->rating);
+        self::notify(
+            type:    'new_review',
+            title:   'มีรีวิวสินค้าใหม่',
+            message: "{$product} · {$stars} · {$review->user?->name}",
+            link:    '/app/market/reviews',
+            meta:    ['review_id' => $review->id, 'product_id' => $review->product_id],
+            actorId: $review->user_id,
+        );
+    }
+
+    public static function newComment(ProductComment $comment): void
+    {
+        $comment->loadMissing(['product:id,name', 'user:id,name']);
+        $product = $comment->product?->name ?? 'สินค้า';
+        $body    = mb_strimwidth($comment->body, 0, 50, '...');
+        self::notify(
+            type:    'new_comment',
+            title:   'มีความคิดเห็นสินค้าใหม่',
+            message: "{$product} · {$comment->user?->name}: {$body}",
+            link:    '/app/market/comments',
+            meta:    ['comment_id' => $comment->id, 'product_id' => $comment->product_id],
+            actorId: $comment->user_id,
         );
     }
 }

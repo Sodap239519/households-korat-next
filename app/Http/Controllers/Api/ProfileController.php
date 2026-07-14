@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -21,6 +22,25 @@ class ProfileController extends Controller
         ]);
 
         $user->update($validated);
+
+        return response()->json(['user' => $user->fresh()]);
+    }
+
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,webp,gif', 'max:2048'],
+        ]);
+
+        $user = $request->user();
+
+        // ลบรูปเก่า
+        if ($user->avatar_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar_path' => $path]);
 
         return response()->json(['user' => $user->fresh()]);
     }
@@ -41,7 +61,8 @@ class ProfileController extends Controller
         }
 
         $user->update([
-            'password' => Hash::make($request->input('new_password')),
+            'password'             => Hash::make($request->input('new_password')),
+            'must_change_password' => false,
         ]);
 
         return response()->json(['message' => 'เปลี่ยนรหัสผ่านสำเร็จ']);

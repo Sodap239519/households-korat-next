@@ -1,0 +1,1 @@
+import{t as e}from"./axios-KxLG59I9.js";window.axios=e,window.axios.defaults.headers.common[`X-Requested-With`]=`XMLHttpRequest`;

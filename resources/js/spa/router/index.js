@@ -11,7 +11,6 @@ import TrackingView from '../views/TrackingView.vue'
 import QuotaList from '../views/quotas/QuotaList.vue'
 import AllocationList from '../views/allocations/AllocationList.vue'
 import FollowupList from '../views/followups/FollowupList.vue'
-import MarketingHome from '../views/marketing/MarketingHome.vue'
 import ReportView from '../views/reports/ReportView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import LoginHistoryView from '../views/LoginHistoryView.vue'
@@ -50,8 +49,27 @@ const routes = [
             { path: 'allocations', redirect: '/app/mushroom/allocations' },
             { path: 'followups',   redirect: '/app/mushroom/followups' },
 
-            // Marketing & Reports
-            { path: 'marketing', component: MarketingHome },
+            // Marketplace backoffice
+            { path: 'marketing', redirect: '/app/market' },
+            { path: 'market',                component: () => import('../views/market/MarketDashboard.vue') },
+            { path: 'market/products',       component: () => import('../views/market/ProductManagement.vue') },
+            { path: 'market/categories',     component: () => import('../views/market/CategoryManagement.vue') },
+            { path: 'market/orders',         component: () => import('../views/market/OrderManagement.vue') },
+            { path: 'market/shipments',      component: () => import('../views/market/ShipmentManagement.vue') },
+            { path: 'market/chat',           component: () => import('../views/market/SellerChatView.vue') },
+            { path: 'market/payments',       component: () => import('../views/market/PaymentConfirmation.vue') },
+            { path: 'market/returns',        component: () => import('../views/market/ReturnManagement.vue') },
+            { path: 'market/reviews',        component: () => import('../views/market/ReviewManagement.vue') },
+            { path: 'market/comments',       component: () => import('../views/market/CommentManagement.vue') },
+            { path: 'change-password',           component: () => import('../views/ForceChangePasswordView.vue'), meta: { skipForcePasswordCheck: true } },
+            { path: 'market/my-shop',            component: () => import('../views/market/MyShopSettings.vue') },
+            { path: 'market/seller-groups',      component: () => import('../views/market/SellerGroupManagement.vue') },
+            { path: 'market/seller-applications', component: () => import('../views/market/SellerApplicationManagement.vue') },
+            { path: 'market/shipping',           component: () => import('../views/market/ShippingSettings.vue') },
+            { path: 'market/banners',            component: () => import('../views/market/BannerManagement.vue') },
+            { path: 'market/flash-sale',         component: () => import('../views/market/FlashSaleManagement.vue') },
+
+            // Reports
             { path: 'reports',   component: ReportView },
 
             // User account
@@ -62,22 +80,82 @@ const routes = [
             { path: 'admin/users', component: UserManagementView },
         ],
     },
+    // ===== Storefront (public shop at /shop) =====
+    {
+        path: '/shop',
+        component: () => import('../views/shop/StorefrontLayout.vue'),
+        meta: { public: true },
+        children: [
+            { path: '',                       component: () => import('../views/shop/ShopHome.vue') },
+            { path: 'products',               component: () => import('../views/shop/ProductCatalog.vue') },
+            { path: 'products/:slug',         component: () => import('../views/shop/ProductDetail.vue') },
+            { path: 'cart',                   component: () => import('../views/shop/CartView.vue') },
+            { path: 'login',                  component: () => import('../views/shop/CustomerLogin.vue'), meta: { guestShop: true } },
+            { path: 'register',               component: () => import('../views/shop/CustomerRegister.vue'), meta: { guestShop: true } },
+            { path: 'checkout',               component: () => import('../views/shop/CheckoutView.vue'), meta: { customerAuth: true } },
+            { path: 'account/orders',         component: () => import('../views/shop/AccountOrders.vue'), meta: { customerAuth: true } },
+            { path: 'account/orders/:orderNo/review', component: () => import('../views/shop/WriteReview.vue'), meta: { customerAuth: true } },
+            { path: 'account/orders/:orderNo', component: () => import('../views/shop/OrderDetail.vue'), meta: { customerAuth: true } },
+            { path: 'account/addresses',      component: () => import('../views/shop/AccountAddresses.vue'), meta: { customerAuth: true } },
+            { path: 'account/profile',        component: () => import('../views/shop/AccountProfile.vue'), meta: { customerAuth: true } },
+            { path: 'account/savings',        component: () => import('../views/shop/AccountSavings.vue'), meta: { customerAuth: true } },
+            { path: 'account/history',        component: () => import('../views/shop/AccountHistory.vue') },
+            { path: 'chat',                   component: () => import('../views/shop/ChatView.vue'), meta: { customerAuth: true } },
+            { path: 'wishlist',               component: () => import('../views/shop/WishlistView.vue'), meta: { customerAuth: true } },
+            { path: 'notifications',          component: () => import('../views/shop/CustomerNotificationsView.vue'), meta: { customerAuth: true } },
+            { path: 'account',                component: () => import('../views/shop/AccountHome.vue') },
+            { path: 'sellers/:slug',          component: () => import('../views/shop/SellerStorefront.vue') },
+            { path: 'map',                    component: () => import('../views/shop/SellerMap.vue') },
+            { path: 'seller-apply',             component: () => import('../views/shop/SellerApply.vue'), meta: { customerAuth: true } },
+            { path: 'seller-apply/status/:token?', component: () => import('../views/shop/SellerApplyStatus.vue'), meta: { customerAuth: true } },
+            { path: 'seller-apply/my',          component: () => import('../views/shop/SellerMyApplications.vue'), meta: { customerAuth: true } },
+        ],
+    },
+
     { path: '/:pathMatch(.*)*', redirect: '/app' },
 ]
 
 const router = createRouter({
     history: createWebHistory(),
     routes,
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) return savedPosition
+        return { top: 0, behavior: 'smooth' }
+    },
 })
 
 router.beforeEach(async (to) => {
-    const { user, fetchUser } = useAuth()
+    const { user, fetchUser, mustChangePassword } = useAuth()
 
-    if (user.value === null && (to.meta.requiresAuth || to.meta.guest)) {
+    const isShopPath = to.path.startsWith('/shop')
+    if (user.value === null && (to.meta.requiresAuth || to.meta.guest || to.meta.customerAuth || to.meta.guestShop || isShopPath)) {
         await fetchUser()
     }
+
     if (to.meta.requiresAuth && !user.value) return '/app/login'
     if (to.meta.guest && user.value) return '/app/dashboard'
+
+    // บังคับเปลี่ยนรหัสผ่านครั้งแรก (สำหรับบัญชีผู้ขายที่แอดมินสร้างให้)
+    if (
+        user.value &&
+        mustChangePassword.value &&
+        to.meta.requiresAuth &&
+        !to.meta.skipForcePasswordCheck &&
+        to.path !== '/app/change-password'
+    ) {
+        return '/app/change-password'
+    }
+
+    // ร้านค้า (staff/admin/superadmin) ห้ามเข้า /shop — ต้อง logout ก่อน
+    if (isShopPath && user.value && user.value.role !== 'customer') {
+        return '/app/market'
+    }
+
+    // Storefront customer guards
+    if (to.meta.customerAuth && !user.value) {
+        return { path: '/shop/login', query: { redirect: to.fullPath } }
+    }
+    if (to.meta.guestShop && user.value) return '/shop'
 })
 
 export default router

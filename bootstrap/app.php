@@ -13,6 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        // เพิ่ม StartSession ให้ API routes ทั้งหมดเพื่อให้ session()->regenerate() ทำงานได้
+        // จำเป็นสำหรับ login/logout ที่อยู่ใน api.php
+        $middleware->api(prepend: [
+            \Illuminate\Session\Middleware\StartSession::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

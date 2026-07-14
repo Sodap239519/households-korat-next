@@ -18,8 +18,23 @@ html, body { height: 100%; }
 body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 50%, #ede9fe 100%);
+    background: #ffffff; /* โทนสว่าง = ขาว */
 }
+
+/* แบรนด์เกรเดียน (ม่วง → ส้ม) ใช้กับโลโก้/ไอคอน */
+.brand-gradient { background: linear-gradient(120deg, #7c3aed 0%, #a855f7 45%, #fb923c 100%); }
+.brand-text-gradient {
+    background: linear-gradient(120deg, #7c3aed 0%, #c026d3 45%, #f97316 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* ปุ่มหลัก (CTA) สีส้ม — โทนเดียวกับแพลตฟอร์มแก้จนโคราช */
+.btn-orange {
+    background: linear-gradient(120deg, #f97316 0%, #fb923c 100%);
+    color: #fff;
+    box-shadow: 0 10px 24px -10px rgba(249, 115, 22, .6);
+}
+.btn-orange:hover { box-shadow: 0 14px 30px -10px rgba(249, 115, 22, .7); }
 
 /* Glassmorphism utility */
 .glass {
@@ -47,3 +62,283 @@ body {
     border-color: rgb(167, 139, 250);
     box-shadow: 0 10px 30px -10px rgba(124, 58, 237, 0.25);
 }
+
+/* Form field label */
+.form-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgb(51, 65, 85); /* slate-700 */
+}
+
+/* ============================================================
+   Motion & micro-interactions
+   ============================================================ */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(.96); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes floatBlob {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%      { transform: translate(20px, -28px) scale(1.06); }
+    66%      { transform: translate(-18px, 14px) scale(.96); }
+}
+@keyframes shimmer {
+    0%   { background-position: -468px 0; }
+    100% { background-position: 468px 0; }
+}
+@keyframes floatY {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+}
+
+/* Scroll reveal (driven by v-reveal directive) */
+.reveal { opacity: 0; will-change: opacity, transform; }
+.reveal.is-visible { animation: fadeInUp .7s cubic-bezier(.22,.61,.36,1) forwards; }
+
+/* Entrance helpers */
+.anim-fade-in    { animation: fadeIn .5s ease forwards; }
+.anim-fade-up    { animation: fadeInUp .6s cubic-bezier(.22,.61,.36,1) forwards; }
+.anim-scale-in   { animation: scaleIn .45s cubic-bezier(.22,.61,.36,1) forwards; }
+.anim-float      { animation: floatY 4s ease-in-out infinite; }
+
+/* Hover lift for cards / tiles */
+.hover-lift { transition: transform .28s cubic-bezier(.22,.61,.36,1), box-shadow .28s ease; }
+.hover-lift:hover { transform: translateY(-6px); box-shadow: 0 18px 40px -16px rgba(124,58,237,.35); }
+
+/* Animated gradient button sheen */
+.btn-sheen { position: relative; overflow: hidden; }
+.btn-sheen::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%);
+    transform: translateX(-100%); transition: transform .6s ease;
+}
+.btn-sheen:hover::after { transform: translateX(100%); }
+
+/* Decorative floating blobs (for hero backgrounds) */
+.blob { position: absolute; border-radius: 9999px; filter: blur(48px); opacity: .55; animation: floatBlob 14s ease-in-out infinite; pointer-events: none; }
+
+/* Skeleton shimmer */
+.skeleton {
+    background: linear-gradient(90deg, #ede9fe 25%, #f5f3ff 37%, #ede9fe 63%);
+    background-size: 936px 100%;
+    animation: shimmer 1.6s linear infinite;
+}
+
+/* Route / list transitions */
+.fade-slide-enter-active { transition: opacity .35s ease, transform .35s cubic-bezier(.22,.61,.36,1); }
+.fade-slide-leave-active { transition: opacity .2s ease; }
+.fade-slide-enter-from   { opacity: 0; transform: translateY(12px); }
+.fade-slide-leave-to     { opacity: 0; }
+
+.list-stagger-enter-active { transition: opacity .45s ease, transform .45s cubic-bezier(.22,.61,.36,1); }
+.list-stagger-enter-from   { opacity: 0; transform: translateY(16px); }
+
+/* Floating elements fade-up (e.g. chat button, toast) */
+.fade-up-enter-active { transition: opacity .3s ease, transform .3s cubic-bezier(.22,.61,.36,1); }
+.fade-up-leave-active { transition: opacity .2s ease, transform .2s ease; }
+.fade-up-enter-from   { opacity: 0; transform: translateY(12px); }
+.fade-up-leave-to     { opacity: 0; transform: translateY(8px); }
+
+/* Account sheet slide-up */
+.acct-sheet-enter-active, .acct-sheet-leave-active { transition: opacity .25s ease; }
+.acct-sheet-enter-from, .acct-sheet-leave-to       { opacity: 0; }
+.acct-sheet-enter-active .relative, .acct-sheet-leave-active .relative { transition: transform .3s cubic-bezier(.32,0,.67,0); }
+.acct-sheet-enter-from .relative, .acct-sheet-leave-to .relative       { transform: translateY(100%); }
+
+/* Slide-down panel (e.g. districts accordion) */
+.slide-down-enter-active { transition: opacity .25s ease, max-height .3s cubic-bezier(.22,.61,.36,1); max-height: 200px; }
+.slide-down-leave-active { transition: opacity .2s ease, max-height .25s ease; max-height: 200px; }
+.slide-down-enter-from   { opacity: 0; max-height: 0; }
+.slide-down-leave-to     { opacity: 0; max-height: 0; }
+
+/* Smooth default for interactive primitives */
+a, button { transition: color .2s ease, background-color .2s ease, border-color .2s ease; }
+
+/* ============================================================
+   โทนสว่าง (light mode) — พื้นขาวบริสุทธิ์สำหรับส่วน storefront
+   ============================================================ */
+html:not(.shop-dark) .shop-storefront .bg-slate-50,
+html:not(.shop-dark) .shop-storefront .bg-slate-100   { background-color: #ffffff !important; }
+html:not(.shop-dark) .shop-storefront .bg-violet-50   { background-color: #faf8ff !important; }
+html:not(.shop-dark) .shop-storefront .bg-violet-50\/40,
+html:not(.shop-dark) .shop-storefront .bg-violet-50\/60 { background-color: rgba(250,248,255,0.6) !important; }
+html:not(.shop-dark) .shop-storefront .border-slate-100 { border-color: #f1f1f1 !important; }
+
+/* ============================================================
+   โหมด Soft Purple (shop-dark) — พื้น lavender อ่อน, การ์ดขาว
+   Header/Footer/Nav = ม่วงเข้ม (inline style ใน StorefrontLayout)
+   Body = lavender อ่อนมาก — แค่ "ซึมม่วง" กว่าโทนสว่าง
+   ============================================================ */
+html.shop-dark body {
+    background: linear-gradient(160deg, #ede9fe 0%, #f5f3ff 55%, #fdf4ff 100%);
+    background-attachment: fixed;
+    color: #1e0a3c; /* ตัวอักษรเข้มบนพื้น lavender อ่อน */
+}
+html.shop-dark .blob { opacity: .12; filter: hue-rotate(260deg); }
+
+/* การ์ด — ขาวบน lavender */
+html.shop-dark .box-card,
+html.shop-dark .glass {
+    background: rgba(255, 255, 255, 0.84) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1.5px solid rgba(139, 92, 246, 0.18) !important;
+    color: #1e0a3c;
+}
+html.shop-dark .box-card:hover {
+    border-color: rgba(139, 92, 246, 0.38) !important;
+    box-shadow: 0 8px 24px -8px rgba(109, 40, 217, 0.18) !important;
+}
+
+/* พื้นขาว/อ่อน → ยังขาว/ครีม (ไม่ใช่ม่วงเข้ม) */
+html.shop-dark .bg-white            { background-color: rgba(255, 255, 255, 0.90) !important; }
+html.shop-dark .bg-white\/70        { background-color: rgba(255, 255, 255, 0.78) !important; }
+html.shop-dark .bg-white\/90        { background-color: rgba(255, 255, 255, 0.93) !important; }
+html.shop-dark .bg-white\/95        { background-color: rgba(255, 255, 255, 0.97) !important; }
+html.shop-dark .bg-slate-50,
+html.shop-dark .bg-slate-100        { background-color: rgba(245, 243, 255, 0.75) !important; }
+html.shop-dark .bg-slate-800        { background-color: #3b0764 !important; }
+html.shop-dark .bg-violet-50,
+html.shop-dark .bg-violet-50\/40,
+html.shop-dark .bg-violet-50\/60    { background-color: rgba(237, 233, 254, 0.60) !important; }
+
+/* ตัวอักษร → dark violet อ่านง่ายบนพื้นอ่อน */
+html.shop-dark .text-slate-900 { color: #0f0520 !important; }
+html.shop-dark .text-slate-800,
+html.shop-dark .text-slate-700 { color: #1e0a3c !important; }
+html.shop-dark .text-slate-600 { color: #3b0764 !important; }
+html.shop-dark .text-slate-500 { color: rgba(76, 29, 149, 0.75) !important; }
+html.shop-dark .text-slate-400 { color: rgba(109, 40, 217, 0.55) !important; }
+html.shop-dark .text-slate-300 { color: rgba(139, 92, 246, 0.60) !important; }
+html.shop-dark .text-gray-900  { color: #0f0520 !important; }
+html.shop-dark .text-gray-800,
+html.shop-dark .text-gray-700  { color: #1e0a3c !important; }
+html.shop-dark .text-gray-600  { color: #3b0764 !important; }
+html.shop-dark .text-gray-500  { color: rgba(76, 29, 149, 0.75) !important; }
+
+/* กรอบ — ให้กลืนกับพื้น lavender (ไม่ขาวจั๊วะ) */
+html.shop-dark .border-slate-100 { border-color: rgba(139, 92, 246, 0.12) !important; }
+html.shop-dark .border-slate-200 { border-color: rgba(139, 92, 246, 0.20) !important; }
+html.shop-dark .border-slate-300 { border-color: rgba(109, 40, 217, 0.28) !important; }
+html.shop-dark .border-gray-100  { border-color: rgba(139, 92, 246, 0.12) !important; }
+html.shop-dark .border-gray-200  { border-color: rgba(139, 92, 246, 0.20) !important; }
+html.shop-dark .divide-slate-100 > * + * { border-color: rgba(139, 92, 246, 0.10) !important; }
+html.shop-dark .divide-slate-200 > * + * { border-color: rgba(139, 92, 246, 0.16) !important; }
+
+/* Footer — เข้มเป็น accent */
+html.shop-dark footer {
+    background-color: #3b0764 !important;
+    color: rgba(237, 233, 254, 0.65) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Header + bottom nav ถูก style โดยตรงใน StorefrontLayout.vue
+   (purple gradient ทั้งสอง mode) — ไม่มี override ที่นี่
+   ────────────────────────────────────────────────────────────── */
+
+/* active nav indicator — โทนมืด: nav ม่วงเข้ม ตัวอักษรขาว */
+nav.fixed a.shop-nav-active { color: #ffffff !important; position: relative; }
+nav.fixed a.shop-nav-active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 28px; height: 3px;
+    background: rgba(255, 255, 255, 0.75);
+    border-radius: 0 0 4px 4px;
+}
+
+/* ── โทนสว่าง: Header = ขาว ── */
+html:not(.shop-dark) header.shop-header {
+    background: #ffffff !important;
+    box-shadow: 0 1px 0 #ede9fe, 0 2px 8px rgba(139,92,246,0.07) !important;
+}
+html:not(.shop-dark) header.shop-header .text-white,
+html:not(.shop-dark) header.shop-header .text-white\/75,
+html:not(.shop-dark) header.shop-header .text-white\/55,
+html:not(.shop-dark) header.shop-header .text-white\/50,
+html:not(.shop-dark) header.shop-header .text-white\/80,
+html:not(.shop-dark) header.shop-header .hover\:text-white:hover { color: #3b0764 !important; }
+/* badge บน icon ยังคงเป็นขาวบนพื้นส้ม/ชมพู */
+html:not(.shop-dark) header.shop-header .bg-orange-500,
+html:not(.shop-dark) header.shop-header .bg-rose-500 { color: #ffffff !important; }
+/* search input — ขาวบริสุทธิ์ ตัวอักษรมืด */
+html:not(.shop-dark) header.shop-header input {
+    background-color: #ffffff !important;
+    border-color: #d1c4e9 !important;
+    color: #1e0a3c !important;
+}
+html:not(.shop-dark) header.shop-header input::placeholder {
+    color: rgba(76,29,149,0.50) !important;
+}
+/* icon แว่นขยาย */
+html:not(.shop-dark) header.shop-header .fi-rr-search { color: #7c3aed !important; }
+/* logo icon bg + button hover bg */
+html:not(.shop-dark) header.shop-header .bg-white\/15,
+html:not(.shop-dark) header.shop-header .bg-white\/20 { background-color: rgba(237,233,254,0.75) !important; }
+html:not(.shop-dark) header.shop-header .hover\:bg-white\/15:hover,
+html:not(.shop-dark) header.shop-header .hover\:bg-white\/10:hover { background-color: rgba(237,233,254,0.65) !important; }
+
+/* ── โทนสว่าง: Bottom nav = ขาว ── */
+html:not(.shop-dark) nav.shop-bottom-nav {
+    background: #ffffff !important;
+    border-top-color: #e5deff !important;
+    box-shadow: 0 -2px 10px rgba(139,92,246,0.10) !important;
+}
+html:not(.shop-dark) nav.shop-bottom-nav .text-white\/45 { color: rgba(59,7,100,0.45) !important; }
+html:not(.shop-dark) nav.shop-bottom-nav a.shop-nav-active { color: #6d28d9 !important; }
+html:not(.shop-dark) nav.shop-bottom-nav a.shop-nav-active::before { background: rgba(109,40,217,0.75) !important; }
+
+/* ── โทนสว่าง: Footer = ขาว ── */
+html:not(.shop-dark) footer.shop-footer {
+    background: #ffffff !important;
+    border-top: 1px solid #ede9fe;
+    color: rgba(59,7,100,0.65) !important;
+}
+html:not(.shop-dark) footer.shop-footer * { color: rgba(59,7,100,0.70) !important; }
+html:not(.shop-dark) footer.shop-footer .bg-white\/20 { background-color: #ede9fe !important; }
+html:not(.shop-dark) footer.shop-footer a:hover { color: #6d28d9 !important; }
+
+/* อินพุตทั่วไป — ขาวอ่อนบนพื้น lavender */
+html.shop-dark input,
+html.shop-dark textarea,
+html.shop-dark select,
+html.shop-dark .inp {
+    background-color: rgba(255, 255, 255, 0.85) !important;
+    color: #1e0a3c !important;
+    border-color: rgba(139, 92, 246, 0.28) !important;
+}
+/* อินพุตใน header — glass บนพื้นม่วงเข้ม (specificity สูงกว่า rule ข้างต้น) */
+html.shop-dark header input {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+}
+
+/* hero banner */
+html.shop-dark .hero-banner { background: linear-gradient(to bottom right, #4c1d95, #6d28d9) !important; }
+html.shop-dark .hero-banner .text-slate-600 { color: #ede9fe !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, .reveal, .reveal.is-visible, .anim-fade-in, .anim-fade-up, .anim-scale-in, .anim-float, .blob, .skeleton {
+        animation: none !important;
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }

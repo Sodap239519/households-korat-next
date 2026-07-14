@@ -13,9 +13,10 @@ export default defineConfig({
         vue(),
     ],
     optimizeDeps: {
-        include: ['apexcharts'],
+        include: ['apexcharts', 'tesseract.js'],
     },
     server: {
+        host: '127.0.0.1',
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },

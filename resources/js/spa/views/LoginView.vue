@@ -109,8 +109,13 @@ async function handleLogin() {
   loading.value = true
   try {
     await axios.get('/sanctum/csrf-cookie')
-    await login(form.value.email, form.value.password)
-    router.push('/app/dashboard')
+    const u = await login(form.value.email, form.value.password)
+    // staff ที่สังกัดกลุ่มผู้ขาย → ไปหลังบ้านตลาดเลย
+    if (u?.role === 'staff' && u?.seller_group_id) {
+      router.push('/app/market')
+    } else {
+      router.push('/app/dashboard')
+    }
   } catch (e) {
     error.value = e.response?.data?.message
       || e.response?.data?.errors?.email?.[0]
