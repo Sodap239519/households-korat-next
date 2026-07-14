@@ -13,7 +13,7 @@
 
           <!-- โลโก้ + แสงวิ่งผ่าน -->
           <div class="logo-wrap logo-pop w-24 h-24 sm:w-28 sm:h-28 rounded-[22px] overflow-hidden shadow-2xl shadow-black/40 ring-2 ring-white/15">
-            <img :src="'/icons/icon-192.png'" alt="ตลาดชุมชนโคราช" class="w-full h-full object-cover" />
+            <img :src="logoUrl" alt="ตลาดชุมชนโคราช" class="w-full h-full object-cover" />
             <span class="shine"></span>
           </div>
         </div>
@@ -34,6 +34,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import logoUrl from '../../../assets/logo.png'
 
 const DURATION = 2800          // สั้น กระชับ (แตะที่ไหนก็ข้าม)
 const ONCE_KEY = 'shop_splash_shown'
