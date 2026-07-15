@@ -5,7 +5,7 @@
 
       <!-- Single header row — all sizes -->
       <div class="max-w-7xl mx-auto px-3 sm:px-6">
-        <div class="h-11 sm:h-14 flex items-center gap-2 sm:gap-4">
+        <div class="h-16 flex items-center gap-2 sm:gap-4">
 
           <!-- Logo: Desktop only -->
           <RouterLink to="/shop" class="hidden md:flex items-center gap-2 shrink-0">
@@ -28,18 +28,18 @@
           <div class="flex-1 relative min-w-0" ref="searchRef">
             <form @submit.prevent="doSearch">
               <div class="relative">
-                <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-white/50 text-sm pointer-events-none"></i>
+                <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
                 <input
                   v-model="search"
                   type="text"
                   :placeholder="mobilePlaceholder"
-                  class="w-full pl-9 pr-8 h-8 sm:h-10 rounded-full bg-white/15 border border-white/20 text-white placeholder:text-white/50 text-sm focus:outline-none focus:bg-white/22 focus:border-white/40 transition"
+                  class="w-full pl-9 pr-8 h-10 rounded-full border border-transparent text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-white/60 transition"
                   @focus="searchFocused = true"
                   @keydown.escape="searchFocused = false"
                 />
                 <button v-if="search" type="button"
                   @mousedown.prevent="search = ''; searchFocused = false; router.replace({ path: '/shop/products' })"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition">
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition">
                   <i class="fi fi-rr-cross-circle text-sm"></i>
                 </button>
               </div>
