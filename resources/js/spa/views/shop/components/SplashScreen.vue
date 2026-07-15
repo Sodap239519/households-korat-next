@@ -32,7 +32,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import logoMark from '../../../assets/logo-mark.png'
 
-const DURATION = 2800          // สั้น กระชับ (แตะที่ไหนก็ข้าม)
+const DURATION = 2200          // ~2.2 วิ + fade 0.55 = ~2.75 วิ (แตะที่ไหนก็ข้าม)
 const ONCE_KEY = 'shop_splash_shown'
 
 const visible = ref(false)
