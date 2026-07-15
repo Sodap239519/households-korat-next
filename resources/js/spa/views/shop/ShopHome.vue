@@ -2,7 +2,7 @@
   <div class="bg-violet-950">
 
     <!-- ===== Hero Banner Carousel (single-direction, always slides left) ===== -->
-    <section class="relative overflow-hidden select-none transition-all duration-500" :style="`aspect-ratio:${heroAspectRatio}`">
+    <section class="relative overflow-hidden select-none transition-all duration-500 mx-3 mt-3 rounded-2xl shadow-lg shadow-black/25" :style="`aspect-ratio:${heroAspectRatio}`">
       <Transition name="hero-slide">
         <div :key="current"
           class="absolute inset-0 flex items-center overflow-hidden"
@@ -67,39 +67,39 @@
     </section>
 
     <!-- ===== White Content Card ===== -->
-    <div class="relative z-10 bg-white">
+    <div class="relative z-10 bg-white rounded-t-3xl mt-3 overflow-hidden">
 
     <!-- ===== Quick Access Categories + Seller Groups ===== -->
     <section class="border-b border-slate-100">
       <div class="max-w-7xl mx-auto px-4 sm:px-6">
-        <div class="flex gap-0.5 overflow-x-auto py-3 scrollbar-hide">
+        <div class="flex gap-0.5 overflow-x-auto py-4 scrollbar-hide">
           <!-- ทั้งหมด -->
           <RouterLink to="/shop/products"
             class="flex flex-col items-center gap-1 px-2.5 shrink-0 group">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center text-violet-600 text-lg group-hover:scale-105 transition">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center text-violet-600 text-xl group-hover:scale-105 transition">
               <i class="fi fi-rr-apps"></i>
             </div>
-            <span class="text-[10px] text-slate-600 font-medium w-12 h-7 flex items-start justify-center text-center leading-tight pt-0.5">ทั้งหมด</span>
+            <span class="text-[11px] text-slate-600 font-medium w-14 h-7 flex items-start justify-center text-center leading-tight pt-0.5">ทั้งหมด</span>
           </RouterLink>
           <!-- หมวดหมู่ -->
           <RouterLink v-for="(cat, i) in categories.slice(0, 10)" :key="cat.id"
             :to="{ path: '/shop/products', query: { category: cat.slug } }"
             class="flex flex-col items-center gap-1 px-2.5 shrink-0 group">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg group-hover:scale-105 transition"
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl group-hover:scale-105 transition"
               :style="catColors[i % catColors.length]">
               <i :class="catIcons[i % catIcons.length]"></i>
             </div>
-            <span class="text-[10px] text-slate-600 font-medium w-12 h-7 flex items-start justify-center text-center leading-tight pt-0.5 line-clamp-2">{{ cat.name }}</span>
+            <span class="text-[11px] text-slate-600 font-medium w-14 h-7 flex items-start justify-center text-center leading-tight pt-0.5 line-clamp-2">{{ cat.name }}</span>
           </RouterLink>
           <!-- divider -->
           <div class="self-stretch w-px bg-slate-100 mx-1.5 my-1.5 shrink-0"></div>
           <!-- โซนตลาด → แผนที่ -->
           <RouterLink to="/shop/map"
             class="flex flex-col items-center gap-1 px-2.5 shrink-0 group">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-600 text-lg group-hover:scale-105 transition">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-600 text-xl group-hover:scale-105 transition">
               <i class="fi fi-rr-map-marker"></i>
             </div>
-            <span class="text-[10px] text-slate-600 font-medium w-12 h-7 flex items-start justify-center text-center leading-tight pt-0.5">โซนตลาด</span>
+            <span class="text-[11px] text-slate-600 font-medium w-14 h-7 flex items-start justify-center text-center leading-tight pt-0.5">โซนตลาด</span>
           </RouterLink>
         </div>
       </div>

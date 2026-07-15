@@ -317,11 +317,14 @@ html.shop-dark .inp {
     color: #1e0a3c !important;
     border-color: rgba(139, 92, 246, 0.28) !important;
 }
-/* อินพุตใน header — glass บนพื้นม่วงเข้ม (specificity สูงกว่า rule ข้างต้น) */
+/* อินพุตใน header — ขาวทึบบนพื้นม่วง (สไตล์ Shopee) */
 html.shop-dark header input {
-    background-color: rgba(255, 255, 255, 0.15) !important;
-    border-color: rgba(255, 255, 255, 0.25) !important;
-    color: #ffffff !important;
+    background-color: #ffffff !important;
+    border-color: transparent !important;
+    color: #1e0a3c !important;
+}
+html.shop-dark header input::placeholder {
+    color: rgba(76, 29, 149, 0.45) !important;
 }
 
 /* hero banner */
