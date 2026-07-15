@@ -275,8 +275,12 @@ async function loadMoreProducts() {
   }
 }
 
-async function load() {
-  loading.value = true
+// รีเฟรชเมื่อกลับเข้าแอป: เว้นระยะกันยิงถี่ตอนสลับแอปแวบเดียว
+const REFRESH_AFTER_MS = 60000
+let lastLoadedAt = 0
+
+async function load(silent = false) {
+  if (!silent) loading.value = true
   try {
     const [prodRes, catRes, grpRes, bannerRes] = await Promise.all([
       api.get('/shop/products', { params: { per_page: 12, sort: 'newest', page: 1 } }),
@@ -294,8 +298,16 @@ async function load() {
   } catch {
     // API error — show empty states, hero still renders
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
+    lastLoadedAt = Date.now()
   }
+}
+
+// กดเข้าแอป/สลับกลับมา → รีเฟรชสินค้าแบบเงียบ (ไม่ล้าง list ให้กระพริบ)
+function onVisibility() {
+  if (document.visibilityState !== 'visible') return
+  if (Date.now() - lastLoadedAt < REFRESH_AFTER_MS) return
+  load(true)
 }
 
 function setupObserver() {
@@ -313,11 +325,13 @@ onMounted(async () => {
   setupObserver()
   resetTimer()
   window.addEventListener('resize', onResize)
+  document.addEventListener('visibilitychange', onVisibility)
 })
 
 onBeforeUnmount(() => {
   clearInterval(slideTimer)
   window.removeEventListener('resize', onResize)
+  document.removeEventListener('visibilitychange', onVisibility)
   if (observer) { observer.disconnect(); observer = null }
 })
 </script>
