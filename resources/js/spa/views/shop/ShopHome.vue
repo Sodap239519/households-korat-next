@@ -2,7 +2,7 @@
   <div class="bg-violet-950">
 
     <!-- ===== Hero Banner Carousel (single-direction, always slides left) ===== -->
-    <section class="relative overflow-hidden select-none transition-all duration-500 mx-3 mt-3 rounded-2xl shadow-lg shadow-black/25" :style="`aspect-ratio:${heroAspectRatio}`">
+    <section class="relative overflow-hidden select-none transition-all duration-500" :style="`aspect-ratio:${heroAspectRatio}`">
       <Transition name="hero-slide">
         <div :key="current"
           class="absolute inset-0 flex items-center overflow-hidden"
@@ -58,7 +58,7 @@
       </button>
 
       <!-- Dots -->
-      <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+      <div class="absolute bottom-7 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
         <button v-for="(_, i) in slides" :key="i" @click="goTo(i)"
           class="rounded-full transition-all duration-300"
           :class="i === current ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/80'">
@@ -67,7 +67,7 @@
     </section>
 
     <!-- ===== White Content Card ===== -->
-    <div class="relative z-10 bg-white rounded-t-3xl mt-3 overflow-hidden">
+    <div class="relative z-10 bg-white rounded-t-3xl -mt-5 overflow-hidden">
 
     <!-- ===== Quick Access Categories + Seller Groups ===== -->
     <section class="border-b border-slate-100">
