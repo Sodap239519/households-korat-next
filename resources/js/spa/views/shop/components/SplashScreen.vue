@@ -3,7 +3,7 @@
     <Transition name="splash-fade">
       <div v-if="visible" @click="skip"
         class="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden select-none"
-        style="background:radial-gradient(130% 100% at 50% 40%,#5b21b6 0%,#3b0f73 55%,#2e1065 100%)">
+        style="background:#4c1d95">
 
         <!-- โลโก้ใหญ่ พื้นโปร่งใส (เส้นขาวบนม่วงโดยตรง) -->
         <div class="relative flex items-center justify-center">
