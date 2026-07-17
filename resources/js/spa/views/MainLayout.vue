@@ -359,7 +359,7 @@ const allNavItems = [
       // — ผู้ขาย —
       { to: '/app/market/my-shop',             icon: 'fi fi-rr-store-alt',  label: 'ตั้งค่าร้านค้า', show: () => !!sellerGroupId.value },
       { to: '/app/market/seller-groups',       icon: 'fi fi-rr-users-alt',  label: 'กลุ่มผู้ขาย',   show: () => isAdmin.value },
-      { to: '/app/market/seller-applications', icon: 'fi fi-rr-user-check', label: 'คำขอสมัครขาย',  badgeKey: 'seller_apps', show: () => isAdmin.value },
+      { to: '/app/market/seller-applications', icon: 'fi fi-rr-user-check', label: 'คำขอสมัครขาย',  badgeKey: 'seller_apps', show: () => isAreaStaff.value },
       { divider: true },
       // — การตลาด —
       { to: '/app/market/banners', icon: 'fi fi-rr-picture', label: 'แบนเนอร์ Hero', show: () => isAdmin.value },

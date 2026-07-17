@@ -359,6 +359,11 @@ function toggleCategory(key) {
 async function onDistrictChange() {
   form.sub_district = ''
   subDistricts.value = []
+  // อำเภอ → เลือกโซน (กลุ่มผู้ขาย) อัตโนมัติ จาก districts ของกลุ่ม
+  if (form.district) {
+    const match = sellerGroups.value.find(g => (g.districts || []).includes(form.district))
+    if (match) form.requested_group_id = match.id
+  }
   if (!form.district) return
   loadingSubDistricts.value = true
   try {

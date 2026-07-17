@@ -176,8 +176,10 @@ class DashboardController extends Controller
         $sellerAppStatuses = $user->isSuperAdmin()
             ? ['pending', 'admin_approved', 'escalated']
             : ['pending'];
-        $seller_apps = $user->isAdmin()
-            ? SellerApplication::whereIn('status', $sellerAppStatuses)->count()
+        $seller_apps = $user->isAreaStaff()
+            ? SellerApplication::whereIn('status', $sellerAppStatuses)
+                ->when($scope !== null, fn ($q) => $q->where('requested_group_id', $scope))
+                ->count()
             : 0;
 
         return response()->json(compact('orders', 'payments', 'shipments', 'returns', 'chat', 'reviews', 'comments', 'seller_apps'));
