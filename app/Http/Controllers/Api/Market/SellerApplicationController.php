@@ -27,10 +27,15 @@ class SellerApplicationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user->isAdmin(), 403, 'เฉพาะ admin/superadmin เท่านั้น');
+        abort_unless($user->isAreaStaff(), 403, 'เฉพาะเจ้าหน้าที่โซน/admin เท่านั้น');
 
         $query = SellerApplication::with(['requestedGroup:id,name', 'admin:id,name', 'superadmin:id,name'])
             ->orderByDesc('created_at');
+
+        // เจ้าหน้าที่ประจำโซนเห็นเฉพาะคำขอของกลุ่มตัวเอง (admin/superadmin เห็นทุกกลุ่ม)
+        if (($scope = $user->sellerGroupScope()) !== null) {
+            $query->where('requested_group_id', $scope);
+        }
 
         if (!$user->isSuperAdmin()) {
             // admin ธรรมดา: เห็นเฉพาะ pending + admin_approved (ที่ตัวเองดูแล)
@@ -51,9 +56,10 @@ class SellerApplicationController extends Controller
     public function counts(Request $request): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user->isAdmin(), 403, 'เฉพาะ admin/superadmin เท่านั้น');
+        abort_unless($user->isAreaStaff(), 403, 'เฉพาะเจ้าหน้าที่โซน/admin เท่านั้น');
 
         $rows = SellerApplication::selectRaw('status, COUNT(*) as total')
+            ->when(($scope = $user->sellerGroupScope()) !== null, fn ($q) => $q->where('requested_group_id', $scope))
             ->groupBy('status')
             ->pluck('total', 'status');
 
@@ -84,7 +90,8 @@ class SellerApplicationController extends Controller
     public function show(Request $request, SellerApplication $sellerApplication): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user->isAdmin(), 403, 'เฉพาะ admin/superadmin เท่านั้น');
+        abort_unless($user->isAreaStaff(), 403, 'เฉพาะเจ้าหน้าที่โซน/admin เท่านั้น');
+        abort_unless($user->canActInGroup($sellerApplication->requested_group_id), 403, 'ไม่มีสิทธิ์ดูคำขอนอกกลุ่มของคุณ');
 
         // admin ธรรมดาดูได้เฉพาะ pending/admin_approved
         if (!$user->isSuperAdmin()) {
@@ -107,9 +114,10 @@ class SellerApplicationController extends Controller
     public function adminReview(Request $request, SellerApplication $sellerApplication): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user->isAdmin(), 403, 'เฉพาะ admin เท่านั้น');
+        abort_unless($user->isAreaStaff(), 403, 'เฉพาะเจ้าหน้าที่โซน/admin เท่านั้น');
         // superadmin ไม่ใช้ route นี้ (superadmin ข้ามไป finalReview)
         abort_unless(!$user->isSuperAdmin(), 403, 'superadmin ใช้ /final-review แทน');
+        abort_unless($user->canActInGroup($sellerApplication->requested_group_id), 403, 'อนุมัติได้เฉพาะคำขอในกลุ่มของคุณ');
         abort_unless($sellerApplication->status === SellerApplication::STATUS_PENDING, 422, 'คำขอนี้ไม่อยู่ในสถานะรอพิจารณา');
 
         $data = $request->validate([

@@ -56,6 +56,13 @@ class SellerApplicationController extends Controller
             'business_name'   => 'ชื่อร้าน/กิจการ',
         ]);
 
+        // B: อำเภอ → โซนอัตโนมัติ (เผื่อผู้สมัครไม่ได้เลือกกลุ่มเอง)
+        if (empty($data['requested_group_id']) && !empty($data['district'])) {
+            $group = SellerGroup::where('is_active', true)->get()
+                ->first(fn ($g) => in_array($data['district'], $g->districts ?? [], true));
+            if ($group) $data['requested_group_id'] = $group->id;
+        }
+
         $logoPath = null;
         if ($request->hasFile('logo')) {
             $logoPath = $request->file('logo')->store('seller-applications/logos', 'public');

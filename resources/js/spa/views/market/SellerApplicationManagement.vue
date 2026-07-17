@@ -281,7 +281,7 @@ const CATEGORY_MAP = {
   service: 'บริการ (ซ่อม-สอน-ดูแล)',
 }
 
-const { isAdmin, isSuperAdmin } = useAuth()
+const { isAdmin, isSuperAdmin, isAreaStaff } = useAuth()
 const toast = useToast()
 
 const rows       = ref([])
@@ -323,9 +323,9 @@ const tabs = computed(() => {
   return base
 })
 
-const canAdminReview    = computed(() => active.value?.status === 'pending' && isAdmin.value && !isSuperAdmin.value)
+const canAdminReview    = computed(() => active.value?.status === 'pending' && isAreaStaff.value && !isSuperAdmin.value)
 const canSuperAdminReview = computed(() => isSuperAdmin.value && active.value && ['pending', 'admin_approved', 'escalated'].includes(active.value.status))
-const canRequestRevision  = computed(() => (isAdmin.value || isSuperAdmin.value) && active.value &&
+const canRequestRevision  = computed(() => isAreaStaff.value && active.value &&
   ['pending', 'admin_approved', 'escalated', 'revision_requested'].includes(active.value.status))
 
 function statusLabel(s) {
