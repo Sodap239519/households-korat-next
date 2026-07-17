@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\SellerGroup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,15 @@ class LocationController extends Controller
             ->distinct()
             ->orderBy('district')
             ->pluck('district');
+
+        // households ยังไม่มีข้อมูล → ใช้อำเภอจากโซนกลุ่มผู้ขาย (มาร์เก็ตเพลส) แทน
+        if ($districts->isEmpty()) {
+            $districts = SellerGroup::where('is_active', true)->get()
+                ->flatMap(fn ($g) => $g->districts ?? [])
+                ->unique()
+                ->sort()
+                ->values();
+        }
 
         return response()->json($districts);
     }
