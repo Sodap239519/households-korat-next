@@ -140,15 +140,10 @@
             </div>
             <div>
               <label class="form-label">ตำบล / แขวง</label>
-              <select v-model="form.sub_district" class="inp w-full"
-                :disabled="!form.district || loadingSubDistricts">
-                <option value="">
-                  {{ !form.district ? '— เลือกอำเภอก่อน —'
-                     : loadingSubDistricts ? 'กำลังโหลด...'
-                     : '— เลือกตำบล —' }}
-                </option>
-                <option v-for="s in subDistricts" :key="s" :value="s">{{ s }}</option>
-              </select>
+              <input v-model="form.sub_district" class="inp w-full" list="subdistrict-list" placeholder="ระบุตำบล / แขวง" />
+              <datalist id="subdistrict-list">
+                <option v-for="s in subDistricts" :key="s" :value="s"></option>
+              </datalist>
             </div>
           </div>
 
